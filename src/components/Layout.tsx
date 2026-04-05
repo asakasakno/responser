@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard } from 'lucide-react';
+import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard, Shield } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -14,7 +14,7 @@ const navItems = [
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, signOut, plan } = useAuth();
+  const { user, signOut, plan, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -54,6 +54,19 @@ export default function Layout({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/admin'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              관리자
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-border">
