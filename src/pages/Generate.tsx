@@ -58,6 +58,24 @@ export default function Generate() {
     }
   }, [user]);
 
+  // Clipboard paste support for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) processImageFile(file);
+          return;
+        }
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [genType, selectedProduct, isLimitReached, batchLoading, remaining, limits]);
+
   const fetchTodayUsage = async () => {
     if (!user) return;
     setUsageLoading(true);
