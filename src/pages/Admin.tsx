@@ -65,7 +65,7 @@ export default function Admin() {
       toast({ title: "오류", description: "사용자 목록을 불러올 수 없습니다.", variant: "destructive" });
     } else {
       setUsers(data.users || []);
-    }
+      setUsageAll(data.usage_all || []);
     setLoadingUsers(false);
   };
 
