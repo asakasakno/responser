@@ -205,6 +205,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_usage: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
