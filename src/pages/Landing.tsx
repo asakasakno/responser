@@ -179,7 +179,7 @@ export default function Landing() {
           <p className="text-center text-muted-foreground mb-10 max-w-md mx-auto">
             답변 작성에 필요한 기능만 담았습니다
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
               {
                 icon: Upload,
