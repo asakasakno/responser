@@ -164,14 +164,14 @@ export default function Generate() {
         const processCount = Math.min(items.length, maxByPlan, maxByUsage);
         const processItems = items.slice(0, processCount);
 
-        const allResults: string[] = [];
+        const allResults: { input: string; output: string }[] = [];
         const product = getProductContext();
         for (let i = 0; i < processItems.length; i++) {
           setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
           const { data } = await supabase.functions.invoke('generate-response', {
             body: { type: genType, text: processItems[i], product },
           });
-          allResults.push(data?.response || '생성 실패');
+          allResults.push({ input: processItems[i], output: data?.response || '생성 실패' });
           setTodayUsage(prev => prev + 1);
           
           await supabase.from('generations').insert({
@@ -185,7 +185,7 @@ export default function Generate() {
 
         const blurredCount = items.length - processCount;
         for (let i = 0; i < blurredCount; i++) {
-          allResults.push('__BLURRED__');
+          allResults.push({ input: items[processCount + i] || '', output: '__BLURRED__' });
         }
 
         setBatchResults(allResults);
