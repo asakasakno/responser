@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import { Shield, Users, AlertTriangle, Search } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import UsageChart from "@/components/admin/UsageChart";
 
 interface AdminUser {
   user_id: string;
@@ -31,6 +32,7 @@ export default function Admin() {
   const { user, loading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usageAll, setUsageAll] = useState<{ user_id: string; count: number; date: string }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,6 +65,7 @@ export default function Admin() {
       toast({ title: "오류", description: "사용자 목록을 불러올 수 없습니다.", variant: "destructive" });
     } else {
       setUsers(data.users || []);
+      setUsageAll(data.usage_all || []);
     }
     setLoadingUsers(false);
   };
@@ -144,6 +147,8 @@ export default function Admin() {
             </CardContent>
           </Card>
         </div>
+
+        <UsageChart usageData={usageAll} />
 
         <Card>
           <CardHeader>
