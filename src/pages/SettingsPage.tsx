@@ -141,7 +141,24 @@ export default function SettingsPage() {
             <User className="w-5 h-5 text-primary" />
             <h2 className="font-semibold text-foreground">계정 정보</h2>
           </div>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">이름</span>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={profileName}
+                  onChange={e => setProfileName(e.target.value)}
+                  className="w-40 h-8 text-sm"
+                  placeholder="이름 입력"
+                  maxLength={50}
+                />
+                {nameChanged && (
+                  <Button size="sm" variant="outline" className="h-8" onClick={handleSaveName} disabled={savingName}>
+                    {savingName ? '...' : '저장'}
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">이메일</span>
               <span className="text-foreground">{user?.email}</span>
