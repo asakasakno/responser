@@ -17,6 +17,7 @@ const plans = [
       { text: '이미지당 최대 5개 처리 (초과분 블러)', included: true },
       { text: '상품 등록 (최대 3개)', included: true },
       { text: '생성 기록 저장', included: true },
+      { text: '다중 이미지 동시 업로드', included: false },
       { text: '대량 처리', included: false },
     ],
   },
