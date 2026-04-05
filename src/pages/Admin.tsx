@@ -66,6 +66,7 @@ export default function Admin() {
     } else {
       setUsers(data.users || []);
       setUsageAll(data.usage_all || []);
+    }
     setLoadingUsers(false);
   };
 
