@@ -92,6 +92,16 @@ serve(async (req) => {
     const data = await response.json();
     const responseText = data.choices?.[0]?.message?.content || "답변을 생성할 수 없습니다.";
 
+    // Increment usage server-side
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      await userClient.rpc("increment_usage");
+    }
+
     return new Response(JSON.stringify({ response: responseText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
