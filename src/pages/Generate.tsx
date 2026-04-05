@@ -58,6 +58,24 @@ export default function Generate() {
     }
   }, [user]);
 
+  // Clipboard paste support for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) processImageFile(file);
+          return;
+        }
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [genType, selectedProduct, isLimitReached, batchLoading, remaining, limits]);
+
   const fetchTodayUsage = async () => {
     if (!user) return;
     setUsageLoading(true);
@@ -108,9 +126,7 @@ export default function Generate() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processImageFile = (file: File) => {
     if (isLimitReached) {
       toast({ title: '일일 한도 초과', description: '오늘의 생성 한도를 모두 사용했습니다.', variant: 'destructive' });
       return;
@@ -132,7 +148,6 @@ export default function Generate() {
         const items: string[] = extractData.items || [];
         setBatchTotalExtracted(items.length);
         
-        // Determine how many to actually process (limited by remaining usage AND maxPerImage)
         const maxByPlan = limits.maxPerImage;
         const maxByUsage = limits.unlimited ? items.length : remaining;
         const processCount = Math.min(items.length, maxByPlan, maxByUsage);
@@ -157,7 +172,6 @@ export default function Generate() {
           });
         }
 
-        // Add placeholder entries for blurred items (items beyond processCount)
         const blurredCount = items.length - processCount;
         for (let i = 0; i < blurredCount; i++) {
           allResults.push('__BLURRED__');
@@ -172,6 +186,11 @@ export default function Generate() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processImageFile(file);
   };
 
   const copyToClipboard = (text: string) => {
