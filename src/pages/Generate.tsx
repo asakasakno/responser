@@ -38,10 +38,11 @@ export default function Generate() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   
-  const [batchResults, setBatchResults] = useState<string[]>([]);
+  const [batchResults, setBatchResults] = useState<{ input: string; output: string }[]>([]);
   const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [todayUsage, setTodayUsage] = useState(0);
   const [usageLoading, setUsageLoading] = useState(true);
@@ -75,6 +76,16 @@ export default function Generate() {
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
   }, [genType, selectedProduct, isLimitReached, batchLoading, remaining, limits]);
+
+  // Drag & drop handlers
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) processImageFile(file);
+  };
 
   const fetchTodayUsage = async () => {
     if (!user) return;
@@ -153,14 +164,14 @@ export default function Generate() {
         const processCount = Math.min(items.length, maxByPlan, maxByUsage);
         const processItems = items.slice(0, processCount);
 
-        const allResults: string[] = [];
+        const allResults: { input: string; output: string }[] = [];
         const product = getProductContext();
         for (let i = 0; i < processItems.length; i++) {
           setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
           const { data } = await supabase.functions.invoke('generate-response', {
             body: { type: genType, text: processItems[i], product },
           });
-          allResults.push(data?.response || '생성 실패');
+          allResults.push({ input: processItems[i], output: data?.response || '생성 실패' });
           setTodayUsage(prev => prev + 1);
           
           await supabase.from('generations').insert({
@@ -174,7 +185,7 @@ export default function Generate() {
 
         const blurredCount = items.length - processCount;
         for (let i = 0; i < blurredCount; i++) {
-          allResults.push('__BLURRED__');
+          allResults.push({ input: items[processCount + i] || '', output: '__BLURRED__' });
         }
 
         setBatchResults(allResults);
@@ -198,15 +209,29 @@ export default function Generate() {
     toast({ title: '복사됨' });
   };
 
-  const realResults = batchResults.filter(r => r !== '__BLURRED__');
+  const realResults = batchResults.filter(r => r.output !== '__BLURRED__');
   const copyAll = () => {
-    const allText = realResults.map((r, i) => `[${i + 1}]\n${r}`).join('\n\n---\n\n');
+    const allText = realResults.map((r, i) => `[${i + 1}]\n원문: ${r.input}\n답변: ${r.output}`).join('\n\n---\n\n');
     copyToClipboard(allText);
   };
 
   return (
     <Layout>
-      <div className="p-6 md:p-8 max-w-3xl mx-auto">
+      <div
+        className={`p-6 md:p-8 max-w-3xl mx-auto relative ${isDragging ? 'ring-2 ring-primary ring-offset-2 rounded-xl' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm rounded-xl z-50 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <Image className="w-10 h-10 text-primary mx-auto mb-2" />
+              <p className="text-lg font-semibold text-primary">이미지를 놓아주세요</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">AI 답변 생성</h1>
           <UsageIndicator
@@ -276,6 +301,8 @@ export default function Generate() {
             </Button>
           </div>
         </div>
+
+        <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
 
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
