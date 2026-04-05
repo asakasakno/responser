@@ -170,6 +170,7 @@ export default function Admin() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <Select
                             value={u.plan}
                             onValueChange={(plan) => adminAction("change_plan", { user_id: u.user_id, plan })}
                             disabled={actionLoading === `change_plan-${u.user_id}`}
