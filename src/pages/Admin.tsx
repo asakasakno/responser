@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Shield, Users, AlertTriangle } from "lucide-react";
+import { Shield, Users, AlertTriangle, Search } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 interface AdminUser {
@@ -22,6 +23,8 @@ interface AdminUser {
   payment_enabled: boolean;
   subscription_id: string | null;
   platforms: string[];
+  today_usage: number;
+  total_usage: number;
 }
 
 export default function Admin() {
@@ -30,6 +33,7 @@ export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -77,6 +81,15 @@ export default function Admin() {
     }
     setActionLoading(null);
   };
+
+  const filteredUsers = users.filter(u => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      u.email.toLowerCase().includes(q) ||
+      (u.name && u.name.toLowerCase().includes(q))
+    );
+  });
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
@@ -134,14 +147,27 @@ export default function Admin() {
 
         <Card>
           <CardHeader>
-            <CardTitle>사용자 관리</CardTitle>
-            <CardDescription>유저 플랜 변경, 결제 ON/OFF, 사용 정지를 관리합니다.</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle>사용자 관리</CardTitle>
+                <CardDescription>유저 플랜 변경, 결제 ON/OFF, 사용 정지를 관리합니다.</CardDescription>
+              </div>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="이름 또는 이메일 검색..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingUsers ? (
               <p className="text-muted-foreground py-8 text-center">로딩 중...</p>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -149,13 +175,14 @@ export default function Admin() {
                       <TableHead>이름</TableHead>
                       <TableHead>플랫폼</TableHead>
                       <TableHead>플랜</TableHead>
+                      <TableHead className="text-center">오늘/전체</TableHead>
                       <TableHead>결제</TableHead>
                       <TableHead>상태</TableHead>
                       <TableHead>가입일</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((u) => (
+                    {filteredUsers.map((u) => (
                       <TableRow key={u.user_id} className={u.suspended ? "opacity-60" : ""}>
                         <TableCell className="font-medium">{u.email}</TableCell>
                         <TableCell>{u.name || "-"}</TableCell>
@@ -185,6 +212,10 @@ export default function Admin() {
                             </SelectContent>
                           </Select>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-medium">{u.today_usage}</span>
+                          <span className="text-muted-foreground text-xs"> / {u.total_usage}</span>
+                        </TableCell>
                         <TableCell>
                           <Switch
                             checked={u.payment_enabled}
@@ -209,10 +240,10 @@ export default function Admin() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {users.length === 0 && (
+                    {filteredUsers.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          등록된 사용자가 없습니다.
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          {searchQuery ? "검색 결과가 없습니다." : "등록된 사용자가 없습니다."}
                         </TableCell>
                       </TableRow>
                     )}
