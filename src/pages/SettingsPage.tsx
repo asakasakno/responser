@@ -28,6 +28,11 @@ const PLATFORMS = [
   { id: 'gmarket', label: 'G마켓/옥션' },
   { id: 'tmon', label: '티몬' },
   { id: 'interpark', label: '인터파크' },
+  { id: 'ohouse', label: '오늘의집' },
+  { id: 'musinsa', label: '무신사' },
+  { id: 'coupangeats', label: '쿠팡이츠' },
+  { id: 'baemin', label: '배달의민족' },
+  { id: 'yogiyo', label: '요기요' },
   { id: 'other', label: '기타' },
 ];
 
