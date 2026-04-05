@@ -118,6 +118,20 @@ export default function Auth() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <Label htmlFor="name">이름 <span className="text-destructive">*</span></Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="홍길동"
+                  required={isSignUp}
+                  maxLength={50}
+                />
+              </div>
+            )}
             <div>
               <Label htmlFor="email">이메일</Label>
               <Input
