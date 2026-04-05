@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN platforms text[] DEFAULT '{}' NOT NULL;
