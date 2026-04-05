@@ -160,6 +160,15 @@ export default function Admin() {
                         <TableCell className="font-medium">{u.email}</TableCell>
                         <TableCell>{u.name || "-"}</TableCell>
                         <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {(u.platforms || []).length > 0
+                              ? u.platforms.map(p => (
+                                  <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>
+                                ))
+                              : <span className="text-muted-foreground text-xs">-</span>
+                            }
+                          </div>
+                        </TableCell>
                           <Select
                             value={u.plan}
                             onValueChange={(plan) => adminAction("change_plan", { user_id: u.user_id, plan })}
