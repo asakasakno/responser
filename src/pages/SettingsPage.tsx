@@ -40,6 +40,9 @@ export default function SettingsPage() {
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [savingPlatforms, setSavingPlatforms] = useState(false);
   const [originalPlatforms, setOriginalPlatforms] = useState<string[]>([]);
+  const [profileName, setProfileName] = useState('');
+  const [originalName, setOriginalName] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (!user) return;
