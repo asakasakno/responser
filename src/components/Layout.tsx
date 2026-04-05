@@ -54,6 +54,19 @@ export default function Layout({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/admin'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              관리자
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-border">
