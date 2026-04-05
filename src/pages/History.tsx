@@ -5,10 +5,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Copy, History as HistoryIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Generation } from '@/types';
 
-const TYPE_LABELS = { review: '리뷰', inquiry: '문의', claim: '클레임' };
-const TYPE_COLORS = { review: 'bg-primary/10 text-primary', inquiry: 'bg-accent/10 text-accent', claim: 'bg-destructive/10 text-destructive' };
+type GenType = 'review' | 'inquiry' | 'claim';
+
+interface Generation {
+  id: string;
+  type: GenType;
+  input_text: string;
+  output_text: string;
+  created_at: string;
+}
+
+const TYPE_LABELS: Record<GenType, string> = { review: '리뷰', inquiry: '문의', claim: '클레임' };
+const TYPE_COLORS: Record<GenType, string> = { review: 'bg-primary/10 text-primary', inquiry: 'bg-accent/10 text-accent', claim: 'bg-destructive/10 text-destructive' };
 
 export default function History() {
   const { user } = useAuth();
@@ -25,7 +34,7 @@ export default function History() {
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => {
-        setGenerations((data || []) as unknown as Generation[]);
+        setGenerations((data || []) as Generation[]);
         setLoading(false);
       });
   }, [user]);

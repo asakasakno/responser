@@ -8,7 +8,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2, Package } from 'lucide-react';
-import type { Product } from '@/types';
+
+interface Product {
+  id: string;
+  user_id: string;
+  name: string;
+  category: string;
+  note: string | null;
+  created_at: string;
+}
 
 export default function Products() {
   const { user } = useAuth();
@@ -28,7 +36,7 @@ export default function Products() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    setProducts((data || []) as unknown as Product[]);
+    setProducts((data || []) as Product[]);
     setLoading(false);
   };
 
@@ -51,10 +59,10 @@ export default function Products() {
     if (!name.trim() || !category.trim()) return;
     try {
       if (editingProduct) {
-        await supabase.from('products').update({ name, category, note } as any).eq('id', editingProduct.id);
+        await supabase.from('products').update({ name, category, note }).eq('id', editingProduct.id);
         toast({ title: '수정 완료' });
       } else {
-        await supabase.from('products').insert({ user_id: user!.id, name, category, note } as any);
+        await supabase.from('products').insert({ user_id: user!.id, name, category, note });
         toast({ title: '등록 완료' });
       }
       resetForm();
