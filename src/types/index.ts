@@ -42,8 +42,8 @@ export interface UsageRecord {
   count: number;
 }
 
-export const PLAN_LIMITS: Record<PlanType, { dailyLimit: number; imageUpload: boolean; maxPerImage: number; price: number; name: string }> = {
-  free: { dailyLimit: 10, imageUpload: false, maxPerImage: 0, price: 0, name: 'Free' },
-  basic: { dailyLimit: 100, imageUpload: true, maxPerImage: 10, price: 9900, name: 'Basic' },
-  pro: { dailyLimit: 500, imageUpload: true, maxPerImage: 30, price: 29900, name: 'Pro' },
+export const PLAN_LIMITS: Record<PlanType, { dailyLimit: number; imageUpload: boolean; maxPerImage: number; price: number; name: string; unlimited: boolean }> = {
+  free: { dailyLimit: 5, imageUpload: true, maxPerImage: 5, price: 0, name: 'Free', unlimited: false },
+  basic: { dailyLimit: 50, imageUpload: true, maxPerImage: 10, price: 9900, name: 'Basic', unlimited: false },
+  pro: { dailyLimit: -1, imageUpload: true, maxPerImage: 30, price: 29900, name: 'Pro', unlimited: true },
 };
