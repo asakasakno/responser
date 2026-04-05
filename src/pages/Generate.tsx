@@ -77,6 +77,16 @@ export default function Generate() {
     return () => document.removeEventListener('paste', handlePaste);
   }, [genType, selectedProduct, isLimitReached, batchLoading, remaining, limits]);
 
+  // Drag & drop handlers
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) processImageFile(file);
+  };
+
   const fetchTodayUsage = async () => {
     if (!user) return;
     setUsageLoading(true);
