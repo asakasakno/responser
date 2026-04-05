@@ -17,6 +17,7 @@ const plans = [
       { text: '이미지당 최대 5개 처리 (초과분 블러)', included: true },
       { text: '상품 등록 (최대 3개)', included: true },
       { text: '생성 기록 저장', included: true },
+      { text: '다중 이미지 동시 업로드', included: false },
       { text: '대량 처리', included: false },
     ],
   },
@@ -33,6 +34,7 @@ const plans = [
       { text: '이미지당 최대 10개 처리 (초과분 블러)', included: true },
       { text: '상품 등록 (무제한)', included: true },
       { text: '생성 기록 저장', included: true },
+      { text: '다중 이미지 동시 업로드', included: false },
       { text: '대량 처리', included: false },
     ],
   },
@@ -48,6 +50,7 @@ const plans = [
       { text: '이미지당 최대 30개 처리', included: true },
       { text: '상품 등록 (무제한)', included: true },
       { text: '생성 기록 저장', included: true },
+      { text: '다중 이미지 동시 업로드', included: true },
       { text: '대량 처리 지원', included: true },
     ],
   },
@@ -169,6 +172,7 @@ export default function Pricing() {
                   ['초과분 블러 미리보기', true, true, false],
                   ['상품 등록', '3개', '무제한', '무제한'],
                   ['생성 기록 저장', true, true, true],
+                  ['다중 이미지 동시 업로드', false, false, true],
                   ['대량 처리', false, false, true],
                 ].map((row, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
