@@ -5,15 +5,27 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MessageSquare, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+
+const PLATFORMS = [
+  { id: 'naver', label: '네이버 스마트스토어' },
+  { id: 'coupang', label: '쿠팡' },
+  { id: '11st', label: '11번가' },
+  { id: 'gmarket', label: 'G마켓/옥션' },
+  { id: 'tmon', label: '티몬' },
+  { id: 'interpark', label: '인터파크' },
+  { id: 'other', label: '기타' },
+];
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(searchParams.get('mode') === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -23,19 +35,39 @@ export default function Auth() {
     if (user) navigate('/dashboard');
   }, [user, navigate]);
 
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        if (selectedPlatforms.length === 0) {
+          toast({ title: '판매 플랫폼을 선택해주세요', description: '최소 1개 이상 선택이 필요합니다.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast({ title: '가입 완료!', description: '이메일을 확인해주세요.' });
+
+        // 프로필에 플랫폼 정보 저장
+        if (data.user) {
+          await supabase
+            .from('profiles')
+            .update({ platforms: selectedPlatforms })
+            .eq('user_id', data.user.id);
+        }
+
+        toast({ title: '가입 완료!', description: '이메일 인증 링크를 확인해주세요.' });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -103,6 +135,32 @@ export default function Auth() {
                 minLength={6}
               />
             </div>
+
+            {isSignUp && (
+              <div>
+                <Label className="mb-3 block">판매 플랫폼 <span className="text-destructive">*</span></Label>
+                <p className="text-xs text-muted-foreground mb-3">사용 중인 플랫폼을 모두 선택해주세요</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {PLATFORMS.map(platform => (
+                    <label
+                      key={platform.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        selectedPlatforms.includes(platform.id)
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedPlatforms.includes(platform.id)}
+                        onCheckedChange={() => togglePlatform(platform.id)}
+                      />
+                      {platform.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
               {loading ? '처리 중...' : isSignUp ? '가입하기' : '로그인'}
             </Button>
