@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLAN_LIMITS } from '@/types';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { CreditCard, User, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CreditCard, User, Trash2, Store } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -19,12 +20,66 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+const PLATFORMS = [
+  { id: 'naver', label: '네이버 스마트스토어' },
+  { id: 'coupang', label: '쿠팡' },
+  { id: '11st', label: '11번가' },
+  { id: 'gmarket', label: 'G마켓/옥션' },
+  { id: 'tmon', label: '티몬' },
+  { id: 'interpark', label: '인터파크' },
+  { id: 'other', label: '기타' },
+];
+
 export default function SettingsPage() {
   const { user, plan } = useAuth();
   const limits = PLAN_LIMITS[plan];
   const navigate = useNavigate();
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [savingPlatforms, setSavingPlatforms] = useState(false);
+  const [originalPlatforms, setOriginalPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('platforms')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const p = (data?.platforms as string[]) || [];
+        setPlatforms(p);
+        setOriginalPlatforms(p);
+      });
+  }, [user]);
+
+  const togglePlatform = (id: string) => {
+    setPlatforms(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
+
+  const platformsChanged = JSON.stringify(platforms.sort()) !== JSON.stringify(originalPlatforms.sort());
+
+  const handleSavePlatforms = async () => {
+    if (!user || platforms.length === 0) {
+      toast({ title: '최소 1개 플랫폼을 선택해주세요', variant: 'destructive' });
+      return;
+    }
+    setSavingPlatforms(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ platforms })
+      .eq('user_id', user.id);
+    setSavingPlatforms(false);
+    if (error) {
+      toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
+    } else {
+      setOriginalPlatforms([...platforms]);
+      toast({ title: '판매 플랫폼이 저장되었습니다' });
+    }
+  };
 
   const handleDeleteAccount = async () => {
     setDeleting(true);
@@ -70,6 +125,38 @@ export default function SettingsPage() {
               <span className="text-foreground">{user?.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-'}</span>
             </div>
           </div>
+        </div>
+
+        {/* Platforms */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-card mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <Store className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold text-foreground">판매 플랫폼</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">사용 중인 플랫폼을 모두 선택해주세요</p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {PLATFORMS.map(p => (
+              <label
+                key={p.id}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                  platforms.includes(p.id)
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                <Checkbox
+                  checked={platforms.includes(p.id)}
+                  onCheckedChange={() => togglePlatform(p.id)}
+                />
+                {p.label}
+              </label>
+            ))}
+          </div>
+          {platformsChanged && (
+            <Button size="sm" onClick={handleSavePlatforms} disabled={savingPlatforms}>
+              {savingPlatforms ? '저장 중...' : '변경사항 저장'}
+            </Button>
+          )}
         </div>
 
         {/* Subscription */}
