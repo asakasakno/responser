@@ -12,9 +12,9 @@ const plans = [
     period: '영구 무료',
     description: '가볍게 시작하기',
     features: [
-      { text: '단일 텍스트 생성', included: true },
-      { text: '일일 10회 제한', included: true },
-      { text: '이미지 캡처 일괄 처리', included: false },
+      { text: '텍스트 + 이미지 생성', included: true },
+      { text: '일일 5회 제한', included: true },
+      { text: '이미지당 최대 5개 처리 (초과분 블러)', included: true },
       { text: '상품 등록 (최대 3개)', included: true },
       { text: '생성 기록 저장', included: true },
       { text: '대량 처리', included: false },
@@ -29,8 +29,8 @@ const plans = [
     popular: true,
     features: [
       { text: '텍스트 + 이미지 생성', included: true },
-      { text: '일일 100회 제한', included: true },
-      { text: '이미지당 최대 10개 처리', included: true },
+      { text: '일일 50회 제한', included: true },
+      { text: '이미지당 최대 10개 처리 (초과분 블러)', included: true },
       { text: '상품 등록 (무제한)', included: true },
       { text: '생성 기록 저장', included: true },
       { text: '대량 처리', included: false },
@@ -44,7 +44,7 @@ const plans = [
     description: '대량 처리가 필요한 파워 셀러',
     features: [
       { text: '텍스트 + 이미지 생성', included: true },
-      { text: '일일 500회 제한', included: true },
+      { text: '일일 무제한', included: true },
       { text: '이미지당 최대 30개 처리', included: true },
       { text: '상품 등록 (무제한)', included: true },
       { text: '생성 기록 저장', included: true },
