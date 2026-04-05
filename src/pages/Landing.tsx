@@ -119,6 +119,9 @@ export default function Landing() {
             <a href="#pricing">
               <Button variant="ghost" size="sm">요금제</Button>
             </a>
+            <Link to="/extension">
+              <Button variant="ghost" size="sm">확장 프로그램</Button>
+            </Link>
             <Link to="/auth">
               <Button variant="ghost" size="sm">로그인</Button>
             </Link>
