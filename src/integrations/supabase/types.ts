@@ -88,6 +88,7 @@ export type Database = {
           email: string
           id: string
           name: string | null
+          suspended: boolean
           updated_at: string
           user_id: string
         }
@@ -96,6 +97,7 @@ export type Database = {
           email: string
           id?: string
           name?: string | null
+          suspended?: boolean
           updated_at?: string
           user_id: string
         }
@@ -104,6 +106,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string | null
+          suspended?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -114,6 +117,7 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          payment_enabled: boolean
           plan: Database["public"]["Enums"]["plan_type"]
           started_at: string
           status: Database["public"]["Enums"]["subscription_status"]
@@ -124,6 +128,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          payment_enabled?: boolean
           plan?: Database["public"]["Enums"]["plan_type"]
           started_at?: string
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -134,6 +139,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          payment_enabled?: boolean
           plan?: Database["public"]["Enums"]["plan_type"]
           started_at?: string
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -166,14 +172,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       generation_type: "review" | "inquiry" | "claim"
       plan_type: "free" | "basic" | "pro"
       subscription_status: "active" | "cancelled" | "expired"
@@ -304,6 +338,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       generation_type: ["review", "inquiry", "claim"],
       plan_type: ["free", "basic", "pro"],
       subscription_status: ["active", "cancelled", "expired"],
