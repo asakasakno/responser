@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard, Shield } from 'lucide-react';
+import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard, Shield, Chrome } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/products', label: '상품 관리', icon: Package },
   { to: '/history', label: '생성 기록', icon: History },
   { to: '/pricing', label: '요금제', icon: CreditCard },
+  { to: '/extension', label: '확장 프로그램', icon: Chrome },
   { to: '/settings', label: '설정', icon: Settings },
 ];
 
