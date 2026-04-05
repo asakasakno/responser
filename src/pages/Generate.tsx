@@ -38,10 +38,11 @@ export default function Generate() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   
-  const [batchResults, setBatchResults] = useState<string[]>([]);
+  const [batchResults, setBatchResults] = useState<{ input: string; output: string }[]>([]);
   const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [todayUsage, setTodayUsage] = useState(0);
   const [usageLoading, setUsageLoading] = useState(true);
