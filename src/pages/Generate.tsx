@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Image, Loader2, ArrowUp, AlertTriangle } from 'lucide-react';
+import { Copy, Image, Loader2, ArrowUp, AlertTriangle, Lock, Crown } from 'lucide-react';
+
+import GenerateResultCard from '@/components/generate/GenerateResultCard';
+import BatchResultsList from '@/components/generate/BatchResultsList';
+import UsageIndicator from '@/components/generate/UsageIndicator';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
@@ -35,18 +39,38 @@ export default function Generate() {
   const [result, setResult] = useState('');
   
   const [batchResults, setBatchResults] = useState<string[]>([]);
+  const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
-  const [extractedCount, setExtractedCount] = useState(0);
-  const [planLimitHit, setPlanLimitHit] = useState(false);
+
+  const [todayUsage, setTodayUsage] = useState(0);
+  const [usageLoading, setUsageLoading] = useState(true);
+
+  const remaining = limits.unlimited ? Infinity : Math.max(0, limits.dailyLimit - todayUsage);
+  const isLimitReached = !limits.unlimited && remaining <= 0;
 
   useEffect(() => {
     if (user) {
       supabase.from('products').select('id, name, category, note').eq('user_id', user.id).then(({ data }) => {
         if (data) setProducts(data);
       });
+      fetchTodayUsage();
     }
   }, [user]);
+
+  const fetchTodayUsage = async () => {
+    if (!user) return;
+    setUsageLoading(true);
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('usage')
+      .select('count')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .maybeSingle();
+    setTodayUsage(data?.count || 0);
+    setUsageLoading(false);
+  };
 
   const getProductContext = () => {
     if (selectedProduct === 'none') return null;
@@ -56,6 +80,10 @@ export default function Generate() {
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
+    if (isLimitReached) {
+      toast({ title: '일일 한도 초과', description: '오늘의 생성 한도를 모두 사용했습니다. 플랜을 업그레이드해주세요.', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     setResult('');
     try {
@@ -64,6 +92,7 @@ export default function Generate() {
       });
       if (error) throw error;
       setResult(data.response);
+      setTodayUsage(prev => prev + 1);
       
       await supabase.from('generations').insert({
         user_id: user!.id,
@@ -82,13 +111,12 @@ export default function Generate() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!limits.imageUpload) {
-      toast({ title: '이미지 처리 불가', description: 'Basic 이상 플랜에서 가능합니다.', variant: 'destructive' });
+    if (isLimitReached) {
+      toast({ title: '일일 한도 초과', description: '오늘의 생성 한도를 모두 사용했습니다.', variant: 'destructive' });
       return;
     }
     setBatchResults([]);
-    setExtractedCount(0);
-    setPlanLimitHit(false);
+    setBatchTotalExtracted(0);
     setBatchLoading(true);
 
     const reader = new FileReader();
@@ -102,19 +130,23 @@ export default function Generate() {
         if (extractError) throw extractError;
         
         const items: string[] = extractData.items || [];
-        setExtractedCount(items.length);
-        const maxItems = limits.maxPerImage;
-        const processItems = items.slice(0, maxItems);
-        if (items.length > maxItems) setPlanLimitHit(true);
+        setBatchTotalExtracted(items.length);
+        
+        // Determine how many to actually process (limited by remaining usage AND maxPerImage)
+        const maxByPlan = limits.maxPerImage;
+        const maxByUsage = limits.unlimited ? items.length : remaining;
+        const processCount = Math.min(items.length, maxByPlan, maxByUsage);
+        const processItems = items.slice(0, processCount);
 
-        const results: string[] = [];
+        const allResults: string[] = [];
         const product = getProductContext();
         for (let i = 0; i < processItems.length; i++) {
           setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
           const { data } = await supabase.functions.invoke('generate-response', {
             body: { type: genType, text: processItems[i], product },
           });
-          results.push(data?.response || '생성 실패');
+          allResults.push(data?.response || '생성 실패');
+          setTodayUsage(prev => prev + 1);
           
           await supabase.from('generations').insert({
             user_id: user!.id,
@@ -124,7 +156,14 @@ export default function Generate() {
             product_id: selectedProduct !== 'none' ? selectedProduct : null,
           });
         }
-        setBatchResults(results);
+
+        // Add placeholder entries for blurred items (items beyond processCount)
+        const blurredCount = items.length - processCount;
+        for (let i = 0; i < blurredCount; i++) {
+          allResults.push('__BLURRED__');
+        }
+
+        setBatchResults(allResults);
       } catch (err: any) {
         toast({ title: '처리 실패', description: err.message, variant: 'destructive' });
       } finally {
@@ -140,15 +179,37 @@ export default function Generate() {
     toast({ title: '복사됨' });
   };
 
+  const realResults = batchResults.filter(r => r !== '__BLURRED__');
   const copyAll = () => {
-    const allText = batchResults.map((r, i) => `[${i + 1}]\n${r}`).join('\n\n---\n\n');
+    const allText = realResults.map((r, i) => `[${i + 1}]\n${r}`).join('\n\n---\n\n');
     copyToClipboard(allText);
   };
 
   return (
     <Layout>
       <div className="p-6 md:p-8 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-foreground mb-6">AI 답변 생성</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-foreground">AI 답변 생성</h1>
+          <UsageIndicator
+            todayUsage={todayUsage}
+            dailyLimit={limits.dailyLimit}
+            unlimited={limits.unlimited}
+            loading={usageLoading}
+          />
+        </div>
+
+        {isLimitReached && (
+          <div className="bg-destructive/10 rounded-xl border border-destructive/20 p-4 mb-6 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground">오늘의 생성 한도({limits.dailyLimit}회)를 모두 사용했습니다.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                더 많은 생성이 필요하시면{' '}
+                <Link to="/pricing" className="text-primary underline font-medium">플랜을 업그레이드</Link>해주세요.
+              </p>
+            </div>
+          </div>
+        )}
 
         <Tabs value={genType} onValueChange={v => setGenType(v as GenType)} className="mb-6">
           <TabsList className="grid grid-cols-3 w-full">
@@ -186,26 +247,19 @@ export default function Generate() {
         </div>
 
         <div className="flex gap-3 mb-6">
-          <Button onClick={handleGenerate} disabled={loading || !inputText.trim()} className="gradient-primary text-primary-foreground">
+          <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성</>}
           </Button>
           <div className="relative">
-            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={!limits.imageUpload || batchLoading} />
-            <Button variant="outline" disabled={!limits.imageUpload || batchLoading}>
+            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
+            <Button variant="outline" disabled={isLimitReached || batchLoading}>
               <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
-              {!limits.imageUpload && <span className="ml-2 text-xs text-muted-foreground">(Basic+)</span>}
             </Button>
           </div>
         </div>
 
         {result && (
-          <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-foreground">생성된 답변</h3>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(result)}><Copy className="w-4 h-4 mr-1" /> 복사</Button>
-            </div>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{result}</p>
-          </div>
+          <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
         )}
 
         {batchLoading && (
@@ -220,34 +274,14 @@ export default function Generate() {
           </div>
         )}
 
-        {planLimitHit && (
-          <div className="bg-destructive/10 rounded-xl border border-destructive/20 p-4 mb-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">이미지에서 {extractedCount}개가 추출되었지만, 현재 플랜에서는 {limits.maxPerImage}개만 처리됩니다.</p>
-              <p className="text-sm text-muted-foreground mt-1">Pro 플랜으로 업그레이드하면 최대 30개까지 처리 가능합니다.</p>
-            </div>
-          </div>
-        )}
-
         {batchResults.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">일괄 처리 결과 ({batchResults.length}개)</h3>
-              <Button variant="outline" size="sm" onClick={copyAll}><Copy className="w-4 h-4 mr-1" /> 전체 복사</Button>
-            </div>
-            <div className="space-y-3">
-              {batchResults.map((r, i) => (
-                <div key={i} className="bg-card rounded-lg border border-border p-4 shadow-card">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">#{i + 1}</span>
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(r)}><Copy className="w-3.5 h-3.5" /></Button>
-                  </div>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{r}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <BatchResultsList
+            results={batchResults}
+            totalExtracted={batchTotalExtracted}
+            plan={plan}
+            onCopy={copyToClipboard}
+            onCopyAll={copyAll}
+          />
         )}
       </div>
     </Layout>
