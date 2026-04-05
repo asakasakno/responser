@@ -332,7 +332,7 @@ export default function Landing() {
               <div key={i} className="bg-card rounded-xl border border-border p-6 shadow-card">
                 <div className="flex gap-0.5 mb-3">
                   {Array.from({ length: t.stars }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <Star key={j} className="w-4 h-4 fill-accent text-accent" />
                   ))}
                 </div>
                 <p className="text-sm leading-relaxed mb-4">"{t.text}"</p>
