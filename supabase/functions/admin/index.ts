@@ -65,16 +65,29 @@ Deno.serve(async (req) => {
           .select("*")
           .eq("status", "active");
 
+        const { data: usageData } = await adminClient
+          .from("usage")
+          .select("user_id, count, date");
+
         const users = (profiles || []).map((profile: any) => {
           const sub = (subscriptions || []).find(
             (s: any) => s.user_id === profile.user_id
           );
+          const userUsage = (usageData || []).filter(
+            (u: any) => u.user_id === profile.user_id
+          );
+          const todayUsage = userUsage.find(
+            (u: any) => u.date === new Date().toISOString().split("T")[0]
+          );
+          const totalUsage = userUsage.reduce((sum: number, u: any) => sum + u.count, 0);
           return {
             ...profile,
             platforms: profile.platforms || [],
             plan: sub?.plan || "free",
             payment_enabled: sub?.payment_enabled ?? true,
             subscription_id: sub?.id,
+            today_usage: todayUsage?.count || 0,
+            total_usage: totalUsage,
           };
         });
 
