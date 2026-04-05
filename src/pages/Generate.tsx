@@ -83,8 +83,14 @@ export default function Generate() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) processImageFile(file);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    if (files.length > 1 && plan !== 'pro') {
+      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
+      processImageFile(files[0]);
+      return;
+    }
+    processMultipleImages(files);
   };
 
   const fetchTodayUsage = async () => {
