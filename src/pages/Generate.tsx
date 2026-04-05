@@ -317,7 +317,7 @@ export default function Generate() {
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성</>}
           </Button>
           <div className="relative">
-            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
+            <input type="file" accept="image/*" multiple={plan === 'pro'} onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
             <Button variant="outline" disabled={isLimitReached || batchLoading}>
               <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
             </Button>
