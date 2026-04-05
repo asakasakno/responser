@@ -50,6 +50,7 @@ const plans = [
       { text: '이미지당 최대 30개 처리', included: true },
       { text: '상품 등록 (무제한)', included: true },
       { text: '생성 기록 저장', included: true },
+      { text: '다중 이미지 동시 업로드', included: true },
       { text: '대량 처리 지원', included: true },
     ],
   },
