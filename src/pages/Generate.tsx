@@ -209,9 +209,9 @@ export default function Generate() {
     toast({ title: '복사됨' });
   };
 
-  const realResults = batchResults.filter(r => r !== '__BLURRED__');
+  const realResults = batchResults.filter(r => r.output !== '__BLURRED__');
   const copyAll = () => {
-    const allText = realResults.map((r, i) => `[${i + 1}]\n${r}`).join('\n\n---\n\n');
+    const allText = realResults.map((r, i) => `[${i + 1}]\n원문: ${r.input}\n답변: ${r.output}`).join('\n\n---\n\n');
     copyToClipboard(allText);
   };
 
