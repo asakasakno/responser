@@ -53,6 +53,11 @@ export default function Auth() {
           setLoading(false);
           return;
         }
+        if (!name.trim()) {
+          toast({ title: '이름을 입력해주세요', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
