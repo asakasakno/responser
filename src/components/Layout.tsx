@@ -14,7 +14,7 @@ const navItems = [
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, signOut, plan } = useAuth();
+  const { user, signOut, plan, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
