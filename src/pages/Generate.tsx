@@ -217,7 +217,21 @@ export default function Generate() {
 
   return (
     <Layout>
-      <div className="p-6 md:p-8 max-w-3xl mx-auto">
+      <div
+        className={`p-6 md:p-8 max-w-3xl mx-auto relative ${isDragging ? 'ring-2 ring-primary ring-offset-2 rounded-xl' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm rounded-xl z-50 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <Image className="w-10 h-10 text-primary mx-auto mb-2" />
+              <p className="text-lg font-semibold text-primary">이미지를 놓아주세요</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">AI 답변 생성</h1>
           <UsageIndicator
@@ -287,6 +301,8 @@ export default function Generate() {
             </Button>
           </div>
         </div>
+
+        <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
 
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />

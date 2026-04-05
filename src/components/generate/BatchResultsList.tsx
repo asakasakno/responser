@@ -1,19 +1,51 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Copy, Lock, Crown } from 'lucide-react';
+import { Copy, Lock, Crown, ChevronDown, ChevronUp } from 'lucide-react';
 import { PlanType } from '@/types';
+import { useState } from 'react';
+
+interface BatchResult {
+  input: string;
+  output: string;
+}
 
 interface BatchResultsListProps {
-  results: string[];
+  results: BatchResult[];
   totalExtracted: number;
   plan: PlanType;
   onCopy: (text: string) => void;
   onCopyAll: () => void;
 }
 
+function ResultItem({ item, index, onCopy }: { item: BatchResult; index: number; onCopy: (text: string) => void }) {
+  const [showInput, setShowInput] = useState(false);
+
+  return (
+    <div className="bg-card rounded-lg border border-border p-4 shadow-card">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-muted-foreground">#{index + 1}</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setShowInput(!showInput)}>
+            {showInput ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span className="text-xs ml-1">원문</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onCopy(item.output)}><Copy className="w-3.5 h-3.5" /></Button>
+        </div>
+      </div>
+      {showInput && (
+        <div className="bg-muted/50 rounded-md p-3 mb-3 border border-border/50">
+          <p className="text-xs text-muted-foreground font-medium mb-1">원문 (추출된 텍스트)</p>
+          <p className="text-sm text-foreground whitespace-pre-wrap">{item.input}</p>
+        </div>
+      )}
+      <p className="text-sm text-foreground whitespace-pre-wrap">{item.output}</p>
+    </div>
+  );
+}
+
 export default function BatchResultsList({ results, totalExtracted, plan, onCopy, onCopyAll }: BatchResultsListProps) {
-  const realResults = results.filter(r => r !== '__BLURRED__');
-  const blurredResults = results.filter(r => r === '__BLURRED__');
+  const realResults = results.filter(r => r.output !== '__BLURRED__');
+  const blurredResults = results.filter(r => r.output === '__BLURRED__');
   const hasBlurred = blurredResults.length > 0;
 
   return (
@@ -26,25 +58,25 @@ export default function BatchResultsList({ results, totalExtracted, plan, onCopy
       </div>
       <div className="space-y-3">
         {realResults.map((r, i) => (
-          <div key={i} className="bg-card rounded-lg border border-border p-4 shadow-card">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">#{i + 1}</span>
-              <Button variant="ghost" size="sm" onClick={() => onCopy(r)}><Copy className="w-3.5 h-3.5" /></Button>
-            </div>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{r}</p>
-          </div>
+          <ResultItem key={i} item={r} index={i} onCopy={onCopy} />
         ))}
 
         {hasBlurred && (
           <>
-            {blurredResults.map((_, i) => (
+            {blurredResults.map((item, i) => (
               <div key={`blur-${i}`} className="relative bg-card rounded-lg border border-border p-4 shadow-card overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">#{realResults.length + i + 1}</span>
                 </div>
+                {item.input && (
+                  <div className="bg-muted/50 rounded-md p-3 mb-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground font-medium mb-1">원문 (추출된 텍스트)</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{item.input}</p>
+                  </div>
+                )}
                 <div className="blur-sm select-none pointer-events-none">
                   <p className="text-sm text-foreground">
-                    안녕하세요, 고객님의 소중한 리뷰에 감사드립니다. 저희 제품을 이용해주셔서 진심으로 감사합니다. 고객님의 피드백은 저희에게 큰 힘이 됩니다. 앞으로도 더 좋은 제품과 서비스로 보답하겠습니다.
+                    안녕하세요, 고객님의 소중한 리뷰에 감사드립니다. 저희 제품을 이용해주셔서 진심으로 감사합니다. 고객님의 피드백은 저희에게 큰 힘이 됩니다.
                   </p>
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-[1px]">
