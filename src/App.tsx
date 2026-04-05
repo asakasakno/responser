@@ -13,6 +13,7 @@ import History from "./pages/History";
 import Pricing from "./pages/Pricing";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
