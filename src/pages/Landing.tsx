@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   MessageSquare,
   Image,
+  Images,
   Zap,
   ArrowRight,
   Check,
