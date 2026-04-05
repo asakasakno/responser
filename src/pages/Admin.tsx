@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import { Shield, Users, AlertTriangle, Search } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import UsageChart from "@/components/admin/UsageChart";
 
 interface AdminUser {
   user_id: string;
