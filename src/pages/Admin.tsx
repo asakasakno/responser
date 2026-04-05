@@ -32,6 +32,7 @@ export default function Admin() {
   const { user, loading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usageAll, setUsageAll] = useState<{ user_id: string; count: number; date: string }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
