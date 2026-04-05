@@ -21,6 +21,7 @@ interface AdminUser {
   plan: string;
   payment_enabled: boolean;
   subscription_id: string | null;
+  platforms: string[];
 }
 
 export default function Admin() {
