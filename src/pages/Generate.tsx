@@ -83,8 +83,14 @@ export default function Generate() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) processImageFile(file);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    if (files.length > 1 && plan !== 'pro') {
+      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
+      processImageFile(files[0]);
+      return;
+    }
+    processMultipleImages(files);
   };
 
   const fetchTodayUsage = async () => {
@@ -137,7 +143,16 @@ export default function Generate() {
     }
   };
 
-  const processImageFile = (file: File) => {
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const processMultipleImages = async (files: File[]) => {
     if (isLimitReached) {
       toast({ title: '일일 한도 초과', description: '오늘의 생성 한도를 모두 사용했습니다.', variant: 'destructive' });
       return;
@@ -146,62 +161,69 @@ export default function Generate() {
     setBatchTotalExtracted(0);
     setBatchLoading(true);
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const base64 = (reader.result as string).split(',')[1];
-        
+    try {
+      // Extract from all images
+      let allItems: string[] = [];
+      for (const file of files) {
+        const base64 = await readFileAsBase64(file);
         const { data: extractData, error: extractError } = await supabase.functions.invoke('extract-from-image', {
           body: { image: base64, type: genType },
         });
         if (extractError) throw extractError;
-        
-        const items: string[] = extractData.items || [];
-        setBatchTotalExtracted(items.length);
-        
-        const maxByPlan = limits.maxPerImage;
-        const maxByUsage = limits.unlimited ? items.length : remaining;
-        const processCount = Math.min(items.length, maxByPlan, maxByUsage);
-        const processItems = items.slice(0, processCount);
-
-        const allResults: { input: string; output: string }[] = [];
-        const product = getProductContext();
-        for (let i = 0; i < processItems.length; i++) {
-          setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
-          const { data } = await supabase.functions.invoke('generate-response', {
-            body: { type: genType, text: processItems[i], product },
-          });
-          allResults.push({ input: processItems[i], output: data?.response || '생성 실패' });
-          setTodayUsage(prev => prev + 1);
-          
-          await supabase.from('generations').insert({
-            user_id: user!.id,
-            type: genType,
-            input_text: processItems[i],
-            output_text: data?.response || '생성 실패',
-            product_id: selectedProduct !== 'none' ? selectedProduct : null,
-          });
-        }
-
-        const blurredCount = items.length - processCount;
-        for (let i = 0; i < blurredCount; i++) {
-          allResults.push({ input: items[processCount + i] || '', output: '__BLURRED__' });
-        }
-
-        setBatchResults(allResults);
-      } catch (err: any) {
-        toast({ title: '처리 실패', description: err.message, variant: 'destructive' });
-      } finally {
-        setBatchLoading(false);
-        setBatchProgress(0);
+        allItems = allItems.concat(extractData.items || []);
       }
-    };
-    reader.readAsDataURL(file);
+
+      setBatchTotalExtracted(allItems.length);
+
+      const maxByPlan = limits.maxPerImage;
+      const maxByUsage = limits.unlimited ? allItems.length : remaining;
+      const processCount = Math.min(allItems.length, maxByPlan, maxByUsage);
+      const processItems = allItems.slice(0, processCount);
+
+      const allResults: { input: string; output: string }[] = [];
+      const product = getProductContext();
+      for (let i = 0; i < processItems.length; i++) {
+        setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
+        const { data } = await supabase.functions.invoke('generate-response', {
+          body: { type: genType, text: processItems[i], product },
+        });
+        allResults.push({ input: processItems[i], output: data?.response || '생성 실패' });
+        setTodayUsage(prev => prev + 1);
+
+        await supabase.from('generations').insert({
+          user_id: user!.id,
+          type: genType,
+          input_text: processItems[i],
+          output_text: data?.response || '생성 실패',
+          product_id: selectedProduct !== 'none' ? selectedProduct : null,
+        });
+      }
+
+      const blurredCount = allItems.length - processCount;
+      for (let i = 0; i < blurredCount; i++) {
+        allResults.push({ input: allItems[processCount + i] || '', output: '__BLURRED__' });
+      }
+
+      setBatchResults(allResults);
+    } catch (err: any) {
+      toast({ title: '처리 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setBatchLoading(false);
+      setBatchProgress(0);
+    }
   };
 
+  const processImageFile = (file: File) => processMultipleImages([file]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processImageFile(file);
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    if (files.length > 1 && plan !== 'pro') {
+      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
+      processImageFile(files[0]);
+      return;
+    }
+    processMultipleImages(files);
   };
 
   const copyToClipboard = (text: string) => {
@@ -295,7 +317,7 @@ export default function Generate() {
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성</>}
           </Button>
           <div className="relative">
-            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
+            <input type="file" accept="image/*" multiple={plan === 'pro'} onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
             <Button variant="outline" disabled={isLimitReached || batchLoading}>
               <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
             </Button>
