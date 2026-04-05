@@ -65,7 +65,7 @@ const plans = [
     period: '/ 월',
     desc: '소규모 셀러를 위한 플랜',
     popular: true,
-    features: ['일일 100회 생성', '이미지 업로드 지원', '이미지당 10건 처리', '상품 무제한 등록', '생성 기록 저장'],
+    features: ['일일 50회 생성', '이미지 업로드 (10개까지)', '상품 무제한 등록', '생성 기록 저장'],
     cta: '시작하기',
     style: 'border-primary shadow-primary-glow',
   },
