@@ -5,6 +5,7 @@ import { PLAN_LIMITS } from '@/types';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { CreditCard, User, Trash2, Store } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -39,18 +40,23 @@ export default function SettingsPage() {
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [savingPlatforms, setSavingPlatforms] = useState(false);
   const [originalPlatforms, setOriginalPlatforms] = useState<string[]>([]);
+  const [profileName, setProfileName] = useState('');
+  const [originalName, setOriginalName] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('platforms')
+      .select('platforms, name')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         const p = (data?.platforms as string[]) || [];
         setPlatforms(p);
         setOriginalPlatforms(p);
+        setProfileName(data?.name || '');
+        setOriginalName(data?.name || '');
       });
   }, [user]);
 
@@ -60,7 +66,27 @@ export default function SettingsPage() {
     );
   };
 
-  const platformsChanged = JSON.stringify(platforms.sort()) !== JSON.stringify(originalPlatforms.sort());
+  const platformsChanged = JSON.stringify([...platforms].sort()) !== JSON.stringify([...originalPlatforms].sort());
+  const nameChanged = profileName.trim() !== originalName;
+
+  const handleSaveName = async () => {
+    if (!user || !profileName.trim()) {
+      toast({ title: '이름을 입력해주세요', variant: 'destructive' });
+      return;
+    }
+    setSavingName(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name: profileName.trim() })
+      .eq('user_id', user.id);
+    setSavingName(false);
+    if (error) {
+      toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
+    } else {
+      setOriginalName(profileName.trim());
+      toast({ title: '이름이 저장되었습니다' });
+    }
+  };
 
   const handleSavePlatforms = async () => {
     if (!user || platforms.length === 0) {
@@ -115,7 +141,24 @@ export default function SettingsPage() {
             <User className="w-5 h-5 text-primary" />
             <h2 className="font-semibold text-foreground">계정 정보</h2>
           </div>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">이름</span>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={profileName}
+                  onChange={e => setProfileName(e.target.value)}
+                  className="w-40 h-8 text-sm"
+                  placeholder="이름 입력"
+                  maxLength={50}
+                />
+                {nameChanged && (
+                  <Button size="sm" variant="outline" className="h-8" onClick={handleSaveName} disabled={savingName}>
+                    {savingName ? '...' : '저장'}
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">이메일</span>
               <span className="text-foreground">{user?.email}</span>

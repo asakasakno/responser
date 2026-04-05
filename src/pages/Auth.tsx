@@ -24,6 +24,7 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(searchParams.get('mode') === 'signup');
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,11 @@ export default function Auth() {
           setLoading(false);
           return;
         }
+        if (!name.trim()) {
+          toast({ title: '이름을 입력해주세요', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -63,7 +69,7 @@ export default function Auth() {
         if (data.user) {
           await supabase
             .from('profiles')
-            .update({ platforms: selectedPlatforms })
+            .update({ name: name.trim(), platforms: selectedPlatforms })
             .eq('user_id', data.user.id);
         }
 
@@ -112,6 +118,20 @@ export default function Auth() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <Label htmlFor="name">이름 <span className="text-destructive">*</span></Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="홍길동"
+                  required={isSignUp}
+                  maxLength={50}
+                />
+              </div>
+            )}
             <div>
               <Label htmlFor="email">이메일</Label>
               <Input
