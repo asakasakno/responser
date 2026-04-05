@@ -69,7 +69,7 @@ export default function Auth() {
         if (data.user) {
           await supabase
             .from('profiles')
-            .update({ platforms: selectedPlatforms })
+            .update({ name: name.trim(), platforms: selectedPlatforms })
             .eq('user_id', data.user.id);
         }
 
