@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<PlanType>('free');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -37,9 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
 
       if (session?.user) {
-        setTimeout(() => fetchPlan(session.user.id), 0);
+        setTimeout(() => {
+          fetchPlan(session.user.id);
+          fetchAdminRole(session.user.id);
+        }, 0);
       } else {
         setPlan('free');
+        setIsAdmin(false);
       }
     });
 
@@ -47,11 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) fetchPlan(session.user.id);
+      if (session?.user) {
+        fetchPlan(session.user.id);
+        fetchAdminRole(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchAdminRole = async (userId: string) => {
+    const { data } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
+    setIsAdmin(!!data);
+  };
 
   const fetchPlan = async (userId: string) => {
     const { data } = await supabase
