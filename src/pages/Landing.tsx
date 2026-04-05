@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   MessageSquare,
   Image,
+  Images,
   Zap,
   ArrowRight,
   Check,
@@ -55,7 +56,7 @@ const plans = [
     price: '₩0',
     period: '영구 무료',
     desc: '가볍게 체험해보세요',
-    features: ['일일 10회 생성', '텍스트 입력', '상품 3개 등록', '생성 기록 저장'],
+    features: ['일일 5회 생성', '텍스트 입력', '이미지 업로드 (5개까지)', '상품 3개 등록', '생성 기록 저장'],
     cta: '무료로 시작하기',
     style: 'border-border',
   },
@@ -65,7 +66,7 @@ const plans = [
     period: '/ 월',
     desc: '소규모 셀러를 위한 플랜',
     popular: true,
-    features: ['일일 100회 생성', '이미지 업로드 지원', '이미지당 10건 처리', '상품 무제한 등록', '생성 기록 저장'],
+    features: ['일일 50회 생성', '이미지 업로드 (10개까지)', '상품 무제한 등록', '생성 기록 저장'],
     cta: '시작하기',
     style: 'border-primary shadow-primary-glow',
   },
@@ -74,7 +75,7 @@ const plans = [
     price: '₩29,900',
     period: '/ 월',
     desc: '대량 처리가 필요한 파워 셀러',
-    features: ['일일 500회 생성', '이미지 업로드 지원', '이미지당 30건 처리', '상품 무제한 등록', '대량 일괄 처리'],
+    features: ['일일 무제한 생성', '이미지 업로드 (30개까지)', '다중 이미지 동시 업로드', '상품 무제한 등록', '대량 일괄 처리'],
     cta: '시작하기',
     style: 'border-border',
   },
@@ -178,7 +179,7 @@ export default function Landing() {
           <p className="text-center text-muted-foreground mb-10 max-w-md mx-auto">
             답변 작성에 필요한 기능만 담았습니다
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
               {
                 icon: Upload,
@@ -198,8 +199,20 @@ export default function Landing() {
                 desc: '여러 리뷰와 문의를 한 번에 입력하고 각각의 답변을 빠르게 생성합니다.',
                 accent: 'bg-primary/10 text-primary',
               },
+              {
+                icon: Images,
+                title: '다중 이미지 동시 업로드',
+                desc: '여러 장의 이미지를 한번에 드래그 앤 드롭으로 올려 일괄 처리할 수 있습니다.',
+                accent: 'bg-accent/10 text-accent',
+                badge: 'Pro',
+              },
             ].map((f, i) => (
-              <div key={i} className="bg-card rounded-xl p-6 border border-border shadow-card hover:shadow-elevated transition-shadow">
+              <div key={i} className="bg-card rounded-xl p-6 border border-border shadow-card hover:shadow-elevated transition-shadow relative">
+                {('badge' in f && f.badge) && (
+                  <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full gradient-primary text-primary-foreground">
+                    {f.badge}
+                  </span>
+                )}
                 <div className={`w-11 h-11 rounded-lg ${f.accent} flex items-center justify-center mb-4`}>
                   <f.icon className="w-5 h-5" />
                 </div>
