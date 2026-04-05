@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>응대도우미</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen">
+    <div class="header">
+      <img src="icon.png" class="logo" alt="응대도우미">
+      <h1>응대도우미</h1>
+      <p class="subtitle">AI 답변 생성 도구</p>
+    </div>
+    <div class="login-form">
+      <input type="email" id="login-email" placeholder="이메일" class="input">
+      <input type="password" id="login-password" placeholder="비밀번호" class="input">
+      <button id="login-btn" class="btn-primary">로그인</button>
+      <p class="login-hint">
+        계정이 없으신가요? <a href="https://responser.lovable.app/auth?mode=signup" target="_blank">회원가입</a>
+      </p>
+      <div id="login-error" class="error" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Main Screen -->
+  <div id="main-screen" style="display:none;">
+    <div class="header-bar">
+      <div class="header-left">
+        <img src="icon.png" class="logo-sm" alt="">
+        <span class="title">응대도우미</span>
+      </div>
+      <div class="header-right">
+        <span id="user-email" class="user-email"></span>
+        <button id="logout-btn" class="btn-icon" title="로그아웃">⏻</button>
+      </div>
+    </div>
+
+    <!-- Type Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-type="review">리뷰 답변</button>
+      <button class="tab" data-type="inquiry">문의 답변</button>
+      <button class="tab" data-type="claim">클레임 대응</button>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <textarea id="input-text" class="textarea" placeholder="고객 리뷰 내용을 입력하세요...&#10;&#10;💡 이미지를 Ctrl+V로 붙여넣을 수도 있습니다." rows="4"></textarea>
+      <div class="btn-row">
+        <button id="generate-btn" class="btn-primary btn-sm">
+          <span class="btn-text">⚡ 답변 생성</span>
+          <span class="btn-loading" style="display:none;">생성 중...</span>
+        </button>
+        <button id="capture-btn" class="btn-secondary btn-sm" title="현재 페이지 캡처하여 리뷰 추출">
+          📸 페이지 캡처
+        </button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results-area" style="display:none;">
+      <div class="results-header">
+        <span class="results-title">생성 결과</span>
+        <button id="copy-all-btn" class="btn-ghost btn-xs">전체 복사</button>
+      </div>
+      <div id="results-list"></div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-area" style="display:none;">
+      <div class="loading-spinner"></div>
+      <span id="loading-text">AI가 답변을 생성하고 있습니다...</span>
+      <div class="progress-bar">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
