@@ -48,13 +48,15 @@ export default function SettingsPage() {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('platforms')
+      .select('platforms, name')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         const p = (data?.platforms as string[]) || [];
         setPlatforms(p);
         setOriginalPlatforms(p);
+        setProfileName(data?.name || '');
+        setOriginalName(data?.name || '');
       });
   }, [user]);
 
