@@ -21,6 +21,7 @@ interface AdminUser {
   plan: string;
   payment_enabled: boolean;
   subscription_id: string | null;
+  platforms: string[];
 }
 
 export default function Admin() {
@@ -146,6 +147,7 @@ export default function Admin() {
                     <TableRow>
                       <TableHead>이메일</TableHead>
                       <TableHead>이름</TableHead>
+                      <TableHead>플랫폼</TableHead>
                       <TableHead>플랜</TableHead>
                       <TableHead>결제</TableHead>
                       <TableHead>상태</TableHead>
@@ -157,6 +159,16 @@ export default function Admin() {
                       <TableRow key={u.user_id} className={u.suspended ? "opacity-60" : ""}>
                         <TableCell className="font-medium">{u.email}</TableCell>
                         <TableCell>{u.name || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {(u.platforms || []).length > 0
+                              ? u.platforms.map(p => (
+                                  <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>
+                                ))
+                              : <span className="text-muted-foreground text-xs">-</span>
+                            }
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Select
                             value={u.plan}
@@ -199,7 +211,7 @@ export default function Admin() {
                     ))}
                     {users.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           등록된 사용자가 없습니다.
                         </TableCell>
                       </TableRow>

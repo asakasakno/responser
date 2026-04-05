@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
           );
           return {
             ...profile,
+            platforms: profile.platforms || [],
             plan: sub?.plan || "free",
             payment_enabled: sub?.payment_enabled ?? true,
             subscription_id: sub?.id,
