@@ -14,6 +14,7 @@ import Pricing from "./pages/Pricing";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import Extension from "./pages/Extension";
 
 const queryClient = new QueryClient();
 
