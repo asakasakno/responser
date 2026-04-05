@@ -199,8 +199,20 @@ export default function Landing() {
                 desc: '여러 리뷰와 문의를 한 번에 입력하고 각각의 답변을 빠르게 생성합니다.',
                 accent: 'bg-primary/10 text-primary',
               },
+              {
+                icon: Images,
+                title: '다중 이미지 동시 업로드',
+                desc: '여러 장의 이미지를 한번에 드래그 앤 드롭으로 올려 일괄 처리할 수 있습니다.',
+                accent: 'bg-accent/10 text-accent',
+                badge: 'Pro',
+              },
             ].map((f, i) => (
-              <div key={i} className="bg-card rounded-xl p-6 border border-border shadow-card hover:shadow-elevated transition-shadow">
+              <div key={i} className="bg-card rounded-xl p-6 border border-border shadow-card hover:shadow-elevated transition-shadow relative">
+                {('badge' in f && f.badge) && (
+                  <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full gradient-primary text-primary-foreground">
+                    {f.badge}
+                  </span>
+                )}
                 <div className={`w-11 h-11 rounded-lg ${f.accent} flex items-center justify-center mb-4`}>
                   <f.icon className="w-5 h-5" />
                 </div>
