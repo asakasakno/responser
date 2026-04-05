@@ -39,6 +39,7 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization");
     const { type, text, product } = await req.json();
 
     if (!type || !text) {
