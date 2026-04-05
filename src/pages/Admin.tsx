@@ -147,6 +147,7 @@ export default function Admin() {
                     <TableRow>
                       <TableHead>이메일</TableHead>
                       <TableHead>이름</TableHead>
+                      <TableHead>플랫폼</TableHead>
                       <TableHead>플랜</TableHead>
                       <TableHead>결제</TableHead>
                       <TableHead>상태</TableHead>
