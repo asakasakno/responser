@@ -66,7 +66,27 @@ export default function SettingsPage() {
     );
   };
 
-  const platformsChanged = JSON.stringify(platforms.sort()) !== JSON.stringify(originalPlatforms.sort());
+  const platformsChanged = JSON.stringify([...platforms].sort()) !== JSON.stringify([...originalPlatforms].sort());
+  const nameChanged = profileName.trim() !== originalName;
+
+  const handleSaveName = async () => {
+    if (!user || !profileName.trim()) {
+      toast({ title: '이름을 입력해주세요', variant: 'destructive' });
+      return;
+    }
+    setSavingName(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name: profileName.trim() })
+      .eq('user_id', user.id);
+    setSavingName(false);
+    if (error) {
+      toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
+    } else {
+      setOriginalName(profileName.trim());
+      toast({ title: '이름이 저장되었습니다' });
+    }
+  };
 
   const handleSavePlatforms = async () => {
     if (!user || platforms.length === 0) {
