@@ -172,6 +172,7 @@ export default function Pricing() {
                   ['초과분 블러 미리보기', true, true, false],
                   ['상품 등록', '3개', '무제한', '무제한'],
                   ['생성 기록 저장', true, true, true],
+                  ['다중 이미지 동시 업로드', false, false, true],
                   ['대량 처리', false, false, true],
                 ].map((row, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
