@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
           };
         });
 
-        return new Response(JSON.stringify({ users }), {
+        return new Response(JSON.stringify({ users, usage_all: usageData || [] }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
