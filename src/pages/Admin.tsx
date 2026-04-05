@@ -148,6 +148,8 @@ export default function Admin() {
           </Card>
         </div>
 
+        <UsageChart usageData={usageAll} />
+
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
