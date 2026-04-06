@@ -172,6 +172,20 @@ export default function Auth() {
 
             {isSignUp && (
               <div>
+                <Label htmlFor="phone">전화번호</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="010-1234-5678"
+                  maxLength={13}
+                />
+              </div>
+            )}
+
+            {isSignUp && (
+              <div>
                 <Label className="mb-3 block">판매 플랫폼 <span className="text-destructive">*</span></Label>
                 <p className="text-xs text-muted-foreground mb-3">사용 중인 플랫폼을 모두 선택해주세요</p>
                 <div className="grid grid-cols-2 gap-2">
