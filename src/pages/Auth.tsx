@@ -32,6 +32,9 @@ export default function Auth() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeAge, setAgreeAge] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -53,6 +56,11 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
+        if (!agreePrivacy || !agreeTerms || !agreeAge) {
+          toast({ title: '필수 동의 항목을 확인해주세요', description: '모든 필수 항목에 동의해야 가입할 수 있습니다.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
         if (selectedPlatforms.length === 0) {
           toast({ title: '판매 플랫폼을 선택해주세요', description: '최소 1개 이상 선택이 필요합니다.', variant: 'destructive' });
           setLoading(false);
@@ -183,6 +191,28 @@ export default function Auth() {
                     </label>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {isSignUp && (
+              <div className="space-y-3 pt-2">
+                <Label className="block text-sm font-medium">필수 동의 <span className="text-destructive">*</span></Label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox checked={agreePrivacy} onCheckedChange={(v) => setAgreePrivacy(!!v)} className="mt-0.5" />
+                  <span className="text-sm text-muted-foreground">
+                    <Link to="/privacy" target="_blank" className="text-primary underline hover:text-primary/80">개인정보처리방침</Link>에 동의합니다
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox checked={agreeTerms} onCheckedChange={(v) => setAgreeTerms(!!v)} className="mt-0.5" />
+                  <span className="text-sm text-muted-foreground">
+                    <Link to="/terms" target="_blank" className="text-primary underline hover:text-primary/80">이용약관</Link>에 동의합니다
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox checked={agreeAge} onCheckedChange={(v) => setAgreeAge(!!v)} className="mt-0.5" />
+                  <span className="text-sm text-muted-foreground">만 14세 이상입니다</span>
+                </label>
               </div>
             )}
 

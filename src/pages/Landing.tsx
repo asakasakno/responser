@@ -433,8 +433,11 @@ export default function Landing() {
             </div>
             <span className="font-semibold text-foreground">응대도우미</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <Link to="/pricing" className="hover:text-foreground transition-colors">요금제</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
+            <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
             <Link to="/auth" className="hover:text-foreground transition-colors">로그인</Link>
           </div>
           <span>© 2026 응대도우미. All rights reserved.</span>
