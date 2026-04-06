@@ -32,6 +32,9 @@ export default function Auth() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeAge, setAgreeAge] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -53,6 +56,11 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
+        if (!agreePrivacy || !agreeTerms || !agreeAge) {
+          toast({ title: '필수 동의 항목을 확인해주세요', description: '모든 필수 항목에 동의해야 가입할 수 있습니다.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
         if (selectedPlatforms.length === 0) {
           toast({ title: '판매 플랫폼을 선택해주세요', description: '최소 1개 이상 선택이 필요합니다.', variant: 'destructive' });
           setLoading(false);
