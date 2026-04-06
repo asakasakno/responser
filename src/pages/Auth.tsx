@@ -35,6 +35,7 @@ export default function Auth() {
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -82,7 +83,7 @@ export default function Auth() {
         if (data.user) {
           await supabase
             .from('profiles')
-            .update({ name: name.trim(), platforms: selectedPlatforms })
+            .update({ name: name.trim(), platforms: selectedPlatforms, phone: phone.trim() || null })
             .eq('user_id', data.user.id);
         }
 
@@ -168,6 +169,20 @@ export default function Auth() {
                 minLength={6}
               />
             </div>
+
+            {isSignUp && (
+              <div>
+                <Label htmlFor="phone">전화번호</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="010-1234-5678"
+                  maxLength={13}
+                />
+              </div>
+            )}
 
             {isSignUp && (
               <div>
