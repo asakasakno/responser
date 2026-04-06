@@ -35,6 +35,7 @@ export default function Auth() {
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
