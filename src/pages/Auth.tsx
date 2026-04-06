@@ -194,6 +194,28 @@ export default function Auth() {
               </div>
             )}
 
+            {isSignUp && (
+              <div className="space-y-3 pt-2">
+                <Label className="block text-sm font-medium">필수 동의 <span className="text-destructive">*</span></Label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox checked={agreePrivacy} onCheckedChange={(v) => setAgreePrivacy(!!v)} className="mt-0.5" />
+                  <span className="text-sm text-muted-foreground">
+                    <Link to="/privacy" target="_blank" className="text-primary underline hover:text-primary/80">개인정보처리방침</Link>에 동의합니다
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox checked={agreeTerms} onCheckedChange={(v) => setAgreeTerms(!!v)} className="mt-0.5" />
+                  <span className="text-sm text-muted-foreground">
+                    <Link to="/terms" target="_blank" className="text-primary underline hover:text-primary/80">이용약관</Link>에 동의합니다
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox checked={agreeAge} onCheckedChange={(v) => setAgreeAge(!!v)} className="mt-0.5" />
+                  <span className="text-sm text-muted-foreground">만 14세 이상입니다</span>
+                </label>
+              </div>
+            )}
+
             <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
               {loading ? '처리 중...' : isSignUp ? '가입하기' : '로그인'}
             </Button>
