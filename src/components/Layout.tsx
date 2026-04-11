@@ -7,6 +7,7 @@ import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDa
 const navItems = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { to: '/generate', label: 'AI 생성', icon: MessageSquare },
+  { to: '/rewards', label: '응답에너지', icon: Zap },
   { to: '/products', label: '상품 관리', icon: Package },
   { to: '/history', label: '생성 기록', icon: History },
   { to: '/pricing', label: '요금제', icon: CreditCard },
