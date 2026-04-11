@@ -197,7 +197,7 @@ export default function Generate() {
           user_id: user!.id,
           type: genType,
           input_text: processItems[i],
-          output_text: data?.response || '생성 실패',
+          output_text: output,
           product_id: selectedProduct !== 'none' ? selectedProduct : null,
         });
       }
