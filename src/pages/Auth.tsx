@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { MessageSquare, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import ForgotPassword from '@/components/auth/ForgotPassword';
 
 const PLATFORMS = [
   { id: 'naver', label: '네이버 스마트스토어' },
@@ -130,6 +131,10 @@ export default function Auth() {
           <p className="text-sm text-muted-foreground mb-8">
             {isSignUp ? '무료로 시작하세요' : '계정에 로그인하세요'}
           </p>
+
+          {!isSignUp && (
+            <ForgotPassword />
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
