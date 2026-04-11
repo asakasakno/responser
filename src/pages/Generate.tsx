@@ -3,17 +3,18 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { PLAN_LIMITS } from '@/types';
+import { ENERGY_COSTS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Image, Loader2, ArrowUp, AlertTriangle, Lock, Crown } from 'lucide-react';
+import { Image, Loader2, ArrowUp, AlertTriangle, Zap } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
-import UsageIndicator from '@/components/generate/UsageIndicator';
+import EnergyIndicator from '@/components/generate/EnergyIndicator';
+import EnergyAnimation from '@/components/generate/EnergyAnimation';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
@@ -27,9 +28,8 @@ interface Product {
 export default function Generate() {
   const [searchParams] = useSearchParams();
   const initType = (searchParams.get('type') as GenType) || 'review';
-  const { user, plan } = useAuth();
+  const { user, plan, energyBalance, maxEnergy, refreshEnergy } = useAuth();
   const { toast } = useToast();
-  const limits = PLAN_LIMITS[plan];
 
   const [genType, setGenType] = useState<GenType>(initType);
   const [inputText, setInputText] = useState('');
@@ -44,18 +44,16 @@ export default function Generate() {
   const [batchProgress, setBatchProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  const [todayUsage, setTodayUsage] = useState(0);
-  const [usageLoading, setUsageLoading] = useState(true);
+  const [energyAnim, setEnergyAnim] = useState<{ amount: number; type: 'earn' | 'spend' } | null>(null);
 
-  const remaining = limits.unlimited ? Infinity : Math.max(0, limits.dailyLimit - todayUsage);
-  const isLimitReached = !limits.unlimited && remaining <= 0;
+  const energyCost = ENERGY_COSTS[genType] || 1;
+  const isLimitReached = energyBalance < energyCost;
 
   useEffect(() => {
     if (user) {
       supabase.from('products').select('id, name, category, note').eq('user_id', user.id).then(({ data }) => {
         if (data) setProducts(data);
       });
-      fetchTodayUsage();
     }
   }, [user]);
 
@@ -75,7 +73,7 @@ export default function Generate() {
     };
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [genType, selectedProduct, isLimitReached, batchLoading, remaining, limits]);
+  }, [genType, selectedProduct, isLimitReached, batchLoading, energyBalance]);
 
   // Drag & drop handlers
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
@@ -93,20 +91,6 @@ export default function Generate() {
     processMultipleImages(files);
   };
 
-  const fetchTodayUsage = async () => {
-    if (!user) return;
-    setUsageLoading(true);
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
-      .from('usage')
-      .select('count')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .maybeSingle();
-    setTodayUsage(data?.count || 0);
-    setUsageLoading(false);
-  };
-
   const getProductContext = () => {
     if (selectedProduct === 'none') return null;
     const p = products.find(p => p.id === selectedProduct);
@@ -116,19 +100,20 @@ export default function Generate() {
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     if (isLimitReached) {
-      toast({ title: '일일 한도 초과', description: '오늘의 생성 한도를 모두 사용했습니다. 플랜을 업그레이드해주세요.', variant: 'destructive' });
+      toast({ title: '에너지 부족', description: '응답에너지가 부족합니다. 에너지를 충전해주세요.', variant: 'destructive' });
       return;
     }
     setLoading(true);
     setResult('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { type: genType, text: inputText, product: getProductContext() },
+        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost },
       });
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
       setResult(data.response);
-      setTodayUsage(prev => prev + 1);
+      setEnergyAnim({ amount: energyCost, type: 'spend' });
+      await refreshEnergy();
       
       await supabase.from('generations').insert({
         user_id: user!.id,
@@ -155,7 +140,7 @@ export default function Generate() {
 
   const processMultipleImages = async (files: File[]) => {
     if (isLimitReached) {
-      toast({ title: '일일 한도 초과', description: '오늘의 생성 한도를 모두 사용했습니다.', variant: 'destructive' });
+      toast({ title: '에너지 부족', description: '응답에너지가 부족합니다.', variant: 'destructive' });
       return;
     }
     setBatchResults([]);
@@ -163,7 +148,6 @@ export default function Generate() {
     setBatchLoading(true);
 
     try {
-      // Extract from all images
       let allItems: string[] = [];
       for (const file of files) {
         const base64 = await readFileAsBase64(file);
@@ -176,9 +160,9 @@ export default function Generate() {
 
       setBatchTotalExtracted(allItems.length);
 
-      const maxByPlan = limits.maxPerImage;
-      const maxByUsage = limits.unlimited ? allItems.length : remaining;
-      const processCount = Math.min(allItems.length, maxByPlan, maxByUsage);
+      const maxByPlan = plan === 'pro' ? 30 : plan === 'basic' ? 10 : 5;
+      const maxByEnergy = Math.floor(energyBalance / energyCost);
+      const processCount = Math.min(allItems.length, maxByPlan, maxByEnergy);
       const processItems = allItems.slice(0, processCount);
 
       const allResults: { input: string; output: string }[] = [];
@@ -186,12 +170,11 @@ export default function Generate() {
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
         const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product },
+          body: { type: genType, text: processItems[i], product, energy_cost: energyCost },
         });
         if (genError) throw genError;
         const output = data?.response || data?.error || '생성 실패';
         allResults.push({ input: processItems[i], output });
-        setTodayUsage(prev => prev + 1);
 
         await supabase.from('generations').insert({
           user_id: user!.id,
@@ -208,6 +191,8 @@ export default function Generate() {
       }
 
       setBatchResults(allResults);
+      setEnergyAnim({ amount: processCount * energyCost, type: 'spend' });
+      await refreshEnergy();
     } catch (err: any) {
       toast({ title: '처리 실패', description: err.message, variant: 'destructive' });
     } finally {
@@ -248,6 +233,14 @@ export default function Generate() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {energyAnim && (
+          <EnergyAnimation
+            amount={energyAnim.amount}
+            type={energyAnim.type}
+            onComplete={() => setEnergyAnim(null)}
+          />
+        )}
+
         {isDragging && (
           <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm rounded-xl z-50 flex items-center justify-center pointer-events-none">
             <div className="text-center">
@@ -259,21 +252,17 @@ export default function Generate() {
 
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">AI 답변 생성</h1>
-          <UsageIndicator
-            todayUsage={todayUsage}
-            dailyLimit={limits.dailyLimit}
-            unlimited={limits.unlimited}
-            loading={usageLoading}
-          />
+          <EnergyIndicator balance={energyBalance} maxEnergy={maxEnergy} />
         </div>
 
         {isLimitReached && (
           <div className="bg-destructive/10 rounded-xl border border-destructive/20 p-4 mb-6 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-foreground">오늘의 생성 한도({limits.dailyLimit}회)를 모두 사용했습니다.</p>
+              <p className="text-sm font-medium text-foreground">응답에너지가 부족합니다.</p>
               <p className="text-sm text-muted-foreground mt-1">
-                더 많은 생성이 필요하시면{' '}
+                미션을 완료하거나{' '}
+                <Link to="/rewards" className="text-primary underline font-medium">에너지를 충전</Link>하거나{' '}
                 <Link to="/pricing" className="text-primary underline font-medium">플랜을 업그레이드</Link>해주세요.
               </p>
             </div>
@@ -282,9 +271,15 @@ export default function Generate() {
 
         <Tabs value={genType} onValueChange={v => setGenType(v as GenType)} className="mb-6">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="review">리뷰 답변</TabsTrigger>
-            <TabsTrigger value="inquiry">문의 답변</TabsTrigger>
-            <TabsTrigger value="claim">클레임 대응</TabsTrigger>
+            <TabsTrigger value="review">
+              리뷰 답변 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.review}⚡</span>
+            </TabsTrigger>
+            <TabsTrigger value="inquiry">
+              문의 답변 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.inquiry}⚡</span>
+            </TabsTrigger>
+            <TabsTrigger value="claim">
+              클레임 대응 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.claim}⚡</span>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -317,7 +312,7 @@ export default function Generate() {
 
         <div className="flex gap-3 mb-6">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성</>}
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
           </Button>
           <div className="relative">
             <input type="file" accept="image/*" multiple={plan === 'pro'} onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
