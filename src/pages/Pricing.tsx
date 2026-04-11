@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Check, X, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Check, X, MessageSquare, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLAN_LIMITS } from '@/types';
 
@@ -12,13 +12,12 @@ const plans = [
     period: '영구 무료',
     description: '가볍게 시작하기',
     features: [
+      { text: '월 20 응답에너지', included: true },
+      { text: '최대 보유량: 100 에너지', included: true },
       { text: '텍스트 + 이미지 생성', included: true },
-      { text: '일일 5회 제한', included: true },
-      { text: '이미지당 최대 5개 처리 (초과분 블러)', included: true },
+      { text: '이미지당 최대 5개 처리', included: true },
       { text: '상품 등록 (최대 3개)', included: true },
-      { text: '생성 기록 저장', included: true },
       { text: '다중 이미지 동시 업로드', included: false },
-      { text: '대량 처리', included: false },
     ],
   },
   {
@@ -29,13 +28,12 @@ const plans = [
     description: '일반 셀러를 위한 플랜',
     popular: true,
     features: [
+      { text: '월 200 응답에너지', included: true },
+      { text: '최대 보유량: 500 에너지', included: true },
       { text: '텍스트 + 이미지 생성', included: true },
-      { text: '일일 50회 제한', included: true },
-      { text: '이미지당 최대 10개 처리 (초과분 블러)', included: true },
+      { text: '이미지당 최대 10개 처리', included: true },
       { text: '상품 등록 (무제한)', included: true },
-      { text: '생성 기록 저장', included: true },
       { text: '다중 이미지 동시 업로드', included: false },
-      { text: '대량 처리', included: false },
     ],
   },
   {
@@ -45,13 +43,12 @@ const plans = [
     period: '/ 월',
     description: '대량 처리가 필요한 파워 셀러',
     features: [
+      { text: '월 1,000 응답에너지', included: true },
+      { text: '최대 보유량: 2,000 에너지', included: true },
       { text: '텍스트 + 이미지 생성', included: true },
-      { text: '일일 무제한', included: true },
       { text: '이미지당 최대 30개 처리', included: true },
       { text: '상품 등록 (무제한)', included: true },
-      { text: '생성 기록 저장', included: true },
       { text: '다중 이미지 동시 업로드', included: true },
-      { text: '대량 처리 지원', included: true },
     ],
   },
 ];
@@ -61,7 +58,6 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="flex items-center gap-2">
@@ -86,7 +82,7 @@ export default function Pricing() {
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">합리적인 요금제</h1>
           <p className="text-muted-foreground max-w-md mx-auto">
-            셀러 규모에 맞게 선택하세요. 언제든 업그레이드 가능합니다.
+            응답에너지로 더 효율적으로. 셀러 규모에 맞게 선택하세요.
           </p>
         </div>
 
@@ -111,6 +107,12 @@ export default function Pricing() {
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-foreground">{plan.price}</span>
                     <span className="text-sm text-muted-foreground">{plan.period}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5 text-sm">
+                    <Zap className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-primary">
+                      월 {PLAN_LIMITS[plan.key].monthlyEnergy} 에너지
+                    </span>
                   </div>
                 </div>
 
@@ -162,18 +164,16 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {[
-                  ['텍스트 입력 생성', true, true, true],
-                  ['리뷰 답변', true, true, true],
-                  ['문의 답변', true, true, true],
-                  ['클레임 대응', true, true, true],
-                  ['일일 생성 횟수', '5회', '50회', '무제한'],
-                  ['이미지 캡처 업로드', true, true, true],
+                  ['월 응답에너지', '20', '200', '1,000'],
+                  ['최대 보유량', '100', '500', '2,000'],
+                  ['리뷰/문의/클레임 응답', true, true, true],
+                  ['텍스트 + 이미지 생성', true, true, true],
                   ['이미지당 최대 처리', '5개', '10개', '30개'],
-                  ['초과분 블러 미리보기', true, true, false],
                   ['상품 등록', '3개', '무제한', '무제한'],
                   ['생성 기록 저장', true, true, true],
                   ['다중 이미지 동시 업로드', false, false, true],
-                  ['대량 처리', false, false, true],
+                  ['미션 보상 에너지', true, true, true],
+                  ['친구 추천 에너지', true, true, true],
                 ].map((row, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
                     <td className="p-4 text-sm text-foreground">{row[0] as string}</td>

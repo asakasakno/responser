@@ -40,13 +40,43 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    const { type, text, product } = await req.json();
+    const { type, text, product, energy_cost } = await req.json();
 
     if (!type || !text) {
       return new Response(JSON.stringify({ error: "type과 text는 필수입니다" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const cost = energy_cost || 1;
+
+    // Spend energy first
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
+        _amount: cost,
+        _reason: type,
+        _description: `${type === 'review' ? '리뷰 답변' : type === 'inquiry' ? '문의 답변' : '클레임 대응'} 생성`,
+      });
+
+      if (spendError) throw spendError;
+
+      const result = spendResult as any;
+      if (!result?.success) {
+        return new Response(JSON.stringify({ error: result?.error || "에너지가 부족합니다" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Also increment usage for streak tracking
+      await userClient.rpc("increment_usage");
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -91,16 +121,6 @@ serve(async (req) => {
 
     const data = await response.json();
     const responseText = data.choices?.[0]?.message?.content || "답변을 생성할 수 없습니다.";
-
-    // Increment usage server-side
-    if (authHeader) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      await userClient.rpc("increment_usage");
-    }
 
     return new Response(JSON.stringify({ response: responseText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
