@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard, Shield, Chrome } from 'lucide-react';
+import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard, Shield, Chrome, Zap } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
