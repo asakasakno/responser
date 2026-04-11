@@ -219,8 +219,12 @@ export default function SettingsPage() {
               <span className="text-foreground font-medium capitalize">{plan}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">일일 생성 한도</span>
-              <span className="text-foreground">{limits.dailyLimit}회</span>
+              <span className="text-muted-foreground">월 응답에너지</span>
+              <span className="text-foreground">{limits.monthlyEnergy}⚡</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">최대 보유량</span>
+              <span className="text-foreground">{limits.maxEnergy}⚡</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">이미지 처리</span>

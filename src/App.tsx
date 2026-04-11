@@ -19,6 +19,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Refund from "./pages/Refund";
 import ResetPassword from "./pages/ResetPassword";
+import Rewards from "./pages/Rewards";
 
 const queryClient = new QueryClient();
 
