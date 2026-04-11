@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      energy_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reason: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generations: {
         Row: {
           created_at: string
@@ -86,10 +116,13 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          energy_balance: number
           id: string
+          max_energy: number
           name: string | null
           phone: string | null
           platforms: string[]
+          referral_code: string | null
           suspended: boolean
           updated_at: string
           user_id: string
@@ -97,10 +130,13 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          energy_balance?: number
           id?: string
+          max_energy?: number
           name?: string | null
           phone?: string | null
           platforms?: string[]
+          referral_code?: string | null
           suspended?: boolean
           updated_at?: string
           user_id: string
@@ -108,13 +144,46 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          energy_balance?: number
           id?: string
+          max_energy?: number
           name?: string | null
           phone?: string | null
           platforms?: string[]
+          referral_code?: string | null
           suspended?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          referred_user_id: string
+          referrer_id: string
+          reward_given: boolean
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          referred_user_id: string
+          referrer_id: string
+          reward_given?: boolean
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          referred_user_id?: string
+          referrer_id?: string
+          reward_given?: boolean
+          status?: string
         }
         Relationships: []
       }
@@ -204,6 +273,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      earn_energy: {
+        Args: {
+          _amount: number
+          _description?: string
+          _reason: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -212,6 +290,10 @@ export type Database = {
         Returns: boolean
       }
       increment_usage: { Args: never; Returns: undefined }
+      spend_energy: {
+        Args: { _amount: number; _description?: string; _reason: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
