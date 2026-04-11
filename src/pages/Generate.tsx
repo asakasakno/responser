@@ -126,6 +126,7 @@ export default function Generate() {
         body: { type: genType, text: inputText, product: getProductContext() },
       });
       if (error) throw error;
+      if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
       setResult(data.response);
       setTodayUsage(prev => prev + 1);
       
@@ -184,10 +185,12 @@ export default function Generate() {
       const product = getProductContext();
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
-        const { data } = await supabase.functions.invoke('generate-response', {
+        const { data, error: genError } = await supabase.functions.invoke('generate-response', {
           body: { type: genType, text: processItems[i], product },
         });
-        allResults.push({ input: processItems[i], output: data?.response || '생성 실패' });
+        if (genError) throw genError;
+        const output = data?.response || data?.error || '생성 실패';
+        allResults.push({ input: processItems[i], output });
         setTodayUsage(prev => prev + 1);
 
         await supabase.from('generations').insert({
