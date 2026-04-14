@@ -14,6 +14,13 @@ import Pricing from "./pages/Pricing";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import AdminUsersPage from "./pages/AdminUsers";
+import AdminPaymentsPage from "./pages/AdminPayments";
+import AdminEnergyPage from "./pages/AdminEnergy";
+import AdminAIUsagePage from "./pages/AdminAIUsage";
+import AdminConversionPage from "./pages/AdminConversion";
+import AdminAlertsPage from "./pages/AdminAlerts";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
 import Extension from "./pages/Extension";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -47,8 +54,16 @@ const App = () => (
             <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+            {/* Admin routes */}
+            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/payments" element={<ProtectedRoute><AdminPaymentsPage /></ProtectedRoute>} />
+            <Route path="/admin/energy" element={<ProtectedRoute><AdminEnergyPage /></ProtectedRoute>} />
+            <Route path="/admin/ai-usage" element={<ProtectedRoute><AdminAIUsagePage /></ProtectedRoute>} />
+            <Route path="/admin/conversion" element={<ProtectedRoute><AdminConversionPage /></ProtectedRoute>} />
+            <Route path="/admin/alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/refund" element={<Refund />} />
