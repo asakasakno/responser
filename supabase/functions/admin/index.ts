@@ -19,29 +19,56 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // [1][3] 서버 인증 - getClaims 기반
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return jsonResponse({ error: "No authorization header" }, 401);
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResponse({ error: "인증이 필요합니다." }, 401);
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
 
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return jsonResponse({ error: "인증이 유효하지 않습니다." }, 401);
+    }
+    const userId = claimsData.claims.sub as string;
+
+    // [3] 관리자 권한 검증 - DB user_roles 테이블 기반 (프론트 조건문 금지)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
 
-    if (!roleData) return jsonResponse({ error: "Admin access required" }, 403);
+    if (!roleData) {
+      // [10] 비관리자 접근 시도 감사 로그
+      await adminClient.from("audit_logs").insert({
+        user_id: userId,
+        action: "admin_access_denied",
+        details: {},
+        severity: "warning",
+      });
+      return jsonResponse({ error: "접근 권한이 없습니다." }, 403);
+    }
 
     const { action, ...params } = await req.json();
+
+    // [10] 관리자 액션 감사 로그
+    await adminClient.from("audit_logs").insert({
+      user_id: userId,
+      action: `admin_${action}`,
+      details: { params: Object.keys(params) },
+      severity: "info",
+    });
 
     switch (action) {
       // ========== LIST USERS ==========
@@ -82,8 +109,8 @@ Deno.serve(async (req) => {
       // ========== CHANGE PLAN ==========
       case "change_plan": {
         const { user_id, plan } = params;
-        if (!user_id || !plan) return jsonResponse({ error: "user_id and plan required" }, 400);
-        if (!["free", "basic", "pro"].includes(plan)) return jsonResponse({ error: "Invalid plan" }, 400);
+        if (!user_id || !plan) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
+        if (!["free", "basic", "pro"].includes(plan)) return jsonResponse({ error: "잘못된 요청입니다." }, 400);
 
         const { error } = await adminClient
           .from("subscriptions")
@@ -91,14 +118,14 @@ Deno.serve(async (req) => {
           .eq("user_id", user_id)
           .eq("status", "active");
 
-        if (error) return jsonResponse({ error: error.message }, 500);
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
         return jsonResponse({ success: true });
       }
 
       // ========== TOGGLE PAYMENT ==========
       case "toggle_payment": {
         const { user_id, payment_enabled } = params;
-        if (!user_id || payment_enabled === undefined) return jsonResponse({ error: "user_id and payment_enabled required" }, 400);
+        if (!user_id || payment_enabled === undefined) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
 
         const { error } = await adminClient
           .from("subscriptions")
@@ -106,28 +133,28 @@ Deno.serve(async (req) => {
           .eq("user_id", user_id)
           .eq("status", "active");
 
-        if (error) return jsonResponse({ error: error.message }, 500);
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
         return jsonResponse({ success: true });
       }
 
       // ========== TOGGLE SUSPEND ==========
       case "toggle_suspend": {
         const { user_id, suspended } = params;
-        if (!user_id || suspended === undefined) return jsonResponse({ error: "user_id and suspended required" }, 400);
+        if (!user_id || suspended === undefined) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
 
         const { error } = await adminClient
           .from("profiles")
           .update({ suspended, updated_at: new Date().toISOString() })
           .eq("user_id", user_id);
 
-        if (error) return jsonResponse({ error: error.message }, 500);
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
         return jsonResponse({ success: true });
       }
 
       // ========== ADMIN ENERGY ADJUST ==========
       case "adjust_energy": {
         const { user_id, amount, reason, type } = params;
-        if (!user_id || !amount || !reason || !type) return jsonResponse({ error: "Missing params" }, 400);
+        if (!user_id || !amount || !reason || !type) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
 
         if (type === "earn") {
           const { data, error } = await adminClient.rpc("earn_energy", {
@@ -136,19 +163,18 @@ Deno.serve(async (req) => {
             _reason: reason,
             _description: `관리자 수동 지급: ${reason}`,
           });
-          if (error) return jsonResponse({ error: error.message }, 500);
+          if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
           return jsonResponse({ success: true, ...data });
         } else {
-          // For admin spend, directly update since spend_energy uses auth.uid()
           const { data: profile } = await adminClient
             .from("profiles")
             .select("energy_balance")
             .eq("user_id", user_id)
             .single();
 
-          if (!profile) return jsonResponse({ error: "User not found" }, 404);
+          if (!profile) return jsonResponse({ error: "사용자를 찾을 수 없습니다." }, 404);
           if (profile.energy_balance < Math.abs(amount)) {
-            return jsonResponse({ error: "Insufficient energy", balance: profile.energy_balance }, 400);
+            return jsonResponse({ error: "에너지가 부족합니다." }, 400);
           }
 
           const absAmount = Math.abs(amount);
@@ -196,7 +222,6 @@ Deno.serve(async (req) => {
         const totalUsageCount = (usageData || []).reduce((sum: number, u: any) => sum + u.count, 0);
         const avgUsage = totalUsers > 0 ? Math.round(totalUsageCount / totalUsers) : 0;
 
-        // Daily usage for chart (last 30 days)
         const dailyUsageMap = new Map<string, number>();
         (usageData || []).forEach((u: any) => {
           dailyUsageMap.set(u.date, (dailyUsageMap.get(u.date) || 0) + u.count);
@@ -206,7 +231,6 @@ Deno.serve(async (req) => {
           .slice(-30)
           .map(([date, count]) => ({ date, count }));
 
-        // Daily revenue chart
         const dailyRevenueMap = new Map<string, number>();
         successPayments.forEach((p: any) => {
           const d = p.created_at.split("T")[0];
@@ -218,15 +242,8 @@ Deno.serve(async (req) => {
           .map(([date, amount]) => ({ date, amount }));
 
         return jsonResponse({
-          totalUsers,
-          paidUsers,
-          todayRevenue,
-          monthRevenue,
-          totalRevenue,
-          totalGenerations,
-          avgUsage,
-          dailyUsage,
-          dailyRevenue,
+          totalUsers, paidUsers, todayRevenue, monthRevenue, totalRevenue,
+          totalGenerations, avgUsage, dailyUsage, dailyRevenue,
         });
       }
 
@@ -246,12 +263,7 @@ Deno.serve(async (req) => {
           ? Math.round((profiles || []).reduce((s: number, p: any) => s + p.energy_balance, 0) / (profiles || []).length)
           : 0;
 
-        return jsonResponse({
-          totalEarned,
-          totalSpent,
-          avgBalance,
-          transactions: transactions || [],
-        });
+        return jsonResponse({ totalEarned, totalSpent, avgBalance, transactions: transactions || [] });
       }
 
       // ========== PAYMENT STATS ==========
@@ -280,26 +292,20 @@ Deno.serve(async (req) => {
           email: profileMap.get(p.user_id) || "알 수 없음",
         }));
 
-        return jsonResponse({
-          todayRevenue,
-          monthRevenue,
-          totalRevenue,
-          successRate,
-          payments: paymentsWithEmail,
-        });
+        return jsonResponse({ todayRevenue, monthRevenue, totalRevenue, successRate, payments: paymentsWithEmail });
       }
 
       // ========== UPDATE PAYMENT STATUS ==========
       case "update_payment_status": {
         const { payment_id, status } = params;
-        if (!payment_id || !status) return jsonResponse({ error: "payment_id and status required" }, 400);
+        if (!payment_id || !status) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
 
         const { error } = await adminClient
           .from("payments")
           .update({ status, updated_at: new Date().toISOString() })
           .eq("id", payment_id);
 
-        if (error) return jsonResponse({ error: error.message }, 500);
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
         return jsonResponse({ success: true });
       }
 
@@ -316,7 +322,6 @@ Deno.serve(async (req) => {
           .filter((u: any) => u.date === today)
           .reduce((s: number, u: any) => s + u.count, 0);
 
-        // Per-user stats
         const userStatsMap = new Map<string, { todayCount: number; totalCount: number; lastUsed: string }>();
         (usageData || []).forEach((u: any) => {
           const existing = userStatsMap.get(u.user_id) || { todayCount: 0, totalCount: 0, lastUsed: "" };
@@ -326,17 +331,13 @@ Deno.serve(async (req) => {
           userStatsMap.set(u.user_id, existing);
         });
 
-        const userStats = Array.from(userStatsMap.entries()).map(([userId, stats]) => ({
-          user_id: userId,
-          email: profileMap.get(userId) || "알 수 없음",
+        const userStats = Array.from(userStatsMap.entries()).map(([uid, stats]) => ({
+          user_id: uid,
+          email: profileMap.get(uid) || "알 수 없음",
           ...stats,
         }));
 
-        return jsonResponse({
-          todayTotal,
-          totalGenerations: (generations || []).length,
-          userStats,
-        });
+        return jsonResponse({ todayTotal, totalGenerations: (generations || []).length, userStats });
       }
 
       // ========== CONVERSION STATS ==========
@@ -354,7 +355,6 @@ Deno.serve(async (req) => {
         const firstUseToPaid = usersWithGen.size > 0 ? Math.round((paidUsers.size / usersWithGen.size) * 100) : 0;
         const freeToPaid = totalUsers > 0 ? Math.round((paidUsers.size / totalUsers) * 100) : 0;
 
-        // 7-day retention: users who used in last 7 days / users who signed up 7+ days ago
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
         const eligibleUsers = (profiles || []).filter((p: any) => p.created_at.split("T")[0] <= sevenDaysAgo);
         const recentUsers = new Set(
@@ -364,13 +364,8 @@ Deno.serve(async (req) => {
         const retention7d = eligibleUsers.length > 0 ? Math.round((retainedCount / eligibleUsers.length) * 100) : 0;
 
         return jsonResponse({
-          totalUsers,
-          usersWithFirstUse: usersWithGen.size,
-          paidUsers: paidUsers.size,
-          firstUseConversion,
-          firstUseToPaid,
-          freeToPaid,
-          retention7d,
+          totalUsers, usersWithFirstUse: usersWithGen.size, paidUsers: paidUsers.size,
+          firstUseConversion, firstUseToPaid, freeToPaid, retention7d,
         });
       }
 
@@ -390,21 +385,17 @@ Deno.serve(async (req) => {
         const alerts: any[] = [];
         const today = new Date().toISOString().split("T")[0];
 
-        // High usage alert (100+ today)
         (usageData || []).forEach((u: any) => {
           if (u.date === today && u.count >= 100) {
             alerts.push({
-              type: "high_usage",
-              severity: "warning",
+              type: "high_usage", severity: "warning",
               message: `하루 ${u.count}회 사용`,
               email: profileMap.get(u.user_id) || "알 수 없음",
-              user_id: u.user_id,
-              date: today,
+              user_id: u.user_id, date: today,
             });
           }
         });
 
-        // Abnormal energy increase (earned 500+ in a single day)
         const dailyEarnings = new Map<string, number>();
         (energyTx || []).forEach((t: any) => {
           const key = `${t.user_id}|${t.created_at.split("T")[0]}`;
@@ -412,32 +403,27 @@ Deno.serve(async (req) => {
         });
         dailyEarnings.forEach((amount, key) => {
           if (amount >= 500) {
-            const [userId] = key.split("|");
+            const [uid] = key.split("|");
             alerts.push({
-              type: "abnormal_energy",
-              severity: "critical",
+              type: "abnormal_energy", severity: "critical",
               message: `비정상적 에너지 증가: +${amount}`,
-              email: profileMap.get(userId) || "알 수 없음",
-              user_id: userId,
-              date: key.split("|")[1],
+              email: profileMap.get(uid) || "알 수 없음",
+              user_id: uid, date: key.split("|")[1],
             });
           }
         });
 
-        // Repeated payment failures (3+ failures for same user)
         const failureCount = new Map<string, number>();
         (payments || []).filter((p: any) => p.status === "failed").forEach((p: any) => {
           failureCount.set(p.user_id, (failureCount.get(p.user_id) || 0) + 1);
         });
-        failureCount.forEach((count, userId) => {
+        failureCount.forEach((count, uid) => {
           if (count >= 3) {
             alerts.push({
-              type: "payment_failure",
-              severity: "warning",
+              type: "payment_failure", severity: "warning",
               message: `결제 실패 ${count}회 반복`,
-              email: profileMap.get(userId) || "알 수 없음",
-              user_id: userId,
-              date: today,
+              email: profileMap.get(uid) || "알 수 없음",
+              user_id: uid, date: today,
             });
           }
         });
@@ -448,17 +434,19 @@ Deno.serve(async (req) => {
       // ========== FORCE LOGOUT ==========
       case "force_logout": {
         const { user_id } = params;
-        if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
+        if (!user_id) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
 
         const { error } = await adminClient.auth.admin.signOut(user_id);
-        if (error) return jsonResponse({ error: error.message }, 500);
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
         return jsonResponse({ success: true });
       }
 
       default:
-        return jsonResponse({ error: "Unknown action" }, 400);
+        return jsonResponse({ error: "잘못된 요청입니다." }, 400);
     }
   } catch (err) {
-    return jsonResponse({ error: err.message }, 500);
+    // [9] 에러 메시지 최소화 - stack trace 노출 금지
+    console.error("Admin function error:", err);
+    return jsonResponse({ error: "요청을 처리할 수 없습니다." }, 500);
   }
 });
