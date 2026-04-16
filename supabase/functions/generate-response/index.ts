@@ -6,6 +6,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PLAN_LIMITS: Record<string, { maxPerDay: number }> = {
+  free: { maxPerDay: 20 },
+  basic: { maxPerDay: 200 },
+  pro: { maxPerDay: 1000 },
+};
+
 const SYSTEM_PROMPTS: Record<string, string> = {
   review: `당신은 네이버 스마트스토어 셀러의 고객 리뷰 응대 전문가입니다.
 고객 리뷰에 대해 전문적이고 친절한 답변을 작성해주세요.
@@ -33,54 +39,113 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 - 250자 내외로 작성`,
 };
 
+function jsonRes(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // [1] 서버 인증 필수
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonRes({ error: "인증이 필요합니다." }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    // Verify JWT via getClaims
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return jsonRes({ error: "인증이 유효하지 않습니다." }, 401);
+    }
+    const userId = claimsData.claims.sub as string;
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Check if user is suspended
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("suspended, energy_balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (!profile) return jsonRes({ error: "사용자를 찾을 수 없습니다." }, 404);
+    if (profile.suspended) return jsonRes({ error: "계정이 정지되었습니다." }, 403);
+
+    // [7] Rate limit check
+    const { data: allowed } = await adminClient.rpc("check_rate_limit", {
+      _user_id: userId,
+      _action: "generate",
+      _max_per_second: 2,
+    });
+    if (!allowed) {
+      return jsonRes({ error: "요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요." }, 429);
+    }
+
+    // Parse body
     const { type, text, product, energy_cost } = await req.json();
 
     if (!type || !text) {
-      return new Response(JSON.stringify({ error: "type과 text는 필수입니다" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonRes({ error: "필수 항목이 누락되었습니다." }, 400);
+    }
+
+    if (!["review", "inquiry", "claim"].includes(type)) {
+      return jsonRes({ error: "잘못된 요청입니다." }, 400);
+    }
+
+    // Sanitize text input length
+    if (typeof text !== "string" || text.length > 5000) {
+      return jsonRes({ error: "입력이 너무 깁니다." }, 400);
     }
 
     const cost = energy_cost || 1;
 
-    // Spend energy first
-    if (authHeader) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
+    // [2] 서버에서 에너지 차감 (spend_energy RPC는 이미 SECURITY DEFINER)
+    const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
+      _amount: cost,
+      _reason: type,
+      _description: `${type === "review" ? "리뷰 답변" : type === "inquiry" ? "문의 답변" : "클레임 대응"} 생성`,
+    });
 
-      const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
-        _amount: cost,
-        _reason: type,
-        _description: `${type === 'review' ? '리뷰 답변' : type === 'inquiry' ? '문의 답변' : '클레임 대응'} 생성`,
-      });
-
-      if (spendError) throw spendError;
-
-      const result = spendResult as any;
-      if (!result?.success) {
-        return new Response(JSON.stringify({ error: result?.error || "에너지가 부족합니다" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Also increment usage for streak tracking
-      await userClient.rpc("increment_usage");
+    if (spendError) {
+      return jsonRes({ error: "처리 중 오류가 발생했습니다." }, 500);
     }
 
+    const result = spendResult as any;
+    if (!result?.success) {
+      return jsonRes({ error: result?.error === "Insufficient energy" ? "에너지가 부족합니다." : "요청을 처리할 수 없습니다." }, 403);
+    }
+
+    // Increment usage for streak tracking
+    await userClient.rpc("increment_usage");
+
+    // [10] Audit log
+    await adminClient.from("audit_logs").insert({
+      user_id: userId,
+      action: "generate",
+      details: { type, text_length: text.length, energy_cost: cost },
+      severity: "info",
+    });
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
+      return jsonRes({ error: "서비스 설정 오류입니다." }, 500);
+    }
 
     let systemPrompt = SYSTEM_PROMPTS[type] || SYSTEM_PROMPTS.review;
 
@@ -106,30 +171,21 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      // [9] 에러 메시지 최소화 - 내부 상세 노출 금지
+      console.error(`AI gateway error: ${response.status}`);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }, 429);
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "크레딧이 부족합니다." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
+      return jsonRes({ error: "답변 생성에 실패했습니다." }, 500);
     }
 
     const data = await response.json();
     const responseText = data.choices?.[0]?.message?.content || "답변을 생성할 수 없습니다.";
 
-    return new Response(JSON.stringify({ response: responseText }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ response: responseText });
   } catch (e) {
+    // [9] 에러 메시지 최소화
     console.error("generate-response error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
   }
 });

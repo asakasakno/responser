@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,23 +12,98 @@ const TYPE_LABELS: Record<string, string> = {
   claim: "클레임/불만",
 };
 
+// [6] 이미지 업로드 보안 상수
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_PREFIXES = ["data:image/png", "data:image/jpeg", "data:image/webp"];
+
+function jsonRes(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // [1] 서버 인증 필수
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonRes({ error: "인증이 필요합니다." }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return jsonRes({ error: "인증이 유효하지 않습니다." }, 401);
+    }
+    const userId = claimsData.claims.sub as string;
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Check suspended
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("suspended")
+      .eq("user_id", userId)
+      .single();
+
+    if (!profile) return jsonRes({ error: "사용자를 찾을 수 없습니다." }, 404);
+    if (profile.suspended) return jsonRes({ error: "계정이 정지되었습니다." }, 403);
+
+    // [7] Rate limit (batch는 별도 제한: 초당 1회)
+    const { data: allowed } = await adminClient.rpc("check_rate_limit", {
+      _user_id: userId,
+      _action: "extract_image",
+      _max_per_second: 1,
+    });
+    if (!allowed) {
+      return jsonRes({ error: "요청이 너무 빠릅니다." }, 429);
+    }
+
     const { image, type } = await req.json();
 
     if (!image) {
-      return new Response(JSON.stringify({ error: "image는 필수입니다" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonRes({ error: "이미지가 필요합니다." }, 400);
     }
 
+    if (!type || !["review", "inquiry", "claim"].includes(type)) {
+      return jsonRes({ error: "잘못된 요청입니다." }, 400);
+    }
+
+    // [6] 이미지 크기 검증 (base64 → 원본 크기 추정)
+    if (typeof image !== "string") {
+      return jsonRes({ error: "잘못된 이미지 형식입니다." }, 400);
+    }
+    const estimatedBytes = (image.length * 3) / 4;
+    if (estimatedBytes > MAX_IMAGE_SIZE_BYTES) {
+      return jsonRes({ error: "이미지 크기는 5MB 이하만 허용됩니다." }, 400);
+    }
+
+    // [10] Audit log
+    await adminClient.from("audit_logs").insert({
+      user_id: userId,
+      action: "extract_image",
+      details: { type, image_size_kb: Math.round(estimatedBytes / 1024) },
+      severity: "info",
+    });
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
+      return jsonRes({ error: "서비스 설정 오류입니다." }, 500);
+    }
 
     const typeLabel = TYPE_LABELS[type] || "고객 리뷰";
 
@@ -69,23 +145,16 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      console.error(`AI gateway error: ${response.status}`);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "요청이 너무 많습니다." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonRes({ error: "요청이 너무 많습니다." }, 429);
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "크레딧이 부족합니다." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
+      return jsonRes({ error: "이미지 처리에 실패했습니다." }, 500);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '{"items": []}';
     
-    // Parse JSON from the response, handling markdown code blocks
     let parsed;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -94,14 +163,9 @@ serve(async (req) => {
       parsed = { items: [] };
     }
 
-    return new Response(JSON.stringify({ items: parsed.items || [] }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ items: parsed.items || [] });
   } catch (e) {
     console.error("extract-from-image error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
   }
 });
