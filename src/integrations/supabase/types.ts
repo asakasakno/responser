@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       energy_transactions: {
         Row: {
           amount: number
@@ -306,6 +336,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: { _action: string; _max_per_second?: number; _user_id: string }
+        Returns: boolean
+      }
       earn_energy: {
         Args: {
           _amount: number
