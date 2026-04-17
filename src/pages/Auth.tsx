@@ -37,6 +37,7 @@ export default function Auth() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
   const [phone, setPhone] = useState('');
+  const [referralCode, setReferralCode] = useState(searchParams.get('ref') || '');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -76,7 +77,10 @@ export default function Auth() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: referralCode.trim() ? { referral_code: referralCode.trim().toLowerCase() } : undefined,
+          },
         });
         if (error) throw error;
 
@@ -186,6 +190,23 @@ export default function Auth() {
                   placeholder="010-1234-5678"
                   maxLength={13}
                 />
+              </div>
+            )}
+
+            {isSignUp && (
+              <div>
+                <Label htmlFor="referral">추천 코드 <span className="text-muted-foreground text-xs">(선택)</span></Label>
+                <Input
+                  id="referral"
+                  type="text"
+                  value={referralCode}
+                  onChange={e => setReferralCode(e.target.value)}
+                  placeholder="주변 사장님 추천 코드"
+                  maxLength={20}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  입력 시 추천인 +100, 본인 +50 에너지가 즉시 지급됩니다.
+                </p>
               </div>
             )}
 
