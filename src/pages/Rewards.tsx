@@ -58,6 +58,8 @@ export default function Rewards() {
     const dates = usageData?.map(u => u.date) || [];
     const streak = calculateStreak(dates);
 
+    const earned = (key: string) => Array.from(earnedReasons).some(r => r === `reward_${key}` || r === key);
+
     const missionList: MissionItem[] = [
       {
         id: 'signup',
@@ -71,11 +73,20 @@ export default function Rewards() {
       {
         id: 'first_generation',
         title: '첫 응답 생성',
-        description: 'AI 응답을 처음으로 생성해보세요',
+        description: '첫 응답을 생성하면 보너스 에너지를 받습니다',
         reward: ENERGY_REWARDS.first_generation.amount,
         icon: Zap,
-        completed: earnedReasons.has('first_generation'),
-        category: 'onboarding',
+        completed: earned('first_generation'),
+        category: 'usage',
+      },
+      {
+        id: 'ten_generations',
+        title: '응답 10건 생성',
+        description: '서비스를 꾸준히 활용하면 보너스가 자동 지급됩니다',
+        reward: ENERGY_REWARDS.ten_generations.amount,
+        icon: Zap,
+        completed: earned('ten_generations'),
+        category: 'usage',
       },
       {
         id: 'streak_3day',
@@ -83,31 +94,13 @@ export default function Rewards() {
         description: '3일 연속으로 서비스를 사용하세요',
         reward: ENERGY_REWARDS.streak_3day.amount,
         icon: Flame,
-        completed: earnedReasons.has('streak_3day') || streak >= 3,
+        completed: earned('streak_3day') || streak >= 3,
         category: 'usage',
-      },
-      {
-        id: 'streak_7day',
-        title: '7일 연속 사용',
-        description: '7일 연속으로 서비스를 사용하세요',
-        reward: ENERGY_REWARDS.streak_7day.amount,
-        icon: Flame,
-        completed: earnedReasons.has('streak_7day') || streak >= 7,
-        category: 'usage',
-      },
-      {
-        id: 'first_payment',
-        title: '첫 결제 완료',
-        description: '유료 플랜으로 업그레이드하세요',
-        reward: ENERGY_REWARDS.first_payment.amount,
-        icon: CreditCard,
-        completed: earnedReasons.has('first_payment') || plan !== 'free',
-        category: 'conversion',
       },
       {
         id: 'referral',
-        title: '친구 추천',
-        description: '친구를 초대하고 함께 에너지를 받으세요',
+        title: '주변 사장님 추천',
+        description: '주변 사장님 추천 시 추천인 +100, 가입자 +50 에너지가 지급됩니다',
         reward: ENERGY_REWARDS.referral_referrer.amount,
         icon: Users,
         completed: false,
@@ -156,9 +149,9 @@ export default function Rewards() {
   };
 
   const categoryLabels = {
-    onboarding: { label: '온보딩 미션', icon: Gift },
-    usage: { label: '사용 미션', icon: Flame },
-    conversion: { label: '전환 미션', icon: CreditCard },
+    onboarding: { label: '시작 보너스', icon: Gift },
+    usage: { label: '사용 보너스', icon: Flame },
+    conversion: { label: '주변 사장님 추천', icon: Users },
   };
 
   const groupedMissions = Object.entries(categoryLabels).map(([key, val]) => ({
@@ -254,10 +247,11 @@ export default function Rewards() {
         <div className="bg-card rounded-xl border border-border p-6 mb-8 shadow-card">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-primary" />
-            친구 추천
+            주변 사장님 추천
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            친구가 가입 후 결제를 완료하면 추천인에게 +{ENERGY_REWARDS.referral_referrer.amount}, 친구에게 +{ENERGY_REWARDS.referral_friend.amount} 에너지가 지급됩니다.
+            주변 사장님 추천 시 가입 즉시 추천인 +{ENERGY_REWARDS.referral_referrer.amount}, 가입자 +{ENERGY_REWARDS.referral_friend.amount} 에너지가 지급됩니다.
+            가입자가 유료 결제를 완료하면 양쪽에 +{ENERGY_REWARDS.referral_payment.amount} 추가 보상이 지급됩니다.
           </p>
           <div className="flex gap-2">
             <div className="flex-1 bg-secondary rounded-lg px-4 py-2 text-sm font-mono text-foreground truncate">
