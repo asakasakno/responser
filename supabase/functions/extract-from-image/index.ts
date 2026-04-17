@@ -62,6 +62,26 @@ serve(async (req) => {
     if (!profile) return jsonRes({ error: "사용자를 찾을 수 없습니다." }, 404);
     if (profile.suspended) return jsonRes({ error: "계정이 정지되었습니다." }, 403);
 
+    // Pro 플랜 권한 체크 - 확장프로그램에서 호출 시
+    const clientSource = req.headers.get("x-client-source");
+    if (clientSource === "extension") {
+      const { data: sub } = await adminClient
+        .from("subscriptions")
+        .select("plan")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (sub?.plan !== "pro") {
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "extension_access_denied",
+          details: { plan: sub?.plan ?? "none", endpoint: "extract-from-image" },
+          severity: "warning",
+        });
+        return jsonRes({ error: "크롬 확장프로그램은 Pro 플랜에서만 사용할 수 있습니다." }, 403);
+      }
+    }
+
     // [7] Rate limit (batch는 별도 제한: 초당 1회)
     const { data: allowed } = await adminClient.rpc("check_rate_limit", {
       _user_id: userId,
