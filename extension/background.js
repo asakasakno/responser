@@ -92,7 +92,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       const headers = {
         'Content-Type': 'application/json',
         'apikey': supabaseKey,
-        'Authorization': `Bearer ${config.accessToken || supabaseKey}`
+        'Authorization': `Bearer ${config.accessToken || supabaseKey}`,
+        'x-client-source': 'extension'
       };
 
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-response`, {
