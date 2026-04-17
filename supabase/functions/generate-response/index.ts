@@ -141,6 +141,29 @@ serve(async (req) => {
       severity: "info",
     });
 
+    // 사용 보너스 자동 지급 (reward_claims UNIQUE로 중복 방지)
+    try {
+      const { count: genCount } = await adminClient
+        .from('generations')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      const total = (genCount ?? 0) + 1;
+      if (total === 1) {
+        await adminClient.rpc('claim_reward', { _reward_key: 'first_generation', _amount: 5, _description: '첫 응답 생성 보너스' });
+      }
+      if (total >= 10) {
+        await adminClient.rpc('claim_reward', { _reward_key: 'ten_generations', _amount: 10, _description: '응답 10건 생성 보너스' });
+      }
+      const { data: usageDates } = await adminClient
+        .from('usage').select('date').eq('user_id', userId).order('date', { ascending: false }).limit(3);
+      if (usageDates && usageDates.length >= 3) {
+        const d = usageDates.map((u: any) => new Date(u.date).getTime());
+        if ((d[0] - d[1]) === 86400000 && (d[1] - d[2]) === 86400000) {
+          await adminClient.rpc('claim_reward', { _reward_key: 'streak_3day', _amount: 15, _description: '3일 연속 사용 보너스' });
+        }
+      }
+    } catch (_) { /* 보너스 실패는 본 응답에 영향 없음 */ }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY not configured");

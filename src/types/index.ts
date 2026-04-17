@@ -74,27 +74,35 @@ export const ENERGY_COSTS = {
   auto_response: 3,
 } as const;
 
-// Energy rewards
+// Energy rewards (자연스러운 사용 보너스)
 export const ENERGY_REWARDS = {
   signup: { amount: 20, description: '회원가입 보상' },
-  store_connect: { amount: 30, description: '스토어 연결 보상' },
-  first_generation: { amount: 10, description: '첫 응답 생성 보상' },
-  streak_3day: { amount: 20, description: '3일 연속 사용 보상' },
-  streak_7day: { amount: 50, description: '7일 연속 사용 보상' },
-  first_payment: { amount: 100, description: '첫 결제 보상' },
-  referral_referrer: { amount: 100, description: '친구 추천 보상 (추천인)' },
-  referral_friend: { amount: 50, description: '친구 추천 보상 (친구)' },
+  first_generation: { amount: 5, description: '첫 응답 생성 보너스' },
+  ten_generations: { amount: 10, description: '응답 10건 생성 보너스' },
+  streak_3day: { amount: 15, description: '3일 연속 사용 보너스' },
+  referral_referrer: { amount: 100, description: '주변 사장님 추천 보상 (추천인)' },
+  referral_friend: { amount: 50, description: '추천 가입 보상 (가입자)' },
+  referral_payment: { amount: 50, description: '추천 결제 추가 보상' },
 } as const;
+
+export interface EnergyPack {
+  id: string;
+  energy: number;
+  price: number;
+}
 
 export const PLAN_LIMITS: Record<PlanType, {
   monthlyEnergy: number;
+  yearlyPrice: number;
   maxEnergy: number;
   imageUpload: boolean;
   maxPerImage: number;
   price: number;
   name: string;
+  extension: boolean;
+  webCapture: boolean;
 }> = {
-  free: { monthlyEnergy: 20, maxEnergy: 100, imageUpload: true, maxPerImage: 5, price: 0, name: 'Free' },
-  basic: { monthlyEnergy: 200, maxEnergy: 500, imageUpload: true, maxPerImage: 10, price: 9900, name: 'Basic' },
-  pro: { monthlyEnergy: 1000, maxEnergy: 2000, imageUpload: true, maxPerImage: 30, price: 29900, name: 'Pro' },
+  free: { monthlyEnergy: 20, yearlyPrice: 0, maxEnergy: 100, imageUpload: true, maxPerImage: 5, price: 0, name: 'Free', extension: false, webCapture: false },
+  basic: { monthlyEnergy: 200, yearlyPrice: 99000, maxEnergy: 500, imageUpload: true, maxPerImage: 10, price: 9900, name: 'Basic', extension: false, webCapture: true },
+  pro: { monthlyEnergy: 1000, yearlyPrice: 299000, maxEnergy: 2000, imageUpload: true, maxPerImage: 30, price: 29900, name: 'Pro', extension: true, webCapture: true },
 };

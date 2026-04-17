@@ -44,6 +44,66 @@ export type Database = {
         }
         Relationships: []
       }
+      energy_grants: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          expire_at: string | null
+          id: string
+          reason: string
+          remaining: number
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          expire_at?: string | null
+          id?: string
+          reason: string
+          remaining: number
+          source: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          expire_at?: string | null
+          id?: string
+          reason?: string
+          remaining?: number
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      energy_packs: {
+        Row: {
+          active: boolean
+          energy: number
+          id: string
+          price: number
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          energy: number
+          id: string
+          price: number
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          energy?: number
+          id?: string
+          price?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
       energy_transactions: {
         Row: {
           amount: number
@@ -225,6 +285,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          payment_reward_given: boolean
           referred_user_id: string
           referrer_id: string
           reward_given: boolean
@@ -234,6 +295,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          payment_reward_given?: boolean
           referred_user_id: string
           referrer_id: string
           reward_given?: boolean
@@ -243,6 +305,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          payment_reward_given?: boolean
           referred_user_id?: string
           referrer_id?: string
           reward_given?: boolean
@@ -250,8 +313,33 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_claims: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          reward_key: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          reward_key: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          reward_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
+          billing_cycle: string
           created_at: string
           expires_at: string | null
           id: string
@@ -263,6 +351,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          billing_cycle?: string
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -274,6 +363,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          billing_cycle?: string
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -340,13 +430,35 @@ export type Database = {
         Args: { _action: string; _max_per_second?: number; _user_id: string }
         Returns: boolean
       }
-      earn_energy: {
-        Args: {
-          _amount: number
-          _description?: string
-          _reason: string
-          _user_id: string
-        }
+      claim_reward: {
+        Args: { _amount: number; _description: string; _reward_key: string }
+        Returns: Json
+      }
+      earn_energy:
+        | {
+            Args: {
+              _amount: number
+              _description?: string
+              _reason: string
+              _user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _amount: number
+              _description?: string
+              _expire_days?: number
+              _reason: string
+              _source?: string
+              _user_id: string
+            }
+            Returns: Json
+          }
+      expire_energy_grants: { Args: { _user_id: string }; Returns: undefined }
+      get_energy_balance: { Args: { _user_id: string }; Returns: number }
+      grant_referral_payment_bonus: {
+        Args: { _user_id: string }
         Returns: Json
       }
       has_role: {
