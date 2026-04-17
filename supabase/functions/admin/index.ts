@@ -162,6 +162,8 @@ Deno.serve(async (req) => {
             _amount: Math.abs(amount),
             _reason: reason,
             _description: `관리자 수동 지급: ${reason}`,
+            _source: "admin",
+            _expire_days: null,
           });
           if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
           return jsonResponse({ success: true, ...data });
