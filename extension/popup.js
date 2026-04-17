@@ -114,7 +114,8 @@ async function callFunction(name, body) {
   const headers = {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${accessToken || SUPABASE_KEY}`
+    'Authorization': `Bearer ${accessToken || SUPABASE_KEY}`,
+    'x-client-source': 'extension'
   };
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
