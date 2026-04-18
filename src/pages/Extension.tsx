@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   MessageSquare, Download, Chrome, ArrowRight, MonitorSmartphone,
   Mouse, Image, ClipboardPaste, FolderOpen, ToggleRight, Upload,
   Puzzle, Pin, Type, Camera, Clipboard, Copy, MousePointerClick,
-  Monitor, Search, FileText, Sparkles, CheckCircle2, AlertCircle
+  Monitor, Search, FileText, Sparkles, CheckCircle2, AlertCircle, Lock, Crown
 } from 'lucide-react';
 
 /* ───── Install Steps with icons & detailed sub-text ───── */
@@ -105,8 +106,11 @@ const usageGuides = [
 
 export default function ExtensionPage() {
   const [downloading, setDownloading] = useState(false);
+  const { user, plan } = useAuth();
+  const isPro = plan === 'pro';
 
   const handleDownload = () => {
+    if (!isPro) return;
     setDownloading(true);
     fetch('/extension.zip')
       .then(res => {
@@ -154,10 +158,34 @@ export default function ExtensionPage() {
           <p className="text-muted-foreground max-w-lg mx-auto mb-8">
             스마트스토어, 쿠팡 등 리뷰 페이지에서 바로 AI 답변을 생성할 수 있는 Chrome 확장 프로그램입니다.
           </p>
-          <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
-            <Download className="w-5 h-5 mr-2" />
-            {downloading ? '다운로드 중...' : '확장 프로그램 다운로드'}
-          </Button>
+          {isPro ? (
+            <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
+              <Download className="w-5 h-5 mr-2" />
+              {downloading ? '다운로드 중...' : '확장 프로그램 다운로드'}
+            </Button>
+          ) : (
+            <div className="max-w-md mx-auto bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 rounded-2xl p-6">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Crown className="w-5 h-5 text-primary" />
+                <span className="text-sm font-bold text-primary">Pro 전용 기능</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Chrome 확장 프로그램은 <strong className="text-foreground">Pro 플랜</strong> 사용자만 이용할 수 있습니다.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button size="lg" disabled className="w-full opacity-60 cursor-not-allowed">
+                  <Lock className="w-4 h-4 mr-2" />
+                  다운로드 잠김
+                </Button>
+                <Link to={user ? '/pricing' : '/auth?mode=signup'}>
+                  <Button size="lg" className="w-full gradient-primary text-primary-foreground shadow-primary-glow">
+                    <Crown className="w-4 h-4 mr-2" />
+                    {user ? 'Pro 플랜으로 업그레이드' : '무료로 시작하기'}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Features ── */}
@@ -291,17 +319,20 @@ export default function ExtensionPage() {
 
         {/* ── CTA ── */}
         <div className="text-center">
-          <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 mb-4">
-            <Download className="w-5 h-5 mr-2" />
-            {downloading ? '다운로드 중...' : '지금 바로 다운로드'}
-          </Button>
-          <div className="mt-4">
-            <Link to="/auth?mode=signup">
-              <Button variant="outline" size="lg">
-                아직 계정이 없으신가요? 무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
+          {isPro ? (
+            <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 mb-4">
+              <Download className="w-5 h-5 mr-2" />
+              {downloading ? '다운로드 중...' : '지금 바로 다운로드'}
+            </Button>
+          ) : (
+            <Link to={user ? '/pricing' : '/auth?mode=signup'}>
+              <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
+                <Crown className="w-4 h-4 mr-2" />
+                {user ? 'Pro 플랜으로 업그레이드하고 사용하기' : '무료로 시작하기'}
+                <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
-          </div>
+          )}
         </div>
       </div>
     </div>
