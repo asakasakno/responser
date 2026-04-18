@@ -304,6 +304,45 @@ export default function Generate() {
         )}
 
         <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-foreground">답변 스타일</label>
+            {plan === 'free' && (
+              <Link to="/pricing" className="text-xs text-primary underline">Basic+에서 사용 가능</Link>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedStyle('none')}
+              disabled={plan === 'free'}
+              className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                selectedStyle === 'none'
+                  ? 'border-primary bg-primary/5 text-foreground'
+                  : 'border-border text-muted-foreground hover:border-primary/50'
+              } ${plan === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              기본
+            </button>
+            {RESPONSE_STYLES.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedStyle(s.id)}
+                disabled={plan === 'free'}
+                title={s.description}
+                className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                  selectedStyle === s.id
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border text-muted-foreground hover:border-primary/50'
+                } ${plan === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
           <label className="text-sm font-medium text-foreground mb-1.5 block">내용 입력</label>
           <Textarea
             value={inputText}
