@@ -105,9 +105,10 @@ const testimonials = [
 
 /* ── Page ── */
 export default function Landing() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, companyName } = useAuth();
   const navigate = useNavigate();
   const handleSignOut = async () => { await signOut(); navigate('/'); };
+  const displayName = companyName || user?.email?.split('@')[0] || '';
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ========== HEADER ========== */}
@@ -120,16 +121,23 @@ export default function Landing() {
             <span className="text-lg font-bold">응대도우미</span>
           </Link>
           <div className="flex items-center gap-2">
-            <a href="#pricing">
+            <a href="#pricing" className="hidden sm:inline-flex">
               <Button variant="ghost" size="sm">요금제</Button>
             </a>
-            <Link to="/extension">
+            <Link to="/extension" className="hidden sm:inline-flex">
               <Button variant="ghost" size="sm">확장 프로그램</Button>
             </Link>
             {user ? (
               <>
+                <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold max-w-[200px] truncate">
+                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{displayName}</span>
+                </span>
                 <Link to="/dashboard">
                   <Button variant="ghost" size="sm">대시보드</Button>
+                </Link>
+                <Link to="/settings">
+                  <Button variant="ghost" size="sm">내 정보</Button>
                 </Link>
                 <Button variant="ghost" size="sm" onClick={handleSignOut}>로그아웃</Button>
               </>

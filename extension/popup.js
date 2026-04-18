@@ -2,6 +2,7 @@ const SUPABASE_URL = 'https://qbvlgzmivdycuocvcoxy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFidmxnem1pdmR5Y3VvY3Zjb3h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDA3MDQsImV4cCI6MjA5MDkxNjcwNH0.ox5FO-vpaDtDPZL-UWztEHFSGfn7D47JI2_-lSaAzXM';
 
 let currentType = 'review';
+let currentStyle = 'none';
 let accessToken = null;
 
 const placeholders = {
@@ -28,6 +29,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Style buttons
+  document.querySelectorAll('.style-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStyle = btn.dataset.style;
+    });
+  });
   // Login
   document.getElementById('login-btn').addEventListener('click', handleLogin);
 
@@ -168,7 +177,9 @@ async function handleGenerate() {
   showLoading('AI가 답변을 생성하고 있습니다...');
 
   try {
-    const data = await callFunction('generate-response', { type: currentType, text });
+    const payload = { type: currentType, text };
+    if (currentStyle && currentStyle !== 'none') payload.style = currentStyle;
+    const data = await callFunction('generate-response', payload);
     if (data.error) throw new Error(data.error);
     showResults([{ input: text, output: data.response }]);
   } catch (err) {
@@ -217,9 +228,9 @@ async function processImage(file) {
       setProgress(((i + 1) / items.length) * 100);
       setLoadingText(`답변 생성 중... (${i + 1}/${items.length})`);
 
-      const data = await callFunction('generate-response', {
-        type: currentType, text: items[i]
-      });
+      const _payload1 = { type: currentType, text: items[i] };
+      if (currentStyle && currentStyle !== 'none') _payload1.style = currentStyle;
+      const data = await callFunction('generate-response', _payload1);
       results.push({
         input: items[i],
         output: data.response || '생성 실패'
@@ -262,9 +273,9 @@ async function handleCapture() {
       setProgress(((i + 1) / items.length) * 100);
       setLoadingText(`답변 생성 중... (${i + 1}/${items.length})`);
 
-      const data = await callFunction('generate-response', {
-        type: currentType, text: items[i]
-      });
+      const _payload2 = { type: currentType, text: items[i] };
+      if (currentStyle && currentStyle !== 'none') _payload2.style = currentStyle;
+      const data = await callFunction('generate-response', _payload2);
       results.push({
         input: items[i],
         output: data.response || '생성 실패'

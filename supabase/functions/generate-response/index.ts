@@ -39,6 +39,13 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 - 250자 내외로 작성`,
 };
 
+const STYLE_GUIDES: Record<string, string> = {
+  thanks: '\n\n[답변 스타일: 감사형] 진심 어린 감사 표현을 강조하고, 따뜻하고 긍정적인 톤으로 작성하세요.',
+  apology: '\n\n[답변 스타일: 사과형] 정중한 사과를 우선하고, 책임감 있게 문제를 인정하는 톤으로 작성하세요.',
+  simple: '\n\n[답변 스타일: 간단형] 군더더기 없이 핵심만 짧고 명료하게 100자 내외로 작성하세요.',
+  principle: '\n\n[답변 스타일: 원칙형] 회사 정책/원칙을 명확하고 일관되게 안내하는 톤으로 작성하세요.',
+};
+
 function jsonRes(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -86,24 +93,24 @@ serve(async (req) => {
     if (!profile) return jsonRes({ error: "사용자를 찾을 수 없습니다." }, 404);
     if (profile.suspended) return jsonRes({ error: "계정이 정지되었습니다." }, 403);
 
-    // Pro 플랜 권한 체크 - 확장프로그램에서 호출 시
+    // 플랜 체크: 확장프로그램은 Basic+ 필요, 답변 스타일도 Basic+ 필요
     const clientSource = req.headers.get("x-client-source");
-    if (clientSource === "extension") {
-      const { data: sub } = await adminClient
-        .from("subscriptions")
-        .select("plan")
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .maybeSingle();
-      if (sub?.plan !== "pro") {
-        await adminClient.from("audit_logs").insert({
-          user_id: userId,
-          action: "extension_access_denied",
-          details: { plan: sub?.plan ?? "none" },
-          severity: "warning",
-        });
-        return jsonRes({ error: "크롬 확장프로그램은 Pro 플랜에서만 사용할 수 있습니다." }, 403);
-      }
+    const { data: sub } = await adminClient
+      .from("subscriptions")
+      .select("plan")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+    const userPlan = sub?.plan ?? "free";
+
+    if (clientSource === "extension" && userPlan === "free") {
+      await adminClient.from("audit_logs").insert({
+        user_id: userId,
+        action: "extension_access_denied",
+        details: { plan: userPlan },
+        severity: "warning",
+      });
+      return jsonRes({ error: "크롬 확장프로그램은 Basic 이상 플랜에서 사용할 수 있습니다." }, 403);
     }
 
     // [7] Rate limit check
@@ -117,7 +124,7 @@ serve(async (req) => {
     }
 
     // Parse body
-    const { type, text, product, energy_cost } = await req.json();
+    const { type, text, product, energy_cost, style } = await req.json();
 
     if (!type || !text) {
       return jsonRes({ error: "필수 항목이 누락되었습니다." }, 400);
@@ -132,7 +139,33 @@ serve(async (req) => {
       return jsonRes({ error: "입력이 너무 깁니다." }, 400);
     }
 
-    const cost = energy_cost || 1;
+    // 답변 스타일은 Basic 이상에서만 적용
+    const validStyles = ["thanks", "apology", "simple", "principle"];
+    let appliedStyle: string | null = null;
+    if (style) {
+      if (!validStyles.includes(style)) {
+        return jsonRes({ error: "잘못된 스타일입니다." }, 400);
+      }
+      if (userPlan === "free") {
+        return jsonRes({ error: "답변 스타일 선택은 Basic 이상 플랜에서 사용할 수 있습니다." }, 403);
+      }
+      appliedStyle = style;
+    }
+
+    // 상품 소유권 검증 (보안: 다른 사용자 상품 사용 차단)
+    if (product && typeof product === "object" && product.id) {
+      const { data: ownProduct } = await adminClient
+        .from("products")
+        .select("id")
+        .eq("id", product.id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!ownProduct) {
+        return jsonRes({ error: "상품 정보가 유효하지 않습니다." }, 403);
+      }
+    }
+
+    const cost = Number.isFinite(energy_cost) && energy_cost > 0 && energy_cost <= 5 ? energy_cost : 1;
 
     // [2] 서버에서 에너지 차감 (spend_energy RPC는 이미 SECURITY DEFINER)
     const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
@@ -196,6 +229,10 @@ serve(async (req) => {
       systemPrompt += `\n\n[상품 정보]\n상품명: ${product.name}\n카테고리: ${product.category}`;
       if (product.note) systemPrompt += `\n특이사항: ${product.note}`;
       systemPrompt += `\n\n위 상품 정보를 참고하여 더 정확한 답변을 작성해주세요.`;
+    }
+
+    if (appliedStyle) {
+      systemPrompt += STYLE_GUIDES[appliedStyle];
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

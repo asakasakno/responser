@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ENERGY_COSTS } from '@/types';
+import { ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +34,7 @@ export default function Generate() {
   const [genType, setGenType] = useState<GenType>(initType);
   const [inputText, setInputText] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<string>('none');
+  const [selectedStyle, setSelectedStyle] = useState<ResponseStyle | 'none'>('none');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
@@ -94,8 +95,10 @@ export default function Generate() {
   const getProductContext = () => {
     if (selectedProduct === 'none') return null;
     const p = products.find(p => p.id === selectedProduct);
-    return p ? { name: p.name, category: p.category, note: p.note } : null;
+    return p ? { id: p.id, name: p.name, category: p.category, note: p.note } : null;
   };
+
+  const getStylePayload = () => (plan !== 'free' && selectedStyle !== 'none' ? selectedStyle : undefined);
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
@@ -107,7 +110,7 @@ export default function Generate() {
     setResult('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost },
+        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload() },
       });
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
@@ -170,7 +173,7 @@ export default function Generate() {
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
         const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost },
+          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload() },
         });
         if (genError) throw genError;
         const output = data?.response || data?.error || '생성 실패';
@@ -299,6 +302,45 @@ export default function Generate() {
             </Select>
           </div>
         )}
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-foreground">답변 스타일</label>
+            {plan === 'free' && (
+              <Link to="/pricing" className="text-xs text-primary underline">Basic+에서 사용 가능</Link>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedStyle('none')}
+              disabled={plan === 'free'}
+              className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                selectedStyle === 'none'
+                  ? 'border-primary bg-primary/5 text-foreground'
+                  : 'border-border text-muted-foreground hover:border-primary/50'
+              } ${plan === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              기본
+            </button>
+            {RESPONSE_STYLES.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedStyle(s.id)}
+                disabled={plan === 'free'}
+                title={s.description}
+                className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                  selectedStyle === s.id
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border text-muted-foreground hover:border-primary/50'
+                } ${plan === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="mb-4">
           <label className="text-sm font-medium text-foreground mb-1.5 block">내용 입력</label>

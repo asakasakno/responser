@@ -31,6 +31,7 @@ export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(searchParams.get('mode') === 'signup');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -74,6 +75,11 @@ export default function Auth() {
           setLoading(false);
           return;
         }
+        if (!companyName.trim()) {
+          toast({ title: '회사(상호)명을 입력해주세요', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -88,7 +94,12 @@ export default function Auth() {
         if (data.user) {
           await supabase
             .from('profiles')
-            .update({ name: name.trim(), platforms: selectedPlatforms, phone: phone.trim() || null })
+            .update({
+              name: name.trim(),
+              company_name: companyName.trim(),
+              platforms: selectedPlatforms,
+              phone: phone.trim() || null,
+            })
             .eq('user_id', data.user.id);
         }
 
@@ -152,6 +163,20 @@ export default function Auth() {
                   placeholder="홍길동"
                   required={isSignUp}
                   maxLength={50}
+                />
+              </div>
+            )}
+            {isSignUp && (
+              <div>
+                <Label htmlFor="company">회사(상호)명 <span className="text-destructive">*</span></Label>
+                <Input
+                  id="company"
+                  type="text"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  placeholder="(주)응대상사 / 행복마트 등"
+                  required={isSignUp}
+                  maxLength={100}
                 />
               </div>
             )}

@@ -171,3 +171,9 @@ body {
   border-radius: 4px;
   transition: width 0.3s;
 }
+
+.style-picker { padding: 8px 12px 0; }
+.style-label { font-size: 11px; color: #6b7280; margin-bottom: 6px; font-weight: 600; }
+.style-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+.style-btn { flex: 1 0 auto; min-width: 56px; padding: 6px 10px; font-size: 12px; border: 1px solid #e5e7eb; background: #fff; border-radius: 6px; cursor: pointer; color: #6b7280; }
+.style-btn.active { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; font-weight: 600; }
