@@ -191,6 +191,23 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">회사(상호)명</span>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  className="w-40 h-8 text-sm"
+                  placeholder="상호 입력"
+                  maxLength={100}
+                />
+                {companyChanged && (
+                  <Button size="sm" variant="outline" className="h-8" onClick={handleSaveCompany} disabled={savingCompany}>
+                    {savingCompany ? '...' : '저장'}
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">이메일</span>
               <span className="text-foreground">{user?.email}</span>
