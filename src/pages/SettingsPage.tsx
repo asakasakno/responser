@@ -37,7 +37,7 @@ const PLATFORMS = [
 ];
 
 export default function SettingsPage() {
-  const { user, plan } = useAuth();
+  const { user, plan, refreshProfile } = useAuth();
   const limits = PLAN_LIMITS[plan];
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -48,12 +48,15 @@ export default function SettingsPage() {
   const [profileName, setProfileName] = useState('');
   const [originalName, setOriginalName] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [originalCompany, setOriginalCompany] = useState('');
+  const [savingCompany, setSavingCompany] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('platforms, name')
+      .select('platforms, name, company_name')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -62,6 +65,9 @@ export default function SettingsPage() {
         setOriginalPlatforms(p);
         setProfileName(data?.name || '');
         setOriginalName(data?.name || '');
+        const c = (data as any)?.company_name || '';
+        setCompanyName(c);
+        setOriginalCompany(c);
       });
   }, [user]);
 
@@ -73,6 +79,7 @@ export default function SettingsPage() {
 
   const platformsChanged = JSON.stringify([...platforms].sort()) !== JSON.stringify([...originalPlatforms].sort());
   const nameChanged = profileName.trim() !== originalName;
+  const companyChanged = companyName.trim() !== originalCompany;
 
   const handleSaveName = async () => {
     if (!user || !profileName.trim()) {
@@ -90,6 +97,26 @@ export default function SettingsPage() {
     } else {
       setOriginalName(profileName.trim());
       toast({ title: '이름이 저장되었습니다' });
+    }
+  };
+
+  const handleSaveCompany = async () => {
+    if (!user || !companyName.trim()) {
+      toast({ title: '회사(상호)명을 입력해주세요', variant: 'destructive' });
+      return;
+    }
+    setSavingCompany(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ company_name: companyName.trim() })
+      .eq('user_id', user.id);
+    setSavingCompany(false);
+    if (error) {
+      toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
+    } else {
+      setOriginalCompany(companyName.trim());
+      await refreshProfile();
+      toast({ title: '회사명이 저장되었습니다' });
     }
   };
 
