@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   MessageSquare, Download, Chrome, ArrowRight, MonitorSmartphone,
   Mouse, Image, ClipboardPaste, FolderOpen, ToggleRight, Upload,
   Puzzle, Pin, Type, Camera, Clipboard, Copy, MousePointerClick,
-  Monitor, Search, FileText, Sparkles, CheckCircle2, AlertCircle
+  Monitor, Search, FileText, Sparkles, CheckCircle2, AlertCircle, Lock, Crown
 } from 'lucide-react';
 
 /* ───── Install Steps with icons & detailed sub-text ───── */
