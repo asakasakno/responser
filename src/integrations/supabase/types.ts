@@ -237,6 +237,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          company_name: string | null
           created_at: string
           email: string
           energy_balance: number
@@ -251,6 +252,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_name?: string | null
           created_at?: string
           email: string
           energy_balance?: number
@@ -265,6 +267,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_name?: string | null
           created_at?: string
           email?: string
           energy_balance?: number
