@@ -105,6 +105,9 @@ const testimonials = [
 
 /* ── Page ── */
 export default function Landing() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const handleSignOut = async () => { await signOut(); navigate('/'); };
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ========== HEADER ========== */}
