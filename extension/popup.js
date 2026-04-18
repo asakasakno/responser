@@ -228,9 +228,9 @@ async function processImage(file) {
       setProgress(((i + 1) / items.length) * 100);
       setLoadingText(`답변 생성 중... (${i + 1}/${items.length})`);
 
-      const data = await callFunction('generate-response', {
-        type: currentType, text: items[i]
-      });
+      const _payload1 = { type: currentType, text: items[i] };
+      if (currentStyle && currentStyle !== 'none') _payload1.style = currentStyle;
+      const data = await callFunction('generate-response', _payload1);
       results.push({
         input: items[i],
         output: data.response || '생성 실패'
@@ -273,9 +273,9 @@ async function handleCapture() {
       setProgress(((i + 1) / items.length) * 100);
       setLoadingText(`답변 생성 중... (${i + 1}/${items.length})`);
 
-      const data = await callFunction('generate-response', {
-        type: currentType, text: items[i]
-      });
+      const _payload2 = { type: currentType, text: items[i] };
+      if (currentStyle && currentStyle !== 'none') _payload2.style = currentStyle;
+      const data = await callFunction('generate-response', _payload2);
       results.push({
         input: items[i],
         output: data.response || '생성 실패'
