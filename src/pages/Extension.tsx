@@ -106,8 +106,11 @@ const usageGuides = [
 
 export default function ExtensionPage() {
   const [downloading, setDownloading] = useState(false);
+  const { user, plan } = useAuth();
+  const isPro = plan === 'pro';
 
   const handleDownload = () => {
+    if (!isPro) return;
     setDownloading(true);
     fetch('/extension.zip')
       .then(res => {
