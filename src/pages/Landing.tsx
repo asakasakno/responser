@@ -453,7 +453,11 @@ export default function Landing() {
             <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
             <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
             <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
-            <Link to="/auth" className="hover:text-foreground transition-colors">로그인</Link>
+            {user ? (
+              <button onClick={handleSignOut} className="hover:text-foreground transition-colors">로그아웃</button>
+            ) : (
+              <Link to="/auth" className="hover:text-foreground transition-colors">로그인</Link>
+            )}
           </div>
           <span>© 2026 응대도우미. All rights reserved.</span>
         </div>
