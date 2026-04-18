@@ -319,17 +319,20 @@ export default function ExtensionPage() {
 
         {/* ── CTA ── */}
         <div className="text-center">
-          <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 mb-4">
-            <Download className="w-5 h-5 mr-2" />
-            {downloading ? '다운로드 중...' : '지금 바로 다운로드'}
-          </Button>
-          <div className="mt-4">
-            <Link to="/auth?mode=signup">
-              <Button variant="outline" size="lg">
-                아직 계정이 없으신가요? 무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
+          {isPro ? (
+            <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 mb-4">
+              <Download className="w-5 h-5 mr-2" />
+              {downloading ? '다운로드 중...' : '지금 바로 다운로드'}
+            </Button>
+          ) : (
+            <Link to={user ? '/pricing' : '/auth?mode=signup'}>
+              <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
+                <Crown className="w-4 h-4 mr-2" />
+                {user ? 'Pro 플랜으로 업그레이드하고 사용하기' : '무료로 시작하기'}
+                <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
-          </div>
+          )}
         </div>
       </div>
     </div>
