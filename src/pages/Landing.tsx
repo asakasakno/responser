@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   MessageSquare,
   Image,
@@ -104,6 +105,9 @@ const testimonials = [
 
 /* ── Page ── */
 export default function Landing() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const handleSignOut = async () => { await signOut(); navigate('/'); };
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ========== HEADER ========== */}
@@ -122,14 +126,25 @@ export default function Landing() {
             <Link to="/extension">
               <Button variant="ghost" size="sm">확장 프로그램</Button>
             </Link>
-            <Link to="/auth">
-              <Button variant="ghost" size="sm">로그인</Button>
-            </Link>
-            <Link to="/auth?mode=signup">
-              <Button size="sm" className="gradient-primary text-primary-foreground shadow-primary-glow">
-                무료로 시작하기
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/dashboard">
+                  <Button variant="ghost" size="sm">대시보드</Button>
+                </Link>
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>로그아웃</Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" size="sm">로그인</Button>
+                </Link>
+                <Link to="/auth?mode=signup">
+                  <Button size="sm" className="gradient-primary text-primary-foreground shadow-primary-glow">
+                    무료로 시작하기
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
