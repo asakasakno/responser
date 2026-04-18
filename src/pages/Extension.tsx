@@ -107,10 +107,10 @@ const usageGuides = [
 export default function ExtensionPage() {
   const [downloading, setDownloading] = useState(false);
   const { user, plan } = useAuth();
-  const isPro = plan === 'pro';
+  const isAllowed = plan === 'basic' || plan === 'pro';
 
   const handleDownload = () => {
-    if (!isPro) return;
+    if (!isAllowed) return;
     setDownloading(true);
     fetch('/extension.zip')
       .then(res => {
@@ -158,7 +158,7 @@ export default function ExtensionPage() {
           <p className="text-muted-foreground max-w-lg mx-auto mb-8">
             스마트스토어, 쿠팡 등 리뷰 페이지에서 바로 AI 답변을 생성할 수 있는 Chrome 확장 프로그램입니다.
           </p>
-          {isPro ? (
+          {isAllowed ? (
             <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
               <Download className="w-5 h-5 mr-2" />
               {downloading ? '다운로드 중...' : '확장 프로그램 다운로드'}
@@ -167,10 +167,10 @@ export default function ExtensionPage() {
             <div className="max-w-md mx-auto bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 rounded-2xl p-6">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Crown className="w-5 h-5 text-primary" />
-                <span className="text-sm font-bold text-primary">Pro 전용 기능</span>
+                <span className="text-sm font-bold text-primary">Basic 이상 전용</span>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                Chrome 확장 프로그램은 <strong className="text-foreground">Pro 플랜</strong> 사용자만 이용할 수 있습니다.
+                Chrome 확장 프로그램은 <strong className="text-foreground">Basic 이상</strong> 플랜에서 사용할 수 있습니다.
               </p>
               <div className="flex flex-col gap-2">
                 <Button size="lg" disabled className="w-full opacity-60 cursor-not-allowed">
@@ -180,7 +180,7 @@ export default function ExtensionPage() {
                 <Link to={user ? '/pricing' : '/auth?mode=signup'}>
                   <Button size="lg" className="w-full gradient-primary text-primary-foreground shadow-primary-glow">
                     <Crown className="w-4 h-4 mr-2" />
-                    {user ? 'Pro 플랜으로 업그레이드' : '무료로 시작하기'}
+                    {user ? 'Basic 플랜으로 업그레이드' : '무료로 시작하기'}
                   </Button>
                 </Link>
               </div>
