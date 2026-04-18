@@ -4,11 +4,21 @@ export interface Profile {
   id: string;
   email: string;
   name: string | null;
+  company_name: string | null;
   created_at: string;
   energy_balance: number;
   max_energy: number;
   referral_code: string;
 }
+
+export type ResponseStyle = 'thanks' | 'apology' | 'simple' | 'principle';
+
+export const RESPONSE_STYLES: { id: ResponseStyle; label: string; description: string }[] = [
+  { id: 'thanks', label: '감사형', description: '진심 어린 감사와 긍정적인 톤' },
+  { id: 'apology', label: '사과형', description: '정중한 사과와 책임감 있는 톤' },
+  { id: 'simple', label: '간단형', description: '짧고 명료한 핵심 답변' },
+  { id: 'principle', label: '원칙형', description: '정책/원칙을 명확히 안내' },
+];
 
 export interface Subscription {
   id: string;

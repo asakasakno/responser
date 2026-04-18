@@ -13,7 +13,9 @@ interface AuthContextType {
   energyBalance: number;
   maxEnergy: number;
   referralCode: string;
+  companyName: string;
   refreshEnergy: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -26,7 +28,9 @@ const AuthContext = createContext<AuthContextType>({
   energyBalance: 0,
   maxEnergy: 100,
   referralCode: '',
+  companyName: '',
   refreshEnergy: async () => {},
+  refreshProfile: async () => {},
   signOut: async () => {},
 });
 
@@ -41,19 +45,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [energyBalance, setEnergyBalance] = useState(0);
   const [maxEnergy, setMaxEnergy] = useState(100);
   const [referralCode, setReferralCode] = useState('');
+  const [companyName, setCompanyName] = useState('');
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('energy_balance, max_energy, referral_code')
+      .select('energy_balance, max_energy, referral_code, company_name')
       .eq('user_id', userId)
       .maybeSingle();
     if (data) {
       setEnergyBalance(data.energy_balance);
       setMaxEnergy(data.max_energy);
       setReferralCode(data.referral_code || '');
+      setCompanyName((data as any).company_name || '');
     }
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    await fetchProfile(user.id);
+  }, [user, fetchProfile]);
 
   const refreshEnergy = useCallback(async () => {
     if (!user) return;
@@ -86,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEnergyBalance(0);
         setMaxEnergy(100);
         setReferralCode('');
+        setCompanyName('');
       }
     });
 
@@ -123,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, plan, isAdmin, energyBalance, maxEnergy, referralCode, refreshEnergy, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, plan, isAdmin, energyBalance, maxEnergy, referralCode, companyName, refreshEnergy, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
