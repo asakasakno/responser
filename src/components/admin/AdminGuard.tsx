@@ -11,13 +11,8 @@ export default function AdminGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
+    (supabase.rpc as any)('current_user_has_role', { _role: 'admin' })
+      .then(({ data }: { data: boolean | null }) => setIsAdmin(!!data));
   }, [user]);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">로딩 중...</div>;
