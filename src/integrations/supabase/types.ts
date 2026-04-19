@@ -476,6 +476,10 @@ export type Database = {
         Returns: boolean
       }
       increment_usage: { Args: never; Returns: undefined }
+      log_audit: {
+        Args: { _action: string; _details?: Json; _severity?: string }
+        Returns: undefined
+      }
       spend_energy: {
         Args: { _amount: number; _description?: string; _reason: string }
         Returns: Json
