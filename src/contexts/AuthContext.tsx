@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchAdminRole = async (userId: string) => {
-    const { data } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
+    const { data } = await (supabase.rpc as any)('current_user_has_role', { _role: 'admin' });
     setIsAdmin(!!data);
   };
 
