@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
     // Delete the auth user
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
     if (deleteError) {
-      return new Response(JSON.stringify({ error: deleteError.message }), {
+      console.error("delete-account auth error:", deleteError);
+      return new Response(JSON.stringify({ error: "계정 삭제에 실패했습니다." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -58,7 +59,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("delete-account error:", err);
+    return new Response(JSON.stringify({ error: "요청을 처리할 수 없습니다." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

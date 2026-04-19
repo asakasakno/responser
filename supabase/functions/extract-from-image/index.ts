@@ -102,11 +102,33 @@ serve(async (req) => {
       return jsonRes({ error: "잘못된 요청입니다." }, 400);
     }
 
-    // [6] 이미지 크기 검증 (base64 → 원본 크기 추정)
-    if (typeof image !== "string") {
+    // [6] 이미지 형식/크기 검증
+    if (typeof image !== "string" || image.length === 0) {
       return jsonRes({ error: "잘못된 이미지 형식입니다." }, 400);
     }
-    const estimatedBytes = (image.length * 3) / 4;
+
+    // data URL이면 MIME 화이트리스트 검증, 아니면 raw base64로 간주
+    let base64Data = image;
+    let mimeType = "image/png";
+    if (image.startsWith("data:")) {
+      const isValidMime = ALLOWED_MIME_PREFIXES.some((p) => image.startsWith(p));
+      if (!isValidMime) {
+        return jsonRes({ error: "지원하지 않는 이미지 형식입니다. (png, jpeg, webp만 가능)" }, 400);
+      }
+      const commaIdx = image.indexOf(",");
+      if (commaIdx === -1) {
+        return jsonRes({ error: "잘못된 이미지 형식입니다." }, 400);
+      }
+      mimeType = image.substring(5, image.indexOf(";"));
+      base64Data = image.substring(commaIdx + 1);
+    } else {
+      // raw base64 – 형식 검증 (Base64 문자만 허용)
+      if (!/^[A-Za-z0-9+/=\s]+$/.test(image)) {
+        return jsonRes({ error: "잘못된 이미지 형식입니다." }, 400);
+      }
+    }
+
+    const estimatedBytes = (base64Data.length * 3) / 4;
     if (estimatedBytes > MAX_IMAGE_SIZE_BYTES) {
       return jsonRes({ error: "이미지 크기는 5MB 이하만 허용됩니다." }, 400);
     }
@@ -152,7 +174,7 @@ serve(async (req) => {
             content: [
               {
                 type: "image_url",
-                image_url: { url: `data:image/png;base64,${image}` },
+                image_url: { url: `data:${mimeType};base64,${base64Data}` },
               },
               {
                 type: "text",
