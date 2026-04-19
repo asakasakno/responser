@@ -174,7 +174,7 @@ serve(async (req) => {
             content: [
               {
                 type: "image_url",
-                image_url: { url: `data:image/png;base64,${image}` },
+                image_url: { url: `data:${mimeType};base64,${base64Data}` },
               },
               {
                 type: "text",
