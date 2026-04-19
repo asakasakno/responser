@@ -437,6 +437,10 @@ export type Database = {
         Args: { _amount: number; _description: string; _reward_key: string }
         Returns: Json
       }
+      current_user_has_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
       earn_energy:
         | {
             Args: {
