@@ -6,6 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PLAN_LIMITS, type EnergyPack } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import CouponInput, { type AppliedCoupon } from '@/components/CouponInput';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 
 const plans = [
   {
@@ -70,16 +74,19 @@ export default function Pricing() {
     });
   }, []);
 
+  const [checkoutPack, setCheckoutPack] = useState<EnergyPack | null>(null);
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+
   const handleBuyPack = (pack: EnergyPack) => {
     if (!user) {
       window.location.href = '/auth?mode=signup';
       return;
     }
-    toast({
-      title: '결제 시스템 준비 중',
-      description: `${pack.energy} 에너지 (${formatKRW(pack.price)}) 구매는 곧 오픈됩니다.`,
-    });
+    setCoupon(null);
+    setCheckoutPack(pack);
   };
+
+  const finalAmount = checkoutPack ? (coupon?.final_amount ?? checkoutPack.price) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -279,6 +286,59 @@ export default function Pricing() {
           </p>
         </div>
       </div>
+
+      {/* 에너지 구매 결제 모달 (쿠폰 입력 + 미리보기, 토스는 추후 연결) */}
+      <Dialog open={!!checkoutPack} onOpenChange={(o) => !o && setCheckoutPack(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>에너지 추가 구매</DialogTitle>
+          </DialogHeader>
+          {checkoutPack && (
+            <div className="space-y-4">
+              <div className="bg-secondary/50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">에너지 {checkoutPack.energy}개</p>
+                      <p className="text-xs text-muted-foreground">만료 없음</p>
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{formatKRW(checkoutPack.price)}</p>
+                </div>
+              </div>
+
+              <CouponInput
+                amount={checkoutPack.price}
+                targetType="energy"
+                applied={coupon}
+                onApply={setCoupon}
+              />
+
+              <div className="border-t border-border pt-3 flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">최종 결제금액</span>
+                <span className="text-2xl font-extrabold text-foreground">{formatKRW(finalAmount)}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCheckoutPack(null)}>취소</Button>
+            <Button
+              onClick={() => {
+                toast({
+                  title: '결제창 준비 중',
+                  description: `Toss 결제는 곧 연결됩니다. 최종 금액: ${formatKRW(finalAmount)}${coupon ? ` (쿠폰 ${coupon.coupon_code} 적용)` : ''}`,
+                });
+                setCheckoutPack(null);
+              }}
+            >
+              결제하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
