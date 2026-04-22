@@ -4,13 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard, Users, CreditCard, Zap, BarChart3,
-  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield
+  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag
 } from 'lucide-react';
 
 const adminNav = [
   { to: '/admin', label: '대시보드', icon: LayoutDashboard, exact: true },
   { to: '/admin/users', label: '사용자 관리', icon: Users },
   { to: '/admin/payments', label: '결제 관리', icon: CreditCard },
+  { to: '/admin/coupons', label: '쿠폰 관리', icon: Tag },
   { to: '/admin/energy', label: '응답에너지 관리', icon: Zap },
   { to: '/admin/ai-usage', label: 'AI 사용량', icon: BarChart3 },
   { to: '/admin/conversion', label: '전환 분석', icon: TrendingUp },

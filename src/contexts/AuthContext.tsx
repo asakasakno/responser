@@ -121,6 +121,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchPlan = async (userId: string) => {
+    // 관리자 계정은 항상 Pro로 취급 (UI/제한 모두)
+    const { data: adminCheck } = await (supabase.rpc as any)('current_user_has_role', { _role: 'admin' });
+    if (adminCheck) {
+      setPlan('pro');
+      return;
+    }
     const { data } = await supabase
       .from('subscriptions')
       .select('plan')

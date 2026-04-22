@@ -39,7 +39,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
     const body = await req.json().catch(() => ({}));
-    const { pack_id, payment_key, order_id, amount } = body ?? {};
+    const { pack_id, payment_key, order_id, amount, coupon_code } = body ?? {};
 
     // 입력 검증
     if (!pack_id || typeof pack_id !== "string") {
@@ -60,12 +60,29 @@ serve(async (req) => {
       .maybeSingle();
     if (!pack || !pack.active) return jsonRes({ error: "유효하지 않은 상품입니다." }, 400);
 
-    // 클라이언트 amount와 서버 가격 일치 검증 (Toss로 보낼 금액과도 일치해야 함)
-    if (amount !== pack.price) {
+    // 쿠폰 적용 시 서버에서 최종 금액 계산
+    let couponInfo: any = null;
+    let expectedAmount = pack.price;
+    if (coupon_code && typeof coupon_code === "string") {
+      const { data: cv } = await userClient.rpc("validate_coupon", {
+        _code: coupon_code,
+        _amount: pack.price,
+        _target_type: "energy",
+        _target_plan: null,
+      });
+      if (!cv || !cv.valid) {
+        return jsonRes({ error: cv?.error || "쿠폰을 사용할 수 없습니다." }, 400);
+      }
+      couponInfo = cv;
+      expectedAmount = cv.final_amount;
+    }
+
+    // 클라이언트 amount와 서버 계산 최종 금액 일치 검증
+    if (amount !== expectedAmount) {
       await admin.from("audit_logs").insert({
         user_id: userId,
         action: "purchase_energy_amount_mismatch",
-        details: { pack_id, client_amount: amount, server_price: pack.price, order_id },
+        details: { pack_id, client_amount: amount, expected: expectedAmount, order_id },
         severity: "warning",
       });
       return jsonRes({ error: "결제 금액이 일치하지 않습니다." }, 400);
@@ -103,7 +120,7 @@ serve(async (req) => {
         Authorization: `Basic ${btoa(TOSS_SECRET_KEY + ":")}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ paymentKey: payment_key, orderId: order_id, amount: pack.price }),
+      body: JSON.stringify({ paymentKey: payment_key, orderId: order_id, amount: expectedAmount }),
     });
 
     const tossData = await tossResponse.json().catch(() => ({}));
@@ -125,8 +142,8 @@ serve(async (req) => {
       return jsonRes({ error: "결제 검증에 실패했습니다." }, 400);
     }
 
-    // Toss 응답 금액과 서버 가격 재검증
-    if (typeof tossData?.totalAmount !== "number" || tossData.totalAmount !== pack.price) {
+    // Toss 응답 금액과 서버 최종 금액 재검증
+    if (typeof tossData?.totalAmount !== "number" || tossData.totalAmount !== expectedAmount) {
       await admin.from("audit_logs").insert({
         user_id: userId,
         action: "purchase_energy_toss_amount_mismatch",
@@ -146,11 +163,24 @@ serve(async (req) => {
       _expire_days: null,
     });
 
+    // 쿠폰 사용 기록
+    if (couponInfo) {
+      await admin.rpc("consume_coupon", {
+        _user_id: userId,
+        _coupon_id: couponInfo.coupon_id,
+        _original_amount: pack.price,
+        _discount_amount: couponInfo.discount_amount,
+        _final_amount: expectedAmount,
+        _target_type: "energy",
+        _billing_order_id: order_id,
+      });
+    }
+
     // 결제 성공 기록
     await admin.from("payments").insert({
       user_id: userId,
-      amount: pack.price,
-      product_name: `에너지 ${pack.energy}개`,
+      amount: expectedAmount,
+      product_name: `에너지 ${pack.energy}개${couponInfo ? ` (쿠폰 ${couponInfo.coupon_code})` : ''}`,
       status: "success",
       payment_method: tossData?.method || "toss",
     });
@@ -158,7 +188,7 @@ serve(async (req) => {
     await admin.from("audit_logs").insert({
       user_id: userId,
       action: "purchase_energy_success",
-      details: { pack_id, energy: pack.energy, price: pack.price, order_id },
+      details: { pack_id, energy: pack.energy, original_price: pack.price, paid: expectedAmount, coupon: couponInfo?.coupon_code, order_id },
       severity: "info",
     });
 
