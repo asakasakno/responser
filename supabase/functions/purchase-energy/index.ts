@@ -1,13 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-// 토스 결제 연동 전 임시 구현: 결제 검증 단계는 추후 toss-confirm에서 호출.
-// 현재는 결제 성공 가정 시 호출되는 내부 엔드포인트로 유지하며, 인증된 사용자만 호출 가능.
-// 실제 결제 시에는 toss-confirm이 끝난 뒤 service role 클라이언트로 grant_purchased_energy 호출 권장.
+// 에너지 추가 구매: Toss Payments 서버 검증 후에만 에너지 지급
+// 클라이언트가 보낸 payment_key/order_id/amount는 절대 신뢰하지 않고,
+// Toss confirm API로 검증 + 금액 일치 확인 후에만 grant.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 function jsonRes(data: any, status = 200) {
@@ -37,44 +38,128 @@ serve(async (req) => {
     const userId = claimsData.claims.sub as string;
 
     const admin = createClient(supabaseUrl, serviceKey);
-    const { pack_id, payment_key, order_id } = await req.json();
-    if (!pack_id) return jsonRes({ error: "상품을 선택해주세요." }, 400);
+    const body = await req.json().catch(() => ({}));
+    const { pack_id, payment_key, order_id, amount } = body ?? {};
 
-    // TODO: 토스 연동 시 payment_key/order_id로 toss-confirm 검증 호출
-    // 지금은 결제 미연동 → 안전을 위해 결제 키가 없으면 실제 지급 거부
-    if (!payment_key || !order_id) {
-      return jsonRes({ error: "결제 시스템 연동 후 이용 가능합니다." }, 400);
+    // 입력 검증
+    if (!pack_id || typeof pack_id !== "string") {
+      return jsonRes({ error: "상품을 선택해주세요." }, 400);
+    }
+    if (!payment_key || !order_id || typeof payment_key !== "string" || typeof order_id !== "string") {
+      return jsonRes({ error: "결제 정보가 누락되었습니다." }, 400);
+    }
+    if (typeof amount !== "number" || amount <= 0) {
+      return jsonRes({ error: "잘못된 결제 금액입니다." }, 400);
     }
 
+    // 상품(에너지팩) 조회 - 가격은 서버 DB 기준만 신뢰
     const { data: pack } = await admin
-      .from('energy_packs')
-      .select('id, energy, price, active')
-      .eq('id', pack_id)
+      .from("energy_packs")
+      .select("id, energy, price, active")
+      .eq("id", pack_id)
       .maybeSingle();
     if (!pack || !pack.active) return jsonRes({ error: "유효하지 않은 상품입니다." }, 400);
 
-    // 에너지 지급 (구매분: 무기한, max 캡 적용)
-    const { data: result } = await admin.rpc('earn_energy', {
+    // 클라이언트 amount와 서버 가격 일치 검증 (Toss로 보낼 금액과도 일치해야 함)
+    if (amount !== pack.price) {
+      await admin.from("audit_logs").insert({
+        user_id: userId,
+        action: "purchase_energy_amount_mismatch",
+        details: { pack_id, client_amount: amount, server_price: pack.price, order_id },
+        severity: "warning",
+      });
+      return jsonRes({ error: "결제 금액이 일치하지 않습니다." }, 400);
+    }
+
+    // 중복 처리 방지: 동일 order_id로 이미 성공 결제가 있으면 거부
+    const { data: existing } = await admin
+      .from("audit_logs")
+      .select("id")
+      .eq("action", "purchase_energy_success")
+      .contains("details", { order_id })
+      .maybeSingle();
+    if (existing) {
+      return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
+    }
+
+    // 결제 시도 감사 로그
+    await admin.from("audit_logs").insert({
+      user_id: userId,
+      action: "purchase_energy_attempt",
+      details: { pack_id, payment_key, order_id, amount },
+      severity: "info",
+    });
+
+    // Toss Payments 서버 검증
+    const TOSS_SECRET_KEY = Deno.env.get("TOSS_SECRET_KEY");
+    if (!TOSS_SECRET_KEY) {
+      console.error("TOSS_SECRET_KEY not configured");
+      return jsonRes({ error: "결제 시스템이 설정되지 않았습니다." }, 503);
+    }
+
+    const tossResponse = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${btoa(TOSS_SECRET_KEY + ":")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ paymentKey: payment_key, orderId: order_id, amount: pack.price }),
+    });
+
+    const tossData = await tossResponse.json().catch(() => ({}));
+
+    if (!tossResponse.ok) {
+      await admin.from("payments").insert({
+        user_id: userId,
+        amount: pack.price,
+        product_name: `에너지 ${pack.energy}개`,
+        status: "failed",
+        payment_method: "toss",
+      });
+      await admin.from("audit_logs").insert({
+        user_id: userId,
+        action: "purchase_energy_failed",
+        details: { pack_id, order_id, toss_code: tossData?.code, toss_message: tossData?.message },
+        severity: "warning",
+      });
+      return jsonRes({ error: "결제 검증에 실패했습니다." }, 400);
+    }
+
+    // Toss 응답 금액과 서버 가격 재검증
+    if (typeof tossData?.totalAmount !== "number" || tossData.totalAmount !== pack.price) {
+      await admin.from("audit_logs").insert({
+        user_id: userId,
+        action: "purchase_energy_toss_amount_mismatch",
+        details: { pack_id, order_id, toss_total: tossData?.totalAmount, server_price: pack.price },
+        severity: "error",
+      });
+      return jsonRes({ error: "결제 금액 검증에 실패했습니다." }, 400);
+    }
+
+    // 검증 성공 → 에너지 지급 (구매분: 무기한, max 캡 적용)
+    const { data: result } = await admin.rpc("earn_energy", {
       _user_id: userId,
       _amount: pack.energy,
-      _reason: 'purchase',
+      _reason: "purchase",
       _description: `에너지 ${pack.energy}개 추가 구매`,
-      _source: 'purchase',
+      _source: "purchase",
       _expire_days: null,
     });
 
-    // 결제 기록
-    await admin.from('payments').insert({
+    // 결제 성공 기록
+    await admin.from("payments").insert({
       user_id: userId,
       amount: pack.price,
       product_name: `에너지 ${pack.energy}개`,
-      status: 'success',
-      payment_method: 'toss',
+      status: "success",
+      payment_method: tossData?.method || "toss",
     });
 
-    await admin.from('audit_logs').insert({
-      user_id: userId, action: 'purchase_energy',
+    await admin.from("audit_logs").insert({
+      user_id: userId,
+      action: "purchase_energy_success",
       details: { pack_id, energy: pack.energy, price: pack.price, order_id },
+      severity: "info",
     });
 
     return jsonRes({ success: true, result });
