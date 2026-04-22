@@ -24,6 +24,7 @@ const AdminAIUsagePage = lazy(() => import("./pages/AdminAIUsage"));
 const AdminConversionPage = lazy(() => import("./pages/AdminConversion"));
 const AdminAlertsPage = lazy(() => import("./pages/AdminAlerts"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettingsPage"));
+const AdminCouponsPage = lazy(() => import("./pages/AdminCoupons"));
 const Extension = lazy(() => import("./pages/Extension"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/admin/conversion" element={<ProtectedRoute><AdminConversionPage /></ProtectedRoute>} />
               <Route path="/admin/alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />
+              <Route path="/admin/coupons" element={<ProtectedRoute><AdminCouponsPage /></ProtectedRoute>} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/refund" element={<Refund />} />
