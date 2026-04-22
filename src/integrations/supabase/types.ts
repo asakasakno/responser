@@ -44,6 +44,110 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_usages: {
+        Row: {
+          billing_order_id: string | null
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id: string
+          original_amount: number
+          target_type: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_order_id?: string | null
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id?: string
+          original_amount: number
+          target_type: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_order_id?: string | null
+          coupon_id?: string
+          discount_amount?: number
+          final_amount?: number
+          id?: string
+          original_amount?: number
+          target_type?: string
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usages_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          coupon_code: string
+          coupon_name: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_discount_amount: number | null
+          max_total_uses: number | null
+          max_use_per_user: number
+          min_purchase_amount: number | null
+          starts_at: string | null
+          target_plan: string | null
+          target_type: string
+          total_uses: number
+          updated_at: string
+        }
+        Insert: {
+          coupon_code: string
+          coupon_name: string
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_discount_amount?: number | null
+          max_total_uses?: number | null
+          max_use_per_user?: number
+          min_purchase_amount?: number | null
+          starts_at?: string | null
+          target_plan?: string | null
+          target_type?: string
+          total_uses?: number
+          updated_at?: string
+        }
+        Update: {
+          coupon_code?: string
+          coupon_name?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_discount_amount?: number | null
+          max_total_uses?: number | null
+          max_use_per_user?: number
+          min_purchase_amount?: number | null
+          starts_at?: string | null
+          target_plan?: string | null
+          target_type?: string
+          total_uses?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       energy_grants: {
         Row: {
           amount: number
@@ -437,6 +541,18 @@ export type Database = {
         Args: { _amount: number; _description: string; _reward_key: string }
         Returns: Json
       }
+      consume_coupon: {
+        Args: {
+          _billing_order_id: string
+          _coupon_id: string
+          _discount_amount: number
+          _final_amount: number
+          _original_amount: number
+          _target_type: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       current_user_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -482,6 +598,15 @@ export type Database = {
       }
       spend_energy: {
         Args: { _amount: number; _description?: string; _reason: string }
+        Returns: Json
+      }
+      validate_coupon: {
+        Args: {
+          _amount: number
+          _code: string
+          _target_plan?: string
+          _target_type: string
+        }
         Returns: Json
       }
     }
