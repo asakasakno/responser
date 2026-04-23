@@ -488,9 +488,18 @@ export default function Landing() {
                 사업자정보 확인
               </a>
             </p>
+            <p>통신판매업 신고번호: 제 2026-부산사하-0255 호</p>
             <p>사업장 소재지: 부산광역시 사하구 승학로3번길 47, 101동 2105호 (하단동, 사하 삼정그린코아 더시티)</p>
             <p>업태: 정보통신업 / 종목: 응용 소프트웨어 개발 및 공급업, 전자상거래 소매업</p>
             <p>개업연월일: 2023년 12월 09일</p>
+            <p>
+              <span>고객센터: 010-5097-9549</span>
+              <span className="mx-2">|</span>
+              <a href="mailto:support@응대도우미.com" className="underline hover:text-foreground">
+                support@응대도우미.com
+              </a>
+            </p>
+            <p>개인정보 보호책임자: 배지훈 (support@응대도우미.com)</p>
             <p className="pt-2">© 2026 응대도우미. All rights reserved.</p>
           </div>
         </div>
