@@ -286,6 +286,31 @@ export default function Pricing() {
             * 크롬 확장프로그램은 리뷰/문의 페이지에서 빠르게 답변을 생성하는 도구이며, 자동 입력 기능은 포함되지 않습니다.
           </p>
         </div>
+
+        {/* ===== 결제 신뢰 안내 ===== */}
+        <div className="mt-16 max-w-5xl mx-auto">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
+            <h3 className="text-lg font-bold text-foreground mb-4 text-center">안전한 결제, 자유로운 해지</h3>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: Lock, title: 'SSL 보안 결제', desc: '모든 결제는 256bit SSL 암호화 통신으로 보호됩니다.' },
+                { icon: CreditCard, title: 'Toss Payments 공식', desc: '토스페이먼츠를 통해 카드·간편결제를 모두 지원합니다.' },
+                { icon: RotateCcw, title: '언제든 해지 가능', desc: '내 정보에서 1초만에 자동결제를 해지할 수 있습니다.' },
+                { icon: ShieldCheck, title: '환불 정책 명확', desc: <Link to="/refund" className="underline hover:text-foreground">환불 정책 바로가기</Link> },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/40">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 에너지 구매 결제 모달 (쿠폰 입력 + 미리보기, 토스는 추후 연결) */}
