@@ -448,26 +448,51 @@ export default function Landing() {
       </section>
 
       {/* ========== FOOTER ========== */}
-      <footer className="border-t border-border py-8 bg-card">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded gradient-primary flex items-center justify-center">
-              <MessageSquare className="w-3 h-3 text-primary-foreground" />
+      <footer className="border-t border-border py-10 bg-card">
+        <div className="container mx-auto px-4 space-y-6 text-sm text-muted-foreground">
+          {/* 상단: 로고 + 링크 */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded gradient-primary flex items-center justify-center">
+                <MessageSquare className="w-3 h-3 text-primary-foreground" />
+              </div>
+              <span className="font-semibold text-foreground">응대도우미</span>
             </div>
-            <span className="font-semibold text-foreground">응대도우미</span>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Link to="/pricing" className="hover:text-foreground transition-colors">요금제</Link>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
+              <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
+              {user ? (
+                <button onClick={handleSignOut} className="hover:text-foreground transition-colors">로그아웃</button>
+              ) : (
+                <Link to="/auth" className="hover:text-foreground transition-colors">로그인</Link>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            <Link to="/pricing" className="hover:text-foreground transition-colors">요금제</Link>
-            <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
-            <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
-            {user ? (
-              <button onClick={handleSignOut} className="hover:text-foreground transition-colors">로그아웃</button>
-            ) : (
-              <Link to="/auth" className="hover:text-foreground transition-colors">로그인</Link>
-            )}
+
+          {/* 사업자 정보 (전자상거래법 제10조 / 정보통신망법) */}
+          <div className="border-t border-border pt-6 text-xs leading-relaxed space-y-1">
+            <p className="font-semibold text-foreground">응대도우미</p>
+            <p>
+              <span>대표자: 배지훈</span>
+              <span className="mx-2">|</span>
+              <span>사업자등록번호: 285-15-02485</span>
+              <span className="mx-2">|</span>
+              <a
+                href="https://teht.hometax.go.kr/websquare/websquare.html?w2xPath=/ui/ab/a/a/UTEABAAA13.xml"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                사업자정보 확인
+              </a>
+            </p>
+            <p>사업장 소재지: 부산광역시 사하구 승학로3번길 47, 101동 2105호 (하단동, 사하 삼정그린코아 더시티)</p>
+            <p>업태: 정보통신업 / 종목: 응용 소프트웨어 개발 및 공급업, 전자상거래 소매업</p>
+            <p>개업연월일: 2023년 12월 09일</p>
+            <p className="pt-2">© 2026 응대도우미. All rights reserved.</p>
           </div>
-          <span>© 2026 응대도우미. All rights reserved.</span>
         </div>
       </footer>
     </div>
