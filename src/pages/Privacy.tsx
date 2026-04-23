@@ -63,7 +63,9 @@ export default function Privacy() {
 
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">제7조 (개인정보 보호책임자)</h2>
-            <p>이메일: support@responser.lovable.app</p>
+            <p>성명: 배지훈</p>
+            <p>이메일: support@응대도우미.com</p>
+            <p>연락처: 010-5097-9549</p>
           </section>
 
           <p className="text-xs text-muted-foreground/60 mt-8">시행일자: 2026년 4월 6일</p>
