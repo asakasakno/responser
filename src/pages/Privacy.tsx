@@ -62,8 +62,11 @@ export default function Privacy() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">제7조 (개인정보 보호책임자)</h2>
-            <p>성명: 배지훈</p>
+            <h2 className="text-xl font-semibold text-foreground mb-3">제7조 (개인정보 보호책임자 및 사업자 정보)</h2>
+            <p>상호: 응대도우미 (대표자: 배지훈)</p>
+            <p>사업자등록번호: 285-15-02485</p>
+            <p>통신판매업 신고번호: 제 2026-부산사하-0255 호</p>
+            <p>개인정보 보호책임자: 배지훈</p>
             <p>이메일: support@응대도우미.com</p>
             <p>연락처: 010-5097-9549</p>
           </section>
