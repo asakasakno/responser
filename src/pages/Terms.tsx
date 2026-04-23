@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import SiteFooter from '@/components/SiteFooter';
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12 max-w-3xl">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="container mx-auto px-4 py-12 max-w-3xl flex-1">
         <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4 mr-1" />
           홈으로
@@ -79,6 +80,7 @@ export default function Terms() {
           <p className="text-xs text-muted-foreground/60 mt-8">시행일자: 2026년 4월 6일</p>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }

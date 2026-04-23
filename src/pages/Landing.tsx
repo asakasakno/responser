@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
+import SiteFooter from '@/components/SiteFooter';
 
 /* ── Demo data ── */
 const demoExamples = [
@@ -165,25 +166,30 @@ export default function Landing() {
               <Sparkles className="w-3.5 h-3.5" />
               스마트스토어 · 쿠팡 셀러를 위한 AI 답변 생성 도구
             </div>
-            <h1 className="text-3xl md:text-5xl font-extrabold leading-tight mb-5">
-              리뷰 · 문의 · 클레임 답변,
-              <br />
-              <span className="text-primary">AI로 빠르게 생성하세요</span>
+            <h1 className="text-3xl md:text-5xl font-extrabold leading-tight mb-5 break-keep">
+              판매자를 위한
+              <br className="md:hidden" />
+              <span className="text-primary"> AI 고객응대 자동화</span>
             </h1>
-            <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-              이미지 캡처 또는 텍스트 입력만으로
+            <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed break-keep">
+              응대도우미는 리뷰 답변·문의 응대·클레임 대응을
               <br className="hidden md:block" />
-              리뷰, 문의, 클레임 답변을 빠르게 작성할 수 있는 AI 응대 작성 도구
+              AI가 대신 작성해 응대 시간을 80%까지 줄여주는 SaaS 서비스입니다.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/auth?mode=signup">
-                <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 w-full sm:w-auto">
+              <Link to="/auth?mode=signup" className="w-full sm:w-auto">
+                <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 w-full sm:w-auto h-12">
                   무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
-              <a href="#demo">
-                <Button size="lg" variant="outline" className="text-base w-full sm:w-auto">
-                  데모 보기 <ChevronRight className="w-4 h-4 ml-1" />
+              <Link to="/pricing" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="text-base w-full sm:w-auto h-12">
+                  요금제 보기
+                </Button>
+              </Link>
+              <a href="#demo" className="w-full sm:w-auto">
+                <Button size="lg" variant="ghost" className="text-base w-full sm:w-auto h-12">
+                  데모 체험하기 <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </a>
             </div>
@@ -448,7 +454,9 @@ export default function Landing() {
       </section>
 
       {/* ========== FOOTER ========== */}
-      <footer className="border-t border-border py-10 bg-card">
+      <SiteFooter />
+      {/* legacy footer removed */}
+      <footer className="hidden">
         <div className="container mx-auto px-4 space-y-6 text-sm text-muted-foreground">
           {/* 상단: 로고 + 링크 */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
