@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Check, X, MessageSquare, Zap, Sparkles } from 'lucide-react';
+import { Check, X, MessageSquare, Zap, Sparkles, Lock, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLAN_LIMITS, type EnergyPack } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CouponInput, { type AppliedCoupon } from '@/components/CouponInput';
+import SiteFooter from '@/components/SiteFooter';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
