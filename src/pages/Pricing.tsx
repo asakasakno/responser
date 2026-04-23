@@ -365,6 +365,8 @@ export default function Pricing() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SiteFooter />
     </div>
   );
 }
