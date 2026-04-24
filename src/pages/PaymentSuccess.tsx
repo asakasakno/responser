@@ -230,13 +230,18 @@ export default function PaymentSuccess() {
               <AlertTriangle className="w-14 h-14 text-yellow-500 mx-auto" />
               <h1 className="text-xl font-bold text-foreground">구독 활성화 확인이 필요합니다</h1>
               <p className="text-sm text-muted-foreground break-keep">{message}</p>
-              <div className="flex gap-2 pt-2">
-                <Link to="/dashboard" className="flex-1">
-                  <Button variant="outline" className="w-full">대시보드</Button>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link to={retryHref}>
+                  <Button className="w-full gradient-primary text-primary-foreground">{retryPlan.toUpperCase()} 다시 결제하기</Button>
                 </Link>
-                <a href="mailto:support@응대도우미.com" className="flex-1">
-                  <Button className="w-full">문의하기</Button>
-                </a>
+                <div className="flex gap-2">
+                  <Link to="/dashboard" className="flex-1">
+                    <Button variant="outline" className="w-full">대시보드</Button>
+                  </Link>
+                  <a href="mailto:support@응대도우미.com" className="flex-1">
+                    <Button variant="outline" className="w-full">문의하기</Button>
+                  </a>
+                </div>
               </div>
             </>
           )}
