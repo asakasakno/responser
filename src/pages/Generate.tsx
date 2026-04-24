@@ -58,6 +58,14 @@ export default function Generate() {
     }
   }, [user]);
 
+  // 진입 시 최신 구독/에너지/프로필 한도 즉시 재조회 (PaymentSuccess 직후 한도 오류 방지)
+  useEffect(() => {
+    if (!user) return;
+    refreshSubscription?.();
+    refreshProfile?.();
+    refreshEnergy?.();
+  }, [user, refreshSubscription, refreshProfile, refreshEnergy]);
+
   // Clipboard paste support for images
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
