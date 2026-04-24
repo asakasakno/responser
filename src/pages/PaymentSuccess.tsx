@@ -1,18 +1,23 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Loader2, MessageSquare } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, MessageSquare, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import SiteFooter from '@/components/SiteFooter';
 
-type Status = 'loading' | 'success' | 'error';
+type Status = 'loading' | 'success' | 'error' | 'duplicate' | 'expired';
 
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState<string>('결제를 승인하는 중입니다...');
   const [details, setDetails] = useState<{ plan?: string; cycle?: string; expires_at?: string } | null>(null);
+  const [redirectIn, setRedirectIn] = useState<number>(3);
+  const redirectTargetRef = useRef<string | null>(null);
 
   const paymentKey = params.get('paymentKey');
   const orderId = params.get('orderId');
@@ -50,18 +55,71 @@ export default function PaymentSuccess() {
 
     supabase.functions
       .invoke(fnName, { body: payload })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         sessionStorage.removeItem(`toss_order_${orderId}`);
-        if (error || data?.error) {
-          setStatus('error');
-          setMessage(data?.error || error?.message || '결제 승인 중 오류가 발생했습니다.');
+
+        // 중복 결제 (409) 또는 명시적 duplicate 응답
+        const errMsg = (data?.error || error?.message || '') as string;
+        const isDuplicate =
+          (error as any)?.context?.status === 409 ||
+          /이미 처리된 결제/.test(errMsg);
+
+        if (isDuplicate) {
+          setStatus('duplicate');
+          setMessage('이미 처리된 결제입니다. 구독 상태를 확인해주세요.');
+          redirectTargetRef.current = '/dashboard';
           return;
         }
+
+        if (error || data?.error) {
+          setStatus('error');
+          setMessage(errMsg || '결제 승인 중 오류가 발생했습니다.');
+          return;
+        }
+
+        // 만료일이 이미 지난 비정상 케이스 방어
+        if (data?.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
+          setStatus('expired');
+          setMessage('구독이 활성화되지 않았습니다. 고객센터로 문의해주세요.');
+          return;
+        }
+
         setStatus('success');
         setMessage(isEnergy ? '에너지가 충전되었습니다.' : '구독이 활성화되었습니다.');
         setDetails({ plan: data?.plan, cycle: data?.cycle, expires_at: data?.expires_at });
+
+        // 프로필/플랜 캐시 갱신 후 라우팅 결정
+        try { await refreshProfile?.(); } catch { /* noop */ }
+
+        // 에너지팩은 generate, 구독은 plan에 따라 분기 (basic/pro → generate, free 잔존 시 dashboard)
+        const plan = (data?.plan || '').toLowerCase();
+        if (isEnergy) {
+          redirectTargetRef.current = '/generate';
+        } else if (plan === 'basic' || plan === 'pro') {
+          redirectTargetRef.current = '/generate';
+        } else {
+          redirectTargetRef.current = '/dashboard';
+        }
       });
-  }, [paymentKey, orderId, amount]);
+  }, [paymentKey, orderId, amount, refreshProfile]);
+
+  // 성공/중복 시 카운트다운 후 자동 라우팅
+  useEffect(() => {
+    if (status !== 'success' && status !== 'duplicate') return;
+    if (!redirectTargetRef.current) return;
+    setRedirectIn(3);
+    const tick = setInterval(() => {
+      setRedirectIn((n) => {
+        if (n <= 1) {
+          clearInterval(tick);
+          navigate(redirectTargetRef.current!, { replace: true });
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [status, navigate]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -98,13 +156,52 @@ export default function PaymentSuccess() {
                   )}
                 </div>
               )}
+              {redirectTargetRef.current && (
+                <p className="text-xs text-muted-foreground">
+                  {redirectIn}초 후 {redirectTargetRef.current === '/generate' ? '답변 생성' : '대시보드'} 페이지로 이동합니다…
+                </p>
+              )}
               <div className="flex gap-2 pt-2">
                 <Link to="/dashboard" className="flex-1">
-                  <Button className="w-full gradient-primary text-primary-foreground">대시보드</Button>
+                  <Button variant="outline" className="w-full">대시보드</Button>
                 </Link>
                 <Link to="/generate" className="flex-1">
-                  <Button variant="outline" className="w-full">바로 생성하기</Button>
+                  <Button className="w-full gradient-primary text-primary-foreground">바로 생성하기</Button>
                 </Link>
+              </div>
+            </>
+          )}
+          {status === 'duplicate' && (
+            <>
+              <AlertTriangle className="w-14 h-14 text-yellow-500 mx-auto" />
+              <h1 className="text-xl font-bold text-foreground">이미 처리된 결제입니다</h1>
+              <p className="text-sm text-muted-foreground break-keep">{message}</p>
+              <p className="text-xs text-muted-foreground">중복 청구는 발생하지 않으며, 현재 구독 상태는 대시보드에서 확인할 수 있습니다.</p>
+              {redirectTargetRef.current && (
+                <p className="text-xs text-muted-foreground">{redirectIn}초 후 대시보드로 이동합니다…</p>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Link to="/dashboard" className="flex-1">
+                  <Button className="w-full gradient-primary text-primary-foreground">대시보드로 이동</Button>
+                </Link>
+                <Link to="/pricing" className="flex-1">
+                  <Button variant="outline" className="w-full">요금제 보기</Button>
+                </Link>
+              </div>
+            </>
+          )}
+          {status === 'expired' && (
+            <>
+              <AlertTriangle className="w-14 h-14 text-yellow-500 mx-auto" />
+              <h1 className="text-xl font-bold text-foreground">구독 활성화 확인이 필요합니다</h1>
+              <p className="text-sm text-muted-foreground break-keep">{message}</p>
+              <div className="flex gap-2 pt-2">
+                <Link to="/dashboard" className="flex-1">
+                  <Button variant="outline" className="w-full">대시보드</Button>
+                </Link>
+                <a href="mailto:support@응대도우미.com" className="flex-1">
+                  <Button className="w-full">문의하기</Button>
+                </a>
               </div>
             </>
           )}
