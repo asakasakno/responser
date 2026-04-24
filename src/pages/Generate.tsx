@@ -28,7 +28,7 @@ interface Product {
 export default function Generate() {
   const [searchParams] = useSearchParams();
   const initType = (searchParams.get('type') as GenType) || 'review';
-  const { user, plan, energyBalance, maxEnergy, refreshEnergy } = useAuth();
+  const { user, plan, energyBalance, maxEnergy, refreshEnergy, refreshProfile, refreshSubscription } = useAuth();
   const { toast } = useToast();
 
   const [genType, setGenType] = useState<GenType>(initType);
