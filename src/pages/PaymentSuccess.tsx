@@ -1,18 +1,23 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Loader2, MessageSquare } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, MessageSquare, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import SiteFooter from '@/components/SiteFooter';
 
-type Status = 'loading' | 'success' | 'error';
+type Status = 'loading' | 'success' | 'error' | 'duplicate' | 'expired';
 
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const { refreshProfile } = useAuth() as any;
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState<string>('결제를 승인하는 중입니다...');
   const [details, setDetails] = useState<{ plan?: string; cycle?: string; expires_at?: string } | null>(null);
+  const [redirectIn, setRedirectIn] = useState<number>(3);
+  const redirectTargetRef = useRef<string | null>(null);
 
   const paymentKey = params.get('paymentKey');
   const orderId = params.get('orderId');
