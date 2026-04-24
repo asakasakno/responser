@@ -1,1 +1,4 @@
 project_id = "qbvlgzmivdycuocvcoxy"
+
+[functions.toss-config]
+verify_jwt = false
