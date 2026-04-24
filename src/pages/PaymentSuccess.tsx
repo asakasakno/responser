@@ -55,18 +55,71 @@ export default function PaymentSuccess() {
 
     supabase.functions
       .invoke(fnName, { body: payload })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         sessionStorage.removeItem(`toss_order_${orderId}`);
-        if (error || data?.error) {
-          setStatus('error');
-          setMessage(data?.error || error?.message || '결제 승인 중 오류가 발생했습니다.');
+
+        // 중복 결제 (409) 또는 명시적 duplicate 응답
+        const errMsg = (data?.error || error?.message || '') as string;
+        const isDuplicate =
+          (error as any)?.context?.status === 409 ||
+          /이미 처리된 결제/.test(errMsg);
+
+        if (isDuplicate) {
+          setStatus('duplicate');
+          setMessage('이미 처리된 결제입니다. 구독 상태를 확인해주세요.');
+          redirectTargetRef.current = '/dashboard';
           return;
         }
+
+        if (error || data?.error) {
+          setStatus('error');
+          setMessage(errMsg || '결제 승인 중 오류가 발생했습니다.');
+          return;
+        }
+
+        // 만료일이 이미 지난 비정상 케이스 방어
+        if (data?.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
+          setStatus('expired');
+          setMessage('구독이 활성화되지 않았습니다. 고객센터로 문의해주세요.');
+          return;
+        }
+
         setStatus('success');
         setMessage(isEnergy ? '에너지가 충전되었습니다.' : '구독이 활성화되었습니다.');
         setDetails({ plan: data?.plan, cycle: data?.cycle, expires_at: data?.expires_at });
+
+        // 프로필/플랜 캐시 갱신 후 라우팅 결정
+        try { await refreshProfile?.(); } catch { /* noop */ }
+
+        // 에너지팩은 generate, 구독은 plan에 따라 분기 (basic/pro → generate, free 잔존 시 dashboard)
+        const plan = (data?.plan || '').toLowerCase();
+        if (isEnergy) {
+          redirectTargetRef.current = '/generate';
+        } else if (plan === 'basic' || plan === 'pro') {
+          redirectTargetRef.current = '/generate';
+        } else {
+          redirectTargetRef.current = '/dashboard';
+        }
       });
-  }, [paymentKey, orderId, amount]);
+  }, [paymentKey, orderId, amount, refreshProfile]);
+
+  // 성공/중복 시 카운트다운 후 자동 라우팅
+  useEffect(() => {
+    if (status !== 'success' && status !== 'duplicate') return;
+    if (!redirectTargetRef.current) return;
+    setRedirectIn(3);
+    const tick = setInterval(() => {
+      setRedirectIn((n) => {
+        if (n <= 1) {
+          clearInterval(tick);
+          navigate(redirectTargetRef.current!, { replace: true });
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [status, navigate]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
