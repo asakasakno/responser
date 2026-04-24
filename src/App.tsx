@@ -31,6 +31,9 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Refund = lazy(() => import("./pages/Refund"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Rewards = lazy(() => import("./pages/Rewards"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const PaymentFail = lazy(() => import("./pages/PaymentFail"));
 
 const queryClient = new QueryClient();
 
@@ -78,6 +81,9 @@ const App = () => (
               <Route path="/terms" element={<Terms />} />
               <Route path="/refund" element={<Refund />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/payment/success" element={<PaymentSuccess />} />
+              <Route path="/payment/fail" element={<PaymentFail />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
