@@ -210,13 +210,18 @@ export default function PaymentSuccess() {
               {redirectTargetRef.current && (
                 <p className="text-xs text-muted-foreground">{redirectIn}초 후 대시보드로 이동합니다…</p>
               )}
-              <div className="flex gap-2 pt-2">
-                <Link to="/dashboard" className="flex-1">
-                  <Button className="w-full gradient-primary text-primary-foreground">대시보드로 이동</Button>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link to={retryHref}>
+                  <Button className="w-full gradient-primary text-primary-foreground">{retryPlan.toUpperCase()} 다시 결제하기</Button>
                 </Link>
-                <Link to="/pricing" className="flex-1">
-                  <Button variant="outline" className="w-full">요금제 보기</Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link to="/dashboard" className="flex-1">
+                    <Button variant="outline" className="w-full">대시보드</Button>
+                  </Link>
+                  <Link to="/pricing" className="flex-1">
+                    <Button variant="outline" className="w-full">요금제 보기</Button>
+                  </Link>
+                </div>
               </div>
             </>
           )}
