@@ -12,7 +12,7 @@ type Status = 'loading' | 'success' | 'error' | 'duplicate' | 'expired';
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth() as any;
+  const { refreshProfile } = useAuth();
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState<string>('결제를 승인하는 중입니다...');
   const [details, setDetails] = useState<{ plan?: string; cycle?: string; expires_at?: string } | null>(null);
