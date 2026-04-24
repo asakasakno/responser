@@ -3,6 +3,14 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 type PlanType = 'free' | 'basic' | 'pro';
+type SubStatus = 'active' | 'cancelled' | 'expired';
+
+export interface SubscriptionInfo {
+  plan: PlanType;
+  status: SubStatus;
+  billing_cycle: string;
+  expires_at: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -14,8 +22,10 @@ interface AuthContextType {
   maxEnergy: number;
   referralCode: string;
   companyName: string;
+  subscription: SubscriptionInfo | null;
   refreshEnergy: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshSubscription: () => Promise<SubscriptionInfo | null>;
   signOut: () => Promise<void>;
 }
 
@@ -29,8 +39,10 @@ const AuthContext = createContext<AuthContextType>({
   maxEnergy: 100,
   referralCode: '',
   companyName: '',
+  subscription: null,
   refreshEnergy: async () => {},
   refreshProfile: async () => {},
+  refreshSubscription: async () => null,
   signOut: async () => {},
 });
 
