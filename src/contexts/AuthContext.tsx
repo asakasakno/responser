@@ -3,6 +3,14 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 type PlanType = 'free' | 'basic' | 'pro';
+type SubStatus = 'active' | 'cancelled' | 'expired';
+
+export interface SubscriptionInfo {
+  plan: PlanType;
+  status: SubStatus;
+  billing_cycle: string;
+  expires_at: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -14,8 +22,10 @@ interface AuthContextType {
   maxEnergy: number;
   referralCode: string;
   companyName: string;
+  subscription: SubscriptionInfo | null;
   refreshEnergy: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshSubscription: () => Promise<SubscriptionInfo | null>;
   signOut: () => Promise<void>;
 }
 
@@ -29,8 +39,10 @@ const AuthContext = createContext<AuthContextType>({
   maxEnergy: 100,
   referralCode: '',
   companyName: '',
+  subscription: null,
   refreshEnergy: async () => {},
   refreshProfile: async () => {},
+  refreshSubscription: async () => null,
   signOut: async () => {},
 });
 
@@ -46,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [maxEnergy, setMaxEnergy] = useState(100);
   const [referralCode, setReferralCode] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
@@ -79,6 +92,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const fetchSubscriptionFor = useCallback(async (userId: string): Promise<SubscriptionInfo | null> => {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('plan, status, billing_cycle, expires_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) {
+      setSubscription(null);
+      return null;
+    }
+    const info: SubscriptionInfo = {
+      plan: data.plan as PlanType,
+      status: data.status as SubStatus,
+      billing_cycle: data.billing_cycle,
+      expires_at: data.expires_at,
+    };
+    setSubscription(info);
+    return info;
+  }, []);
+
+  const refreshSubscription = useCallback(async (): Promise<SubscriptionInfo | null> => {
+    if (!user) return null;
+    return fetchSubscriptionFor(user.id);
+  }, [user, fetchSubscriptionFor]);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -90,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           fetchPlan(session.user.id);
           fetchAdminRole(session.user.id);
           fetchProfile(session.user.id);
+          fetchSubscriptionFor(session.user.id);
         }, 0);
       } else {
         setPlan('free');
@@ -98,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMaxEnergy(100);
         setReferralCode('');
         setCompanyName('');
+        setSubscription(null);
       }
     });
 
@@ -109,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchPlan(session.user.id);
         fetchAdminRole(session.user.id);
         fetchProfile(session.user.id);
+        fetchSubscriptionFor(session.user.id);
       }
     });
 
@@ -141,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, plan, isAdmin, energyBalance, maxEnergy, referralCode, companyName, refreshEnergy, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, plan, isAdmin, energyBalance, maxEnergy, referralCode, companyName, subscription, refreshEnergy, refreshProfile, refreshSubscription, signOut }}>
       {children}
     </AuthContext.Provider>
   );

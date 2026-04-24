@@ -1,23 +1,62 @@
+import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLAN_LIMITS, ENERGY_COSTS } from '@/types';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Image, Package, ArrowRight, TrendingUp, Zap, Gift } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { MessageSquare, Image, Package, ArrowRight, TrendingUp, Zap, Gift, Crown, Calendar, RefreshCw } from 'lucide-react';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 
 export default function Dashboard() {
-  const { user, plan, energyBalance, maxEnergy } = useAuth();
+  const { user, plan, energyBalance, maxEnergy, subscription, refreshSubscription } = useAuth();
   const limits = PLAN_LIMITS[plan];
 
   const isLow = energyBalance <= Math.ceil(maxEnergy * 0.15);
 
+  // 진입 시 구독 최신화 (만료/갱신 상태 정확하게 표시)
+  useEffect(() => {
+    refreshSubscription?.();
+  }, [refreshSubscription]);
+
+  const expiresAt = subscription?.expires_at ? new Date(subscription.expires_at) : null;
+  const now = Date.now();
+  const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - now) / (1000 * 60 * 60 * 24)) : null;
+  const isPaidPlan = plan === 'basic' || plan === 'pro';
+  const isExpiringSoon = isPaidPlan && daysLeft !== null && daysLeft <= 7 && daysLeft >= 0;
+  const isExpired = isPaidPlan && daysLeft !== null && daysLeft < 0;
+  const cycleLabel = subscription?.billing_cycle === 'yearly' ? '연간' : '월간';
+  const renewHref = `/checkout?plan=${plan === 'free' ? 'basic' : plan}&cycle=${subscription?.billing_cycle === 'yearly' ? 'yearly' : 'monthly'}`;
+
   return (
     <Layout>
       <div className="p-6 md:p-8 max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-1">안녕하세요! 👋</h1>
-          <p className="text-muted-foreground">오늘도 고객 응대를 자동화하세요</p>
+        <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-1">안녕하세요! 👋</h1>
+            <p className="text-muted-foreground">오늘도 고객 응대를 자동화하세요</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={isPaidPlan ? 'default' : 'secondary'} className="gap-1">
+              {isPaidPlan && <Crown className="w-3 h-3" />}
+              {limits.name} {isPaidPlan && cycleLabel}
+            </Badge>
+            {expiresAt && isPaidPlan && (
+              <Badge variant={isExpired ? 'destructive' : isExpiringSoon ? 'outline' : 'secondary'} className="gap-1">
+                <Calendar className="w-3 h-3" />
+                {isExpired
+                  ? `${Math.abs(daysLeft!)}일 전 만료`
+                  : `${expiresAt.toLocaleDateString('ko-KR')} 만료 (D-${daysLeft})`}
+              </Badge>
+            )}
+            {(isExpiringSoon || isExpired) && (
+              <Link to={renewHref}>
+                <Button size="sm" className="gradient-primary text-primary-foreground">
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> 결제 갱신
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Energy Card */}

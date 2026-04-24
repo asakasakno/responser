@@ -28,7 +28,7 @@ interface Product {
 export default function Generate() {
   const [searchParams] = useSearchParams();
   const initType = (searchParams.get('type') as GenType) || 'review';
-  const { user, plan, energyBalance, maxEnergy, refreshEnergy } = useAuth();
+  const { user, plan, energyBalance, maxEnergy, refreshEnergy, refreshProfile, refreshSubscription } = useAuth();
   const { toast } = useToast();
 
   const [genType, setGenType] = useState<GenType>(initType);
@@ -57,6 +57,14 @@ export default function Generate() {
       });
     }
   }, [user]);
+
+  // 진입 시 최신 구독/에너지/프로필 한도 즉시 재조회 (PaymentSuccess 직후 한도 오류 방지)
+  useEffect(() => {
+    if (!user) return;
+    refreshSubscription?.();
+    refreshProfile?.();
+    refreshEnergy?.();
+  }, [user, refreshSubscription, refreshProfile, refreshEnergy]);
 
   // Clipboard paste support for images
   useEffect(() => {

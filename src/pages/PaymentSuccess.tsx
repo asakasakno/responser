@@ -12,12 +12,13 @@ type Status = 'loading' | 'success' | 'error' | 'duplicate' | 'expired';
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, refreshSubscription, user } = useAuth();
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState<string>('결제를 승인하는 중입니다...');
   const [details, setDetails] = useState<{ plan?: string; cycle?: string; expires_at?: string } | null>(null);
   const [redirectIn, setRedirectIn] = useState<number>(3);
   const redirectTargetRef = useRef<string | null>(null);
+  const lastPlanRef = useRef<string>('');
 
   const paymentKey = params.get('paymentKey');
   const orderId = params.get('orderId');
@@ -27,13 +28,13 @@ export default function PaymentSuccess() {
     if (!paymentKey || !orderId || !amount) {
       setStatus('error');
       setMessage('결제 정보가 누락되었습니다.');
+      console.warn('[PaymentSuccess] missing params', { paymentKey, orderId, amount });
       return;
     }
 
     const stored = sessionStorage.getItem(`toss_order_${orderId}`);
     const meta = stored ? JSON.parse(stored) : null;
 
-    // 에너지팩 구매 vs 구독 분기 (orderId prefix 기준)
     const isEnergy = orderId.startsWith('energy_');
     const fnName = isEnergy ? 'purchase-energy' : 'toss-confirm';
     const payload = isEnergy
@@ -58,50 +59,75 @@ export default function PaymentSuccess() {
       .then(async ({ data, error }) => {
         sessionStorage.removeItem(`toss_order_${orderId}`);
 
-        // 중복 결제 (409) 또는 명시적 duplicate 응답
         const errMsg = (data?.error || error?.message || '') as string;
         const isDuplicate =
           (error as any)?.context?.status === 409 ||
           /이미 처리된 결제/.test(errMsg);
 
         if (isDuplicate) {
+          // 서버 응답과 별개로 현재 구독 상태를 다시 확인
+          const sub = await refreshSubscription?.();
+          lastPlanRef.current = (sub?.plan || meta?.plan || '').toLowerCase();
           setStatus('duplicate');
           setMessage('이미 처리된 결제입니다. 구독 상태를 확인해주세요.');
           redirectTargetRef.current = '/dashboard';
+          console.info('[PaymentSuccess] status=duplicate', { orderId, plan: lastPlanRef.current, redirectTarget: redirectTargetRef.current });
           return;
         }
 
         if (error || data?.error) {
           setStatus('error');
           setMessage(errMsg || '결제 승인 중 오류가 발생했습니다.');
+          console.error('[PaymentSuccess] status=error', { orderId, error: errMsg });
           return;
         }
 
-        // 만료일이 이미 지난 비정상 케이스 방어
-        if (data?.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
-          setStatus('expired');
-          setMessage('구독이 활성화되지 않았습니다. 고객센터로 문의해주세요.');
-          return;
+        // 캐시/구독 갱신
+        try { await refreshProfile?.(); } catch { /* noop */ }
+        const sub = await refreshSubscription?.();
+
+        // 서버 응답과 DB(subscriptions) 교차 검증
+        const serverPlan = (data?.plan || '').toLowerCase();
+        const dbPlan = (sub?.plan || '').toLowerCase();
+        const dbStatus = sub?.status;
+        const dbExpiresAt = sub?.expires_at;
+        const expiresMs = dbExpiresAt ? new Date(dbExpiresAt).getTime() : (data?.expires_at ? new Date(data.expires_at).getTime() : null);
+
+        lastPlanRef.current = dbPlan || serverPlan;
+
+        // 만료 검증: 에너지팩이 아닌 구독 결제인데 만료일이 이미 지나거나 status가 active가 아니면 expired 처리
+        if (!isEnergy) {
+          const inactive = dbStatus && dbStatus !== 'active';
+          const alreadyExpired = expiresMs !== null && expiresMs <= Date.now();
+          if (inactive || alreadyExpired) {
+            setStatus('expired');
+            setMessage('구독이 활성화되지 않았습니다. 잠시 후 다시 시도하거나 고객센터로 문의해주세요.');
+            console.warn('[PaymentSuccess] status=expired', { orderId, dbStatus, dbExpiresAt, serverPlan, dbPlan });
+            return;
+          }
+          // 서버/DB 불일치 경고 (라우팅은 진행)
+          if (serverPlan && dbPlan && serverPlan !== dbPlan) {
+            console.warn('[PaymentSuccess] plan mismatch server vs db', { serverPlan, dbPlan });
+          }
         }
 
         setStatus('success');
         setMessage(isEnergy ? '에너지가 충전되었습니다.' : '구독이 활성화되었습니다.');
-        setDetails({ plan: data?.plan, cycle: data?.cycle, expires_at: data?.expires_at });
+        setDetails({
+          plan: dbPlan || serverPlan,
+          cycle: sub?.billing_cycle || data?.cycle,
+          expires_at: dbExpiresAt || data?.expires_at,
+        });
 
-        // 프로필/플랜 캐시 갱신 후 라우팅 결정
-        try { await refreshProfile?.(); } catch { /* noop */ }
-
-        // 에너지팩은 generate, 구독은 plan에 따라 분기 (basic/pro → generate, free 잔존 시 dashboard)
-        const plan = (data?.plan || '').toLowerCase();
-        if (isEnergy) {
-          redirectTargetRef.current = '/generate';
-        } else if (plan === 'basic' || plan === 'pro') {
+        const effectivePlan = dbPlan || serverPlan;
+        if (isEnergy || effectivePlan === 'basic' || effectivePlan === 'pro') {
           redirectTargetRef.current = '/generate';
         } else {
           redirectTargetRef.current = '/dashboard';
         }
+        console.info('[PaymentSuccess] status=success', { orderId, plan: effectivePlan, redirectTarget: redirectTargetRef.current });
       });
-  }, [paymentKey, orderId, amount, refreshProfile]);
+  }, [paymentKey, orderId, amount, refreshProfile, refreshSubscription]);
 
   // 성공/중복 시 카운트다운 후 자동 라우팅
   useEffect(() => {
@@ -120,6 +146,10 @@ export default function PaymentSuccess() {
     }, 1000);
     return () => clearInterval(tick);
   }, [status, navigate]);
+
+  // '다시 결제하기' 대상 플랜 결정
+  const retryPlan = (lastPlanRef.current && lastPlanRef.current !== 'free') ? lastPlanRef.current : 'basic';
+  const retryHref = `/checkout?plan=${retryPlan}&cycle=monthly`;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -180,13 +210,18 @@ export default function PaymentSuccess() {
               {redirectTargetRef.current && (
                 <p className="text-xs text-muted-foreground">{redirectIn}초 후 대시보드로 이동합니다…</p>
               )}
-              <div className="flex gap-2 pt-2">
-                <Link to="/dashboard" className="flex-1">
-                  <Button className="w-full gradient-primary text-primary-foreground">대시보드로 이동</Button>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link to={retryHref}>
+                  <Button className="w-full gradient-primary text-primary-foreground">{retryPlan.toUpperCase()} 다시 결제하기</Button>
                 </Link>
-                <Link to="/pricing" className="flex-1">
-                  <Button variant="outline" className="w-full">요금제 보기</Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link to="/dashboard" className="flex-1">
+                    <Button variant="outline" className="w-full">대시보드</Button>
+                  </Link>
+                  <Link to="/pricing" className="flex-1">
+                    <Button variant="outline" className="w-full">요금제 보기</Button>
+                  </Link>
+                </div>
               </div>
             </>
           )}
@@ -195,13 +230,18 @@ export default function PaymentSuccess() {
               <AlertTriangle className="w-14 h-14 text-yellow-500 mx-auto" />
               <h1 className="text-xl font-bold text-foreground">구독 활성화 확인이 필요합니다</h1>
               <p className="text-sm text-muted-foreground break-keep">{message}</p>
-              <div className="flex gap-2 pt-2">
-                <Link to="/dashboard" className="flex-1">
-                  <Button variant="outline" className="w-full">대시보드</Button>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link to={retryHref}>
+                  <Button className="w-full gradient-primary text-primary-foreground">{retryPlan.toUpperCase()} 다시 결제하기</Button>
                 </Link>
-                <a href="mailto:support@응대도우미.com" className="flex-1">
-                  <Button className="w-full">문의하기</Button>
-                </a>
+                <div className="flex gap-2">
+                  <Link to="/dashboard" className="flex-1">
+                    <Button variant="outline" className="w-full">대시보드</Button>
+                  </Link>
+                  <a href="mailto:support@응대도우미.com" className="flex-1">
+                    <Button variant="outline" className="w-full">문의하기</Button>
+                  </a>
+                </div>
               </div>
             </>
           )}
