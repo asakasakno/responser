@@ -156,13 +156,52 @@ export default function PaymentSuccess() {
                   )}
                 </div>
               )}
+              {redirectTargetRef.current && (
+                <p className="text-xs text-muted-foreground">
+                  {redirectIn}초 후 {redirectTargetRef.current === '/generate' ? '답변 생성' : '대시보드'} 페이지로 이동합니다…
+                </p>
+              )}
               <div className="flex gap-2 pt-2">
                 <Link to="/dashboard" className="flex-1">
-                  <Button className="w-full gradient-primary text-primary-foreground">대시보드</Button>
+                  <Button variant="outline" className="w-full">대시보드</Button>
                 </Link>
                 <Link to="/generate" className="flex-1">
-                  <Button variant="outline" className="w-full">바로 생성하기</Button>
+                  <Button className="w-full gradient-primary text-primary-foreground">바로 생성하기</Button>
                 </Link>
+              </div>
+            </>
+          )}
+          {status === 'duplicate' && (
+            <>
+              <AlertTriangle className="w-14 h-14 text-yellow-500 mx-auto" />
+              <h1 className="text-xl font-bold text-foreground">이미 처리된 결제입니다</h1>
+              <p className="text-sm text-muted-foreground break-keep">{message}</p>
+              <p className="text-xs text-muted-foreground">중복 청구는 발생하지 않으며, 현재 구독 상태는 대시보드에서 확인할 수 있습니다.</p>
+              {redirectTargetRef.current && (
+                <p className="text-xs text-muted-foreground">{redirectIn}초 후 대시보드로 이동합니다…</p>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Link to="/dashboard" className="flex-1">
+                  <Button className="w-full gradient-primary text-primary-foreground">대시보드로 이동</Button>
+                </Link>
+                <Link to="/pricing" className="flex-1">
+                  <Button variant="outline" className="w-full">요금제 보기</Button>
+                </Link>
+              </div>
+            </>
+          )}
+          {status === 'expired' && (
+            <>
+              <AlertTriangle className="w-14 h-14 text-yellow-500 mx-auto" />
+              <h1 className="text-xl font-bold text-foreground">구독 활성화 확인이 필요합니다</h1>
+              <p className="text-sm text-muted-foreground break-keep">{message}</p>
+              <div className="flex gap-2 pt-2">
+                <Link to="/dashboard" className="flex-1">
+                  <Button variant="outline" className="w-full">대시보드</Button>
+                </Link>
+                <a href="mailto:support@응대도우미.com" className="flex-1">
+                  <Button className="w-full">문의하기</Button>
+                </a>
               </div>
             </>
           )}
