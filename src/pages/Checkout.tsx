@@ -15,7 +15,7 @@ const formatKRW = (n: number) => `₩${n.toLocaleString('ko-KR')}`;
 
 export default function Checkout() {
   const [params] = useSearchParams();
-  const { user, profile } = useAuth();
+  const { user, companyName } = useAuth();
   const { toast } = useToast();
 
   const plan = params.get('plan') as PlanType | null;
@@ -66,8 +66,8 @@ export default function Checkout() {
         orderName: `응대도우미 ${planLabel} 구독`,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
-        customerEmail: profile?.email || user.email || undefined,
-        customerName: profile?.name || undefined,
+        customerEmail: user.email || undefined,
+        customerName: companyName || undefined,
         card: {
           useEscrow: false,
           flowMode: 'DEFAULT',
