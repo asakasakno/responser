@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { loadTossPayments, ANONYMOUS } from '@tosspayments/tosspayments-sdk';
 import { Button } from '@/components/ui/button';
 import { Check, X, MessageSquare, Zap, Sparkles, Lock, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,10 +69,15 @@ export default function Pricing() {
   const { toast } = useToast();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [packs, setPacks] = useState<EnergyPack[]>([]);
+  const [clientKey, setClientKey] = useState<string>('');
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     supabase.from('energy_packs').select('id, energy, price').eq('active', true).order('sort_order').then(({ data }) => {
       if (data) setPacks(data as EnergyPack[]);
+    });
+    supabase.functions.invoke('toss-config').then(({ data }) => {
+      if (data?.clientKey) setClientKey(data.clientKey);
     });
   }, []);
 
@@ -88,6 +94,38 @@ export default function Pricing() {
   };
 
   const finalAmount = checkoutPack ? (coupon?.final_amount ?? checkoutPack.price) : 0;
+
+  const handlePayPack = async () => {
+    if (!checkoutPack || !user || !clientKey) {
+      toast({ title: '결제 시스템 준비 중입니다.', variant: 'destructive' });
+      return;
+    }
+    setPaying(true);
+    try {
+      const tossPayments = await loadTossPayments(clientKey);
+      const payment = tossPayments.payment({ customerKey: user.id || ANONYMOUS });
+      const orderId = `energy_${checkoutPack.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      sessionStorage.setItem(
+        `toss_order_${orderId}`,
+        JSON.stringify({ pack_id: checkoutPack.id, amount: finalAmount, coupon_code: coupon?.coupon_code ?? null }),
+      );
+
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: finalAmount },
+        orderId,
+        orderName: `응대도우미 에너지 ${checkoutPack.energy}개`,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+        customerEmail: user.email || undefined,
+      });
+    } catch (e: any) {
+      setPaying(false);
+      if (e?.code === 'USER_CANCEL') return;
+      toast({ title: '결제 요청 실패', description: e?.message ?? String(e), variant: 'destructive' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -350,17 +388,9 @@ export default function Pricing() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCheckoutPack(null)}>취소</Button>
-            <Button
-              onClick={() => {
-                toast({
-                  title: '결제창 준비 중',
-                  description: `Toss 결제는 곧 연결됩니다. 최종 금액: ${formatKRW(finalAmount)}${coupon ? ` (쿠폰 ${coupon.coupon_code} 적용)` : ''}`,
-                });
-                setCheckoutPack(null);
-              }}
-            >
-              결제하기
+            <Button variant="outline" onClick={() => setCheckoutPack(null)} disabled={paying}>취소</Button>
+            <Button onClick={handlePayPack} disabled={paying || !clientKey}>
+              {paying ? '결제창 여는 중...' : `${formatKRW(finalAmount)} 결제하기`}
             </Button>
           </DialogFooter>
         </DialogContent>
