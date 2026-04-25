@@ -62,8 +62,9 @@ export default function Privacy() {
             <ul className="list-disc pl-6 space-y-1">
               <li><strong>토스페이먼츠 주식회사:</strong> 결제 처리 및 정기결제 관리</li>
               <li><strong>Supabase Inc.:</strong> 데이터베이스 및 인증 인프라 운영</li>
-              <li><strong>Google LLC (Gemini API):</strong> AI 답변 생성 처리 (전송된 데이터는 모델 학습에 사용되지 않음)</li>
+              <li><strong>Google LLC (Gemini API):</strong> AI 답변 생성을 위한 입력 텍스트 및 이미지 처리 (전송된 데이터는 모델 학습에 사용되지 않음)</li>
             </ul>
+            <p className="mt-2">입력된 리뷰, 문의, 클레임 내용은 AI 답변 생성 목적에 한해 처리됩니다.</p>
           </section>
 
           <section>
