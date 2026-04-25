@@ -14,7 +14,6 @@ import {
   Copy,
   Clock,
   Users,
-  Star,
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
@@ -412,6 +411,9 @@ export default function Landing() {
               </div>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground text-center mt-6 max-w-2xl mx-auto leading-relaxed">
+            답변 1개 생성 시 응답에너지 1개가 차감됩니다. 이미지 일괄 처리 시 생성된 답변 개수만큼 차감됩니다.
+          </p>
         </div>
       </section>
 
