@@ -19,7 +19,7 @@ export default function Checkout() {
   const { toast } = useToast();
 
   const plan = params.get('plan') as PlanType | null;
-  const cycle = (params.get('cycle') as 'monthly' | 'yearly') || 'monthly';
+  const cycle: string = (params.get('cycle') as 'monthly' | 'yearly') || 'monthly';
 
   const [clientKey, setClientKey] = useState<string>('');
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
@@ -34,6 +34,10 @@ export default function Checkout() {
   if (!user) return <Navigate to={`/auth?redirect=/checkout?plan=${plan}%26cycle=${cycle}`} replace />;
   if (!plan || (plan !== 'basic' && plan !== 'pro')) {
     return <Navigate to="/pricing" replace />;
+  }
+  // 연간 결제는 토스 심사 완료 전까지 비활성화 → 월간으로 리다이렉트
+  if (cycle === 'yearly') {
+    return <Navigate to={`/checkout?plan=${plan}&cycle=monthly`} replace />;
   }
 
   const limits = PLAN_LIMITS[plan];

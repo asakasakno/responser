@@ -14,7 +14,6 @@ import {
   Copy,
   Clock,
   Users,
-  Star,
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
@@ -49,7 +48,7 @@ const comparisonRows = [
   { label: '리뷰 확인', old: '직접 읽기', now: '이미지 업로드' },
   { label: '답변 작성', old: '직접 타이핑', now: 'AI 초안 생성' },
   { label: '여러 건 처리', old: '하나씩 반복 복붙', now: '한 번에 일괄 생성' },
-  { label: '응대 시간', old: '건당 3~5분', now: '건당 10초' },
+  { label: '응대 시간', old: '건당 3~5분', now: '빠른 초안 생성' },
 ];
 
 const plans = [
@@ -58,7 +57,13 @@ const plans = [
     price: '₩0',
     period: '영구 무료',
     desc: '가볍게 체험해보세요',
-    features: ['일일 5회 생성', '텍스트 입력', '이미지 업로드 (5개까지)', '상품 3개 등록', '생성 기록 저장'],
+    features: [
+      '월 20 응답에너지',
+      '텍스트 입력',
+      '이미지 업로드 5개까지',
+      '상품 3개 등록',
+      '생성 기록 저장',
+    ],
     cta: '무료로 시작하기',
     style: 'border-border',
   },
@@ -68,7 +73,15 @@ const plans = [
     period: '/ 월',
     desc: '소규모 셀러를 위한 플랜',
     popular: true,
-    features: ['일일 50회 생성', '이미지 업로드 (10개까지)', '상품 무제한 등록', '생성 기록 저장'],
+    features: [
+      '월 200 응답에너지',
+      '이미지 업로드 10개까지',
+      '상품 무제한 등록',
+      '생성 기록 저장',
+      '크롬 확장프로그램 사용 가능',
+      '응답 스타일 선택 가능',
+      '에너지 추가 구매 가능',
+    ],
     cta: '시작하기',
     style: 'border-primary shadow-primary-glow',
   },
@@ -77,30 +90,17 @@ const plans = [
     price: '₩29,900',
     period: '/ 월',
     desc: '대량 처리가 필요한 파워 셀러',
-    features: ['일일 무제한 생성', '이미지 업로드 (30개까지)', '다중 이미지 동시 업로드', '상품 무제한 등록', '대량 일괄 처리'],
+    features: [
+      '월 1,000 응답에너지',
+      '이미지 업로드 30개까지',
+      '다중 이미지 동시 업로드',
+      '상품 무제한 등록',
+      '대량 처리용',
+      '크롬 확장프로그램 사용 가능',
+      '에너지 추가 구매 가능',
+    ],
     cta: '시작하기',
     style: 'border-border',
-  },
-];
-
-const testimonials = [
-  {
-    name: '김*영',
-    role: '스마트스토어 셀러',
-    text: '리뷰 답변 쓰는 데 매일 1시간씩 걸렸는데, 이제 10분이면 끝나요.',
-    stars: 5,
-  },
-  {
-    name: '이*준',
-    role: '쿠팡 판매자',
-    text: '클레임 답변이 제일 스트레스였는데 초안이 바로 나오니까 부담이 확 줄었습니다.',
-    stars: 5,
-  },
-  {
-    name: '박*희',
-    role: '자영업자',
-    text: '이미지 캡처로 한 번에 처리하는 기능이 정말 편해요. 강추합니다.',
-    stars: 5,
   },
 ];
 
@@ -172,9 +172,9 @@ export default function Landing() {
               <span className="text-primary"> AI 고객응대 자동화</span>
             </h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed break-keep">
-              응대도우미는 리뷰 답변·문의 응대·클레임 대응을
+              반복적인 리뷰 답변과 고객 문의 응대 시간을
               <br className="hidden md:block" />
-              AI가 대신 작성해 응대 시간을 80%까지 줄여주는 SaaS 서비스입니다.
+              줄여주는 AI 고객응대 SaaS입니다.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/auth?mode=signup" className="w-full sm:w-auto">
@@ -355,35 +355,13 @@ export default function Landing() {
           {/* 기대 효과 */}
           <div className="mt-12 max-w-2xl mx-auto grid sm:grid-cols-3 gap-5 text-center">
             {[
-              { val: '최대 80%', label: '응대 시간 절감' },
+              { val: '응대 시간 단축', label: '반복 답변 작성 시간 감소' },
               { val: '↓ 스트레스', label: '답변 작성 부담 감소' },
-              { val: '↑ 속도', label: '응대 속도 향상' },
+              { val: '↑ 속도', label: '초안 생성 속도 향상' },
             ].map((e, i) => (
               <div key={i} className="bg-secondary/60 rounded-xl p-5">
-                <p className="text-2xl font-extrabold text-primary mb-1">{e.val}</p>
+                <p className="text-lg font-extrabold text-primary mb-1">{e.val}</p>
                 <p className="text-sm text-muted-foreground">{e.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== 후기 ========== */}
-      <section className="py-16 bg-secondary/50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">사용자 후기</h2>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {testimonials.map((t, i) => (
-              <div key={i} className="bg-card rounded-xl border border-border p-6 shadow-card">
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: t.stars }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <div className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{t.name}</span> · {t.role}
-                </div>
               </div>
             ))}
           </div>
@@ -433,6 +411,9 @@ export default function Landing() {
               </div>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground text-center mt-6 max-w-2xl mx-auto leading-relaxed">
+            답변 1개 생성 시 응답에너지 1개가 차감됩니다. 이미지 일괄 처리 시 생성된 답변 개수만큼 차감됩니다.
+          </p>
         </div>
       </section>
 
