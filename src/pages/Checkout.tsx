@@ -35,6 +35,10 @@ export default function Checkout() {
   if (!plan || (plan !== 'basic' && plan !== 'pro')) {
     return <Navigate to="/pricing" replace />;
   }
+  // 연간 결제는 토스 심사 완료 전까지 비활성화 → 월간으로 리다이렉트
+  if (cycle === 'yearly') {
+    return <Navigate to={`/checkout?plan=${plan}&cycle=monthly`} replace />;
+  }
 
   const limits = PLAN_LIMITS[plan];
   const basePrice = cycle === 'yearly' ? limits.yearlyPrice : limits.price;
