@@ -19,7 +19,7 @@ export default function Checkout() {
   const { toast } = useToast();
 
   const plan = params.get('plan') as PlanType | null;
-  const cycle = (params.get('cycle') as 'monthly' | 'yearly') || 'monthly';
+  const cycle: string = (params.get('cycle') as 'monthly' | 'yearly') || 'monthly';
 
   const [clientKey, setClientKey] = useState<string>('');
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
