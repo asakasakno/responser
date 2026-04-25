@@ -154,7 +154,7 @@ export default function Pricing() {
         </div>
 
         {/* 월/연 토글 */}
-        <div className="flex justify-center mb-10">
+        <div className="flex flex-col items-center gap-2 mb-10">
           <div className="inline-flex items-center bg-secondary rounded-full p-1 border border-border">
             <button
               onClick={() => setCycle('monthly')}
@@ -171,9 +171,14 @@ export default function Pricing() {
               }`}
             >
               연간
-              <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-bold">약 2개월 무료</span>
+              <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-bold">준비 중</span>
             </button>
           </div>
+          {cycle === 'yearly' && (
+            <p className="text-xs text-muted-foreground">
+              연간 결제는 결제 심사 완료 후 제공 예정입니다. 현재는 월간 결제만 이용 가능합니다.
+            </p>
+          )}
         </div>
 
         {/* 플랜 카드 */}
