@@ -185,10 +185,65 @@ export default function Pricing() {
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map(plan => {
             const limits = PLAN_LIMITS[plan.key];
-            const isCurrent = user && currentPlan === plan.key;
+            const isCurrent = !!user && currentPlan === plan.key;
             const price = plan.key === 'free' ? 0 : (cycle === 'yearly' ? limits.yearlyPrice : limits.price);
             const period = plan.key === 'free' ? '영구 무료' : (cycle === 'yearly' ? '/ 년' : '/ 월');
             const monthlyEquivalent = cycle === 'yearly' && plan.key !== 'free' ? Math.round(limits.yearlyPrice / 12) : null;
+
+            // 버튼 상태 결정
+            const planRank = { free: 0, basic: 1, pro: 2 } as const;
+            const isYearlyDisabled = cycle === 'yearly' && plan.key !== 'free';
+            let buttonNode: JSX.Element;
+
+            if (!user) {
+              if (plan.key === 'free') {
+                buttonNode = (
+                  <Link to="/auth?mode=signup" className="w-full">
+                    <Button variant="outline" className="w-full">무료로 시작</Button>
+                  </Link>
+                );
+              } else if (isYearlyDisabled) {
+                buttonNode = (
+                  <Button variant="outline" className="w-full" disabled>승인 후 제공 예정</Button>
+                );
+              } else {
+                buttonNode = (
+                  <Link to="/auth?mode=signup" className="w-full">
+                    <Button className={`w-full ${plan.popular ? 'gradient-primary text-primary-foreground' : ''}`}>
+                      가입 후 결제
+                    </Button>
+                  </Link>
+                );
+              }
+            } else if (isCurrent) {
+              buttonNode = (
+                <Button variant="outline" className="w-full" disabled>현재 플랜</Button>
+              );
+            } else if (plan.key === 'free') {
+              // 유료 사용자는 Free로 변경 불가 (구독 해지 안내)
+              buttonNode = (
+                <Button variant="outline" className="w-full" disabled title="구독 해지는 내 정보에서 가능합니다">
+                  변경 불가 (해지는 내 정보)
+                </Button>
+              );
+            } else if (planRank[currentPlan] > planRank[plan.key]) {
+              // 다운그레이드 (Pro -> Basic 등) 비활성
+              buttonNode = (
+                <Button variant="outline" className="w-full" disabled>변경 문의</Button>
+              );
+            } else if (isYearlyDisabled) {
+              buttonNode = (
+                <Button variant="outline" className="w-full" disabled>승인 후 제공 예정</Button>
+              );
+            } else {
+              buttonNode = (
+                <Link to={`/checkout?plan=${plan.key}&cycle=${cycle}`} className="w-full">
+                  <Button className={`w-full ${plan.popular ? 'gradient-primary text-primary-foreground' : ''}`}>
+                    업그레이드
+                  </Button>
+                </Link>
+              );
+            }
 
             return (
               <div
@@ -233,23 +288,16 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                {isCurrent ? (
-                  <Button variant="outline" className="w-full" disabled>현재 플랜</Button>
-                ) : plan.key === 'free' ? (
-                  <Link to="/auth?mode=signup" className="w-full">
-                    <Button variant="outline" className="w-full">무료로 시작</Button>
-                  </Link>
-                ) : (
-                  <Link to={user ? `/checkout?plan=${plan.key}&cycle=${cycle}` : '/auth?mode=signup'} className="w-full">
-                    <Button className={`w-full ${plan.popular ? 'gradient-primary text-primary-foreground' : ''}`}>
-                      {user ? '업그레이드' : '시작하기'}
-                    </Button>
-                  </Link>
-                )}
+                {buttonNode}
               </div>
             );
           })}
         </div>
+
+        {/* 에너지 차감 안내 */}
+        <p className="text-xs text-muted-foreground text-center mt-6 max-w-2xl mx-auto leading-relaxed">
+          답변 1개 생성 시 응답에너지 1개가 차감됩니다. 이미지 일괄 처리 시 생성된 답변 개수만큼 차감됩니다.
+        </p>
 
         {/* 에너지 추가 구매 */}
         <div className="mt-20 max-w-5xl mx-auto">
