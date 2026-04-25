@@ -112,6 +112,9 @@ Deno.serve(async (req) => {
         if (!user_id || !plan) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
         if (!["free", "basic", "pro"].includes(plan)) return jsonResponse({ error: "잘못된 요청입니다." }, 400);
 
+        const PLAN_MAX: Record<string, number> = { free: 100, basic: 500, pro: 2000 };
+        const newMax = PLAN_MAX[plan];
+
         const { error } = await adminClient
           .from("subscriptions")
           .update({ plan, updated_at: new Date().toISOString() })
@@ -119,6 +122,13 @@ Deno.serve(async (req) => {
           .eq("status", "active");
 
         if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
+
+        // 플랜별 최대 보유량 동기화
+        await adminClient
+          .from("profiles")
+          .update({ max_energy: newMax, updated_at: new Date().toISOString() })
+          .eq("user_id", user_id);
+
         return jsonResponse({ success: true });
       }
 
