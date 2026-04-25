@@ -352,7 +352,7 @@ export default function Pricing() {
                   ['답변 스타일 선택 (감사/사과/간단/원칙)', false, true, true],
                   ['크롬 확장프로그램 사용', false, true, true],
                   ['상품 등록', '3개', '무제한', '무제한'],
-                  ['연간 결제 (약 2개월 무료)', false, true, true],
+                  ['연간 결제', '준비 중', '준비 중', '준비 중'],
                   ['에너지 추가 구매', false, true, true],
                   ['미션 보너스 에너지', true, true, true],
                   ['주변 사장님 추천 보상', true, true, true],
