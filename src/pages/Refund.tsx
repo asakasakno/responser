@@ -47,7 +47,7 @@ export default function Refund() {
             <ol className="list-decimal pl-6 space-y-1">
               <li><strong>해지 방법:</strong> "내 정보 → 구독 관리"에서 [구독 해지] 버튼 클릭, 또는 support@응대도우미.com / 010-5097-9549 로 요청</li>
               <li><strong>해지 시점:</strong> 해지 신청 즉시 다음 결제일부터 자동 결제가 중단됩니다.</li>
-              <li><strong>해지 후 이용:</strong> 이미 결제된 기간(잔여 기간)에는 정상적으로 서비스를 이용할 수 있으며, 기간 만료 후 자동으로 무료 플랜으로 전환됩니다.</li>
+              <li><strong>해지 후 이용:</strong> <strong>구독 해지 후에도 이미 결제된 이용기간 종료일까지 서비스 이용이 가능합니다.</strong> 기간 만료 후 자동으로 무료 플랜으로 전환됩니다.</li>
               <li><strong>즉시 환불을 원하는 경우:</strong> 제2조 환불 가능 사유에 해당하는지 확인 후 처리됩니다.</li>
             </ol>
           </section>
