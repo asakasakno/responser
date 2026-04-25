@@ -173,9 +173,9 @@ export default function Landing() {
               <span className="text-primary"> AI 고객응대 자동화</span>
             </h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed break-keep">
-              응대도우미는 리뷰 답변·문의 응대·클레임 대응을
+              반복적인 리뷰 답변과 고객 문의 응대 시간을
               <br className="hidden md:block" />
-              AI가 대신 작성해 응대 시간을 80%까지 줄여주는 SaaS 서비스입니다.
+              줄여주는 AI 고객응대 SaaS입니다.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/auth?mode=signup" className="w-full sm:w-auto">
@@ -356,35 +356,13 @@ export default function Landing() {
           {/* 기대 효과 */}
           <div className="mt-12 max-w-2xl mx-auto grid sm:grid-cols-3 gap-5 text-center">
             {[
-              { val: '최대 80%', label: '응대 시간 절감' },
+              { val: '응대 시간 단축', label: '반복 답변 작성 시간 감소' },
               { val: '↓ 스트레스', label: '답변 작성 부담 감소' },
-              { val: '↑ 속도', label: '응대 속도 향상' },
+              { val: '↑ 속도', label: '초안 생성 속도 향상' },
             ].map((e, i) => (
               <div key={i} className="bg-secondary/60 rounded-xl p-5">
-                <p className="text-2xl font-extrabold text-primary mb-1">{e.val}</p>
+                <p className="text-lg font-extrabold text-primary mb-1">{e.val}</p>
                 <p className="text-sm text-muted-foreground">{e.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== 후기 ========== */}
-      <section className="py-16 bg-secondary/50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">사용자 후기</h2>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {testimonials.map((t, i) => (
-              <div key={i} className="bg-card rounded-xl border border-border p-6 shadow-card">
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: t.stars }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <div className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{t.name}</span> · {t.role}
-                </div>
               </div>
             ))}
           </div>
