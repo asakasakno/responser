@@ -280,6 +280,11 @@ export default function SettingsPage() {
               <Button size="sm" className="gradient-primary text-primary-foreground">업그레이드</Button>
             </Link>
           )}
+          {plan !== 'free' && (
+            <div className="mt-4 p-3 rounded-lg bg-secondary/60 border border-border text-xs text-muted-foreground leading-relaxed">
+              구독을 해지해도 이미 결제된 이용기간 종료일까지 서비스 이용이 가능합니다. 다음 결제일부터 자동결제가 중단됩니다.
+            </div>
+          )}
         </div>
 
         {/* Delete Account */}
