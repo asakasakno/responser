@@ -7,6 +7,7 @@ import { ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Image, Loader2, ArrowUp, AlertTriangle, Zap } from 'lucide-react';
@@ -15,6 +16,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
+import { ALL_PLATFORMS, getPlatformLabel } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
@@ -36,6 +38,9 @@ export default function Generate() {
   const [selectedProduct, setSelectedProduct] = useState<string>('none');
   const [selectedStyle, setSelectedStyle] = useState<ResponseStyle | 'none'>('none');
   const [products, setProducts] = useState<Product[]>([]);
+  const [userPlatforms, setUserPlatforms] = useState<string[]>([]);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('auto');
+  const [customPlatform, setCustomPlatform] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   
@@ -54,6 +59,11 @@ export default function Generate() {
     if (user) {
       supabase.from('products').select('id, name, category, note').eq('user_id', user.id).then(({ data }) => {
         if (data) setProducts(data);
+      });
+      supabase.from('profiles').select('platforms').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+        const list = (data?.platforms as string[]) || [];
+        setUserPlatforms(list);
+        if (list.length > 0) setSelectedPlatform(list[0]);
       });
     }
   }, [user]);
@@ -108,6 +118,15 @@ export default function Generate() {
 
   const getStylePayload = () => (plan !== 'free' && selectedStyle !== 'none' ? selectedStyle : undefined);
 
+  const getPlatformPayload = () => {
+    if (selectedPlatform === 'auto' || !selectedPlatform) return undefined;
+    if (selectedPlatform === 'other') {
+      const c = customPlatform.trim();
+      return c ? { id: 'other', label: c } : undefined;
+    }
+    return { id: selectedPlatform, label: getPlatformLabel(selectedPlatform) };
+  };
+
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     if (isLimitReached) {
@@ -118,7 +137,7 @@ export default function Generate() {
     setResult('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload() },
+        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
       });
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
@@ -181,7 +200,7 @@ export default function Generate() {
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
         const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload() },
+          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
         });
         if (genError) throw genError;
         const output = data?.response || data?.error || '생성 실패';
@@ -293,6 +312,34 @@ export default function Generate() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+
+        <div className="mb-4">
+          <label className="text-sm font-medium text-foreground mb-1.5 block">판매 플랫폼</label>
+          <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+            <SelectTrigger>
+              <SelectValue placeholder="플랫폼을 선택하세요" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">기본(플랫폼 미지정)</SelectItem>
+              {userPlatforms.length > 0 && userPlatforms.map(pid => (
+                <SelectItem key={pid} value={pid}>{getPlatformLabel(pid)}</SelectItem>
+              ))}
+              {ALL_PLATFORMS.filter(p => !userPlatforms.includes(p.id)).map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedPlatform === 'other' && (
+            <Input
+              value={customPlatform}
+              onChange={e => setCustomPlatform(e.target.value)}
+              placeholder="플랫폼명 직접 입력"
+              className="mt-2"
+              maxLength={30}
+            />
+          )}
+          <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 답변을 생성합니다.</p>
+        </div>
 
         {products.length > 0 && (
           <div className="mb-4">

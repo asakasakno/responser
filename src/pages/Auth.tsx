@@ -11,21 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import ForgotPassword from '@/components/auth/ForgotPassword';
 import { lovable } from '@/integrations/lovable';
-
-const PLATFORMS = [
-  { id: 'naver', label: '네이버 스마트스토어' },
-  { id: 'coupang', label: '쿠팡' },
-  { id: '11st', label: '11번가' },
-  { id: 'gmarket', label: 'G마켓/옥션' },
-  { id: 'tmon', label: '티몬' },
-  { id: 'interpark', label: '인터파크' },
-  { id: 'ohouse', label: '오늘의집' },
-  { id: 'musinsa', label: '무신사' },
-  { id: 'coupangeats', label: '쿠팡이츠' },
-  { id: 'baemin', label: '배달의민족' },
-  { id: 'yogiyo', label: '요기요' },
-  { id: 'other', label: '기타' },
-];
+import { PLATFORM_GROUPS } from '@/lib/platforms';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -240,22 +226,29 @@ export default function Auth() {
               <div>
                 <Label className="mb-3 block">판매 플랫폼 <span className="text-destructive">*</span></Label>
                 <p className="text-xs text-muted-foreground mb-3">사용 중인 플랫폼을 모두 선택해주세요</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {PLATFORMS.map(platform => (
-                    <label
-                      key={platform.id}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                        selectedPlatforms.includes(platform.id)
-                          ? 'border-primary bg-primary/5 text-foreground'
-                          : 'border-border text-muted-foreground hover:border-primary/50'
-                      }`}
-                    >
-                      <Checkbox
-                        checked={selectedPlatforms.includes(platform.id)}
-                        onCheckedChange={() => togglePlatform(platform.id)}
-                      />
-                      {platform.label}
-                    </label>
+                <div className="space-y-4">
+                  {PLATFORM_GROUPS.map(group => (
+                    <div key={group.id}>
+                      <div className="text-xs font-semibold text-muted-foreground mb-2">[{group.label}]</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.items.map(platform => (
+                          <label
+                            key={platform.id}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                              selectedPlatforms.includes(platform.id)
+                                ? 'border-primary bg-primary/5 text-foreground'
+                                : 'border-border text-muted-foreground hover:border-primary/50'
+                            }`}
+                          >
+                            <Checkbox
+                              checked={selectedPlatforms.includes(platform.id)}
+                              onCheckedChange={() => togglePlatform(platform.id)}
+                            />
+                            {platform.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
