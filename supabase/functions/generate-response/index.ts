@@ -236,7 +236,7 @@ serve(async (req) => {
     }
 
     // Parse body
-    const { type, text, product, energy_cost, style } = await req.json();
+    const { type, text, product, energy_cost, style, platform } = await req.json();
 
     if (!type || !text) {
       return jsonRes({ error: "필수 항목이 누락되었습니다." }, 400);
