@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { CreditCard, User, Trash2, Store } from 'lucide-react';
+import { CreditCard, User, Trash2, Store, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PLATFORM_GROUPS } from '@/lib/platforms';
@@ -21,12 +21,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export default function SettingsPage() {
-  const { user, plan, refreshProfile } = useAuth();
+  const { user, plan, subscription, refreshProfile, refreshSubscription } = useAuth();
   const limits = PLAN_LIMITS[plan];
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [savingPlatforms, setSavingPlatforms] = useState(false);
@@ -148,6 +159,34 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    setCancelling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('로그인이 필요합니다.');
+      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await refreshSubscription();
+      setCancelOpen(false);
+      toast({
+        title: '구독이 해지되었습니다',
+        description: data?.expires_at
+          ? `${new Date(data.expires_at).toLocaleDateString('ko-KR')}까지 이용 가능합니다.`
+          : '다음 결제부터 자동결제가 중단됩니다.',
+      });
+    } catch (err: any) {
+      toast({ title: '해지 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const isCancelled = subscription?.status === 'cancelled';
+  const canCancel = plan !== 'free' && subscription?.status === 'active';
+
   return (
     <Layout>
       <div className="p-6 md:p-8 max-w-2xl mx-auto">
@@ -268,11 +307,63 @@ export default function SettingsPage() {
               <span className="text-foreground">{limits.imageUpload ? `이미지당 ${limits.maxPerImage}개` : '불가'}</span>
             </div>
           </div>
-          {plan !== 'pro' && (
-            <Link to="/pricing">
-              <Button size="sm" className="gradient-primary text-primary-foreground">업그레이드</Button>
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {plan !== 'pro' && (
+              <Link to="/pricing">
+                <Button size="sm" className="gradient-primary text-primary-foreground">업그레이드</Button>
+              </Link>
+            )}
+            {canCancel && (
+              <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">구독 해지</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-destructive" />
+                      정말 해지하시겠어요?
+                    </DialogTitle>
+                    <DialogDescription className="pt-2">
+                      해지 시 다음과 같은 혜택을 잃게 됩니다.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ul className="text-sm text-foreground space-y-2 list-disc pl-5 py-2">
+                    <li>월 <b>{limits.monthlyEnergy}⚡</b> 응답에너지 자동 충전 중단</li>
+                    <li>최대 보유량이 <b>100⚡</b>로 축소 (현재 {limits.maxEnergy}⚡)</li>
+                    {plan === 'pro' && <li>다중 이미지 동시 업로드 기능 사용 불가</li>}
+                    <li>크롬 확장프로그램 / 응답 스타일 선택 등 부가 기능 제한</li>
+                    <li>에너지 추가 구매 가격 할인 혜택 종료</li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    ※ 이미 결제된 이용기간({subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString('ko-KR') : '-'})까지는 그대로 사용하실 수 있으며, 다음 결제일부터 자동결제가 중단됩니다.
+                  </p>
+                  <DialogFooter className="gap-2 sm:gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelSubscription}
+                      disabled={cancelling}
+                      className="bg-muted text-muted-foreground hover:bg-muted/80 border-border"
+                    >
+                      {cancelling ? '처리 중...' : '해지하기'}
+                    </Button>
+                    <Button
+                      onClick={() => setCancelOpen(false)}
+                      disabled={cancelling}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      해지하지 않기
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            {isCancelled && (
+              <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                <XCircle className="w-3.5 h-3.5" /> 해지 예약됨
+              </span>
+            )}
+          </div>
           {plan !== 'free' && (
             <div className="mt-4 p-3 rounded-lg bg-secondary/60 border border-border text-xs text-muted-foreground leading-relaxed">
               구독을 해지해도 이미 결제된 이용기간 종료일까지 서비스 이용이 가능합니다. 다음 결제일부터 자동결제가 중단됩니다.
