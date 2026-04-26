@@ -60,7 +60,7 @@ export default function AdminSettings() {
               <div className="flex items-center gap-3 text-sm">
                 <Badge variant="outline">검사: {result.total_checked}명</Badge>
                 {result.issue_count === 0 ? (
-                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                  <Badge variant="secondary">
                     <CheckCircle2 className="w-3 h-3 mr-1" /> 정상
                   </Badge>
                 ) : (
