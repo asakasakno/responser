@@ -199,7 +199,7 @@ export default function Generate() {
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
         const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload() },
+          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
         });
         if (genError) throw genError;
         const output = data?.response || data?.error || '생성 실패';
