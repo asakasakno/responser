@@ -212,22 +212,29 @@ export default function SettingsPage() {
             <h2 className="font-semibold text-foreground">판매 플랫폼</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">사용 중인 플랫폼을 모두 선택해주세요</p>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {PLATFORMS.map(p => (
-              <label
-                key={p.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                  platforms.includes(p.id)
-                    ? 'border-primary bg-primary/5 text-foreground'
-                    : 'border-border text-muted-foreground hover:border-primary/50'
-                }`}
-              >
-                <Checkbox
-                  checked={platforms.includes(p.id)}
-                  onCheckedChange={() => togglePlatform(p.id)}
-                />
-                {p.label}
-              </label>
+          <div className="space-y-4 mb-4">
+            {PLATFORM_GROUPS.map(group => (
+              <div key={group.id}>
+                <div className="text-xs font-semibold text-muted-foreground mb-2">[{group.label}]</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {group.items.map(p => (
+                    <label
+                      key={p.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        platforms.includes(p.id)
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={platforms.includes(p.id)}
+                        onCheckedChange={() => togglePlatform(p.id)}
+                      />
+                      {p.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
           {platformsChanged && (
