@@ -136,7 +136,7 @@ export default function Generate() {
     setResult('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload() },
+        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
       });
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
