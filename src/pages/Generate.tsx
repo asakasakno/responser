@@ -341,6 +341,7 @@ export default function Generate() {
           <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 답변을 생성합니다.</p>
         </div>
 
+        {products.length > 0 && (
           <div className="mb-4">
             <label className="text-sm font-medium text-foreground mb-1.5 block">상품 선택 (선택사항)</label>
             <Select value={selectedProduct} onValueChange={setSelectedProduct}>
