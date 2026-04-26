@@ -343,6 +343,17 @@ serve(async (req) => {
       systemPrompt += `\n\n위 상품 정보를 참고하여 더 정확한 답변을 작성해주세요.`;
     }
 
+    // 플랫폼별 응대 가이드 주입
+    if (platform && typeof platform === "object" && typeof platform.id === "string") {
+      const guide = PLATFORM_GUIDES[platform.id];
+      if (guide) {
+        const tone = (guide as any)[type] as string | undefined;
+        systemPrompt += `\n\n[판매 플랫폼: ${guide.name}]\n${tone ?? ""}\n해당 플랫폼의 사용자층, 정책, 일반적인 응대 톤에 맞춰 답변해주세요.`;
+      } else if (platform.id === "other" && typeof platform.label === "string" && platform.label.trim()) {
+        systemPrompt += `\n\n[판매 플랫폼: ${platform.label.trim()}]\n해당 플랫폼의 일반적인 고객 응대 관행에 맞춰 자연스럽고 정중하게 답변해주세요.`;
+      }
+    }
+
     if (appliedStyle) {
       systemPrompt += STYLE_GUIDES[appliedStyle];
     }
