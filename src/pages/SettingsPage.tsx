@@ -32,10 +32,12 @@ import {
 } from '@/components/ui/dialog';
 
 export default function SettingsPage() {
-  const { user, plan, refreshProfile } = useAuth();
+  const { user, plan, subscription, refreshProfile, refreshSubscription } = useAuth();
   const limits = PLAN_LIMITS[plan];
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [savingPlatforms, setSavingPlatforms] = useState(false);
