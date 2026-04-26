@@ -313,7 +313,34 @@ export default function Generate() {
           </TabsList>
         </Tabs>
 
-        {products.length > 0 && (
+        <div className="mb-4">
+          <label className="text-sm font-medium text-foreground mb-1.5 block">판매 플랫폼</label>
+          <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+            <SelectTrigger>
+              <SelectValue placeholder="플랫폼을 선택하세요" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">기본(플랫폼 미지정)</SelectItem>
+              {userPlatforms.length > 0 && userPlatforms.map(pid => (
+                <SelectItem key={pid} value={pid}>{getPlatformLabel(pid)}</SelectItem>
+              ))}
+              {ALL_PLATFORMS.filter(p => !userPlatforms.includes(p.id)).map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedPlatform === 'other' && (
+            <Input
+              value={customPlatform}
+              onChange={e => setCustomPlatform(e.target.value)}
+              placeholder="플랫폼명 직접 입력"
+              className="mt-2"
+              maxLength={30}
+            />
+          )}
+          <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 답변을 생성합니다.</p>
+        </div>
+
           <div className="mb-4">
             <label className="text-sm font-medium text-foreground mb-1.5 block">상품 선택 (선택사항)</label>
             <Select value={selectedProduct} onValueChange={setSelectedProduct}>
