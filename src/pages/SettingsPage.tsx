@@ -332,7 +332,7 @@ export default function SettingsPage() {
                     <li>월 <b>{limits.monthlyEnergy}⚡</b> 응답에너지 자동 충전 중단</li>
                     <li>최대 보유량이 <b>100⚡</b>로 축소 (현재 {limits.maxEnergy}⚡)</li>
                     {plan === 'pro' && <li>다중 이미지 동시 업로드 기능 사용 불가</li>}
-                    {plan !== 'free' && <li>크롬 확장프로그램 / 응답 스타일 선택 등 부가 기능 제한</li>}
+                    <li>크롬 확장프로그램 / 응답 스타일 선택 등 부가 기능 제한</li>
                     <li>에너지 추가 구매 가격 할인 혜택 종료</li>
                   </ul>
                   <p className="text-xs text-muted-foreground">
