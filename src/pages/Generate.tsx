@@ -37,6 +37,9 @@ export default function Generate() {
   const [selectedProduct, setSelectedProduct] = useState<string>('none');
   const [selectedStyle, setSelectedStyle] = useState<ResponseStyle | 'none'>('none');
   const [products, setProducts] = useState<Product[]>([]);
+  const [userPlatforms, setUserPlatforms] = useState<string[]>([]);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('auto');
+  const [customPlatform, setCustomPlatform] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   
