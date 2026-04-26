@@ -113,7 +113,20 @@ Deno.serve(async (req) => {
         if (!["free", "basic", "pro"].includes(plan)) return jsonResponse({ error: "잘못된 요청입니다." }, 400);
 
         const PLAN_MAX: Record<string, number> = { free: 100, basic: 500, pro: 2000 };
-        const newMax = PLAN_MAX[plan];
+        const expectedMax = PLAN_MAX[plan];
+
+        // 변경 전 상태 스냅샷
+        const { data: beforeSub } = await adminClient
+          .from("subscriptions")
+          .select("plan")
+          .eq("user_id", user_id)
+          .eq("status", "active")
+          .maybeSingle();
+        const { data: beforeProfile } = await adminClient
+          .from("profiles")
+          .select("max_energy, energy_balance")
+          .eq("user_id", user_id)
+          .maybeSingle();
 
         const { error } = await adminClient
           .from("subscriptions")
@@ -123,13 +136,114 @@ Deno.serve(async (req) => {
 
         if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
 
-        // 플랜별 최대 보유량 동기화
+        // DB 트리거가 동기화하지만, 안전장치로 명시적으로도 동기화
         await adminClient
           .from("profiles")
-          .update({ max_energy: newMax, updated_at: new Date().toISOString() })
+          .update({ max_energy: expectedMax, updated_at: new Date().toISOString() })
           .eq("user_id", user_id);
 
-        return jsonResponse({ success: true });
+        // ============ 정합성 검증 ============
+        const { data: afterSub } = await adminClient
+          .from("subscriptions")
+          .select("plan")
+          .eq("user_id", user_id)
+          .eq("status", "active")
+          .maybeSingle();
+        const { data: afterProfile } = await adminClient
+          .from("profiles")
+          .select("max_energy, energy_balance")
+          .eq("user_id", user_id)
+          .maybeSingle();
+
+        const mismatches: string[] = [];
+        if (afterSub?.plan !== plan) {
+          mismatches.push(`subscriptions.plan=${afterSub?.plan} (expected ${plan})`);
+        }
+        if (afterProfile?.max_energy !== expectedMax) {
+          mismatches.push(`profiles.max_energy=${afterProfile?.max_energy} (expected ${expectedMax})`);
+        }
+        if ((afterProfile?.energy_balance ?? 0) > expectedMax) {
+          mismatches.push(`energy_balance=${afterProfile?.energy_balance} > max_energy=${expectedMax}`);
+        }
+
+        const consistent = mismatches.length === 0;
+
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: consistent ? "plan_change_verified" : "plan_change_mismatch",
+          severity: consistent ? "info" : "error",
+          details: {
+            target_user_id: user_id,
+            before: { plan: beforeSub?.plan, max_energy: beforeProfile?.max_energy, energy_balance: beforeProfile?.energy_balance },
+            after: { plan: afterSub?.plan, max_energy: afterProfile?.max_energy, energy_balance: afterProfile?.energy_balance },
+            expected: { plan, max_energy: expectedMax },
+            mismatches,
+          },
+        });
+
+        if (!consistent) {
+          console.error("[change_plan mismatch]", { user_id, mismatches });
+          return jsonResponse({
+            success: false,
+            error: "플랜 변경 후 데이터 정합성 오류가 감지되었습니다.",
+            mismatches,
+          }, 500);
+        }
+
+        return jsonResponse({ success: true, verified: true });
+      }
+
+      // ========== VERIFY PLAN CONSISTENCY (전 사용자 검증) ==========
+      case "verify_plan_consistency": {
+        const PLAN_MAX: Record<string, number> = { free: 100, basic: 500, pro: 2000 };
+
+        const { data: profiles } = await adminClient
+          .from("profiles")
+          .select("user_id, email, max_energy, energy_balance");
+        const { data: subs } = await adminClient
+          .from("subscriptions")
+          .select("user_id, plan")
+          .eq("status", "active");
+
+        const subMap = new Map((subs || []).map((s: any) => [s.user_id, s.plan]));
+        const issues: any[] = [];
+
+        for (const p of profiles || []) {
+          const plan = subMap.get(p.user_id) || "free";
+          const expectedMax = PLAN_MAX[plan];
+          const problems: string[] = [];
+          if (p.max_energy !== expectedMax) {
+            problems.push(`max_energy=${p.max_energy}, expected=${expectedMax}`);
+          }
+          if (p.energy_balance > p.max_energy) {
+            problems.push(`balance(${p.energy_balance}) > max(${p.max_energy})`);
+          }
+          if (problems.length) {
+            issues.push({
+              user_id: p.user_id,
+              email: p.email,
+              plan,
+              max_energy: p.max_energy,
+              energy_balance: p.energy_balance,
+              expected_max: expectedMax,
+              problems,
+            });
+          }
+        }
+
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "verify_plan_consistency",
+          severity: issues.length ? "warning" : "info",
+          details: { total_checked: profiles?.length || 0, issue_count: issues.length },
+        });
+
+        return jsonResponse({
+          success: true,
+          total_checked: profiles?.length || 0,
+          issue_count: issues.length,
+          issues,
+        });
       }
 
       // ========== TOGGLE PAYMENT ==========
