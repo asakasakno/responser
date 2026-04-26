@@ -117,6 +117,15 @@ export default function Generate() {
 
   const getStylePayload = () => (plan !== 'free' && selectedStyle !== 'none' ? selectedStyle : undefined);
 
+  const getPlatformPayload = () => {
+    if (selectedPlatform === 'auto' || !selectedPlatform) return undefined;
+    if (selectedPlatform === 'other') {
+      const c = customPlatform.trim();
+      return c ? { id: 'other', label: c } : undefined;
+    }
+    return { id: selectedPlatform, label: getPlatformLabel(selectedPlatform) };
+  };
+
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     if (isLimitReached) {
