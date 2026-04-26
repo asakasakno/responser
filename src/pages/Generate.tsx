@@ -15,6 +15,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
+import { ALL_PLATFORMS, getPlatformLabel } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
