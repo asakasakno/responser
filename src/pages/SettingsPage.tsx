@@ -159,6 +159,34 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    setCancelling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('로그인이 필요합니다.');
+      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await refreshSubscription();
+      setCancelOpen(false);
+      toast({
+        title: '구독이 해지되었습니다',
+        description: data?.expires_at
+          ? `${new Date(data.expires_at).toLocaleDateString('ko-KR')}까지 이용 가능합니다.`
+          : '다음 결제부터 자동결제가 중단됩니다.',
+      });
+    } catch (err: any) {
+      toast({ title: '해지 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const isCancelled = subscription?.status === 'cancelled';
+  const canCancel = plan !== 'free' && subscription?.status === 'active';
+
   return (
     <Layout>
       <div className="p-6 md:p-8 max-w-2xl mx-auto">
