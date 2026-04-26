@@ -7,6 +7,7 @@ import { ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Image, Loader2, ArrowUp, AlertTriangle, Zap } from 'lucide-react';
