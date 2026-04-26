@@ -307,11 +307,63 @@ export default function SettingsPage() {
               <span className="text-foreground">{limits.imageUpload ? `이미지당 ${limits.maxPerImage}개` : '불가'}</span>
             </div>
           </div>
-          {plan !== 'pro' && (
-            <Link to="/pricing">
-              <Button size="sm" className="gradient-primary text-primary-foreground">업그레이드</Button>
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {plan !== 'pro' && (
+              <Link to="/pricing">
+                <Button size="sm" className="gradient-primary text-primary-foreground">업그레이드</Button>
+              </Link>
+            )}
+            {canCancel && (
+              <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">구독 해지</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-destructive" />
+                      정말 해지하시겠어요?
+                    </DialogTitle>
+                    <DialogDescription className="pt-2">
+                      해지 시 다음과 같은 혜택을 잃게 됩니다.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ul className="text-sm text-foreground space-y-2 list-disc pl-5 py-2">
+                    <li>월 <b>{limits.monthlyEnergy}⚡</b> 응답에너지 자동 충전 중단</li>
+                    <li>최대 보유량이 <b>100⚡</b>로 축소 (현재 {limits.maxEnergy}⚡)</li>
+                    {plan === 'pro' && <li>다중 이미지 동시 업로드 기능 사용 불가</li>}
+                    {plan !== 'free' && <li>크롬 확장프로그램 / 응답 스타일 선택 등 부가 기능 제한</li>}
+                    <li>에너지 추가 구매 가격 할인 혜택 종료</li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    ※ 이미 결제된 이용기간({subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString('ko-KR') : '-'})까지는 그대로 사용하실 수 있으며, 다음 결제일부터 자동결제가 중단됩니다.
+                  </p>
+                  <DialogFooter className="gap-2 sm:gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelSubscription}
+                      disabled={cancelling}
+                      className="bg-muted text-muted-foreground hover:bg-muted/80 border-border"
+                    >
+                      {cancelling ? '처리 중...' : '해지하기'}
+                    </Button>
+                    <Button
+                      onClick={() => setCancelOpen(false)}
+                      disabled={cancelling}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      해지하지 않기
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            {isCancelled && (
+              <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                <XCircle className="w-3.5 h-3.5" /> 해지 예약됨
+              </span>
+            )}
+          </div>
           {plan !== 'free' && (
             <div className="mt-4 p-3 rounded-lg bg-secondary/60 border border-border text-xs text-muted-foreground leading-relaxed">
               구독을 해지해도 이미 결제된 이용기간 종료일까지 서비스 이용이 가능합니다. 다음 결제일부터 자동결제가 중단됩니다.
