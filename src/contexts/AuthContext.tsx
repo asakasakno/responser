@@ -116,8 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSubscription = useCallback(async (): Promise<SubscriptionInfo | null> => {
     if (!user) return null;
-    return fetchSubscriptionFor(user.id);
-  }, [user, fetchSubscriptionFor]);
+    const info = await fetchSubscriptionFor(user.id);
+    await fetchPlan(user.id);
+    await fetchProfile(user.id);
+    return info;
+  }, [user, fetchSubscriptionFor, fetchProfile]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
