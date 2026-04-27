@@ -71,6 +71,30 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (dup) return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
 
+    // 해지된 구독에 대한 자동 재청구/플랜 변경 차단
+    // - 가장 최근 구독을 조회하고, status='cancelled' 또는 payment_enabled=false 인 경우
+    //   사용자가 명시적으로 다시 구독하기(/pricing) 흐름을 거치지 않은 자동 재청구는 차단
+    const { data: latestSub } = await adminClient
+      .from("subscriptions")
+      .select("status, payment_enabled, plan")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestSub && (latestSub.status === "cancelled" || latestSub.payment_enabled === false)) {
+      // 클라이언트에서 명시적 재구독 의도(reactivate=true)로 호출한 경우만 통과
+      if (!body?.reactivate) {
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "payment_blocked_cancelled",
+          details: { orderId, plan, current_status: latestSub.status, payment_enabled: latestSub.payment_enabled },
+          severity: "warning",
+        });
+        return jsonRes({ error: "해지된 구독입니다. '다시 구독하기'를 통해 결제를 진행해주세요." }, 409);
+      }
+    }
+
     // 서버 기준 최종 금액 계산 (쿠폰 적용 시 validate_coupon 사용)
     const basePrice = PLAN_PRICES[plan][cycle];
     let expectedAmount = basePrice;
@@ -164,11 +188,13 @@ Deno.serve(async (req) => {
     const periodDays = cycle === "yearly" ? 365 : 30;
     const expiresAt = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString();
 
+    // 가장 최근 구독을 가져와 갱신(재구독 포함). 없으면 새로 생성.
     const { data: existingSub } = await adminClient
       .from("subscriptions")
       .select("id")
       .eq("user_id", userId)
-      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existingSub) {
@@ -176,6 +202,8 @@ Deno.serve(async (req) => {
         .from("subscriptions")
         .update({
           plan,
+          status: "active",
+          payment_enabled: true,
           billing_cycle: cycle,
           started_at: new Date().toISOString(),
           expires_at: expiresAt,
@@ -187,6 +215,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         plan,
         status: "active",
+        payment_enabled: true,
         billing_cycle: cycle,
         expires_at: expiresAt,
       });
