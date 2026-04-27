@@ -65,6 +65,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!user) return;
+    refreshSubscription();
     supabase
       .from('profiles')
       .select('platforms, name, company_name')
@@ -80,7 +81,7 @@ export default function SettingsPage() {
         setCompanyName(c);
         setOriginalCompany(c);
       });
-  }, [user]);
+  }, [user, refreshSubscription]);
 
   const togglePlatform = (id: string) => {
     setPlatforms(prev =>
@@ -207,6 +208,8 @@ export default function SettingsPage() {
 
   const isCancelled = subscription?.status === 'cancelled';
   const canCancel = plan !== 'free' && subscription?.status === 'active';
+  const resubscribePlan = subscription?.plan && subscription.plan !== 'free' ? subscription.plan : plan !== 'free' ? plan : 'basic';
+  const resubscribeCycle = subscription?.billing_cycle === 'yearly' ? 'yearly' : 'monthly';
 
   return (
     <Layout>
@@ -418,9 +421,9 @@ export default function SettingsPage() {
                     </span>
                   )}
                 </span>
-                <Link to="/pricing">
+                <Link to={`/checkout?plan=${resubscribePlan}&cycle=${resubscribeCycle}`}>
                   <Button size="sm" className="gradient-primary text-primary-foreground gap-1">
-                    <RefreshCw className="w-3.5 h-3.5" /> 다시 구독하기
+                    <RefreshCw className="w-3.5 h-3.5" /> 다시 결제하고 구독 재개
                   </Button>
                 </Link>
               </>
