@@ -41,6 +41,8 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [cancelDetail, setCancelDetail] = useState<string>('');
   const [deleting, setDeleting] = useState(false);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [savingPlatforms, setSavingPlatforms] = useState(false);
@@ -51,6 +53,15 @@ export default function SettingsPage() {
   const [companyName, setCompanyName] = useState('');
   const [originalCompany, setOriginalCompany] = useState('');
   const [savingCompany, setSavingCompany] = useState(false);
+
+  const CANCEL_REASONS = [
+    { value: 'price', label: '가격 부담' },
+    { value: 'missing_features', label: '기능 부족' },
+    { value: 'tech_issue', label: '기술 문제 / 오류 발생' },
+    { value: 'not_using', label: '사용 빈도가 낮음' },
+    { value: 'switching', label: '다른 서비스 이용' },
+    { value: 'other', label: '기타' },
+  ];
 
   useEffect(() => {
     if (!user) return;
