@@ -329,7 +329,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {plan !== 'pro' && (
+            {plan !== 'pro' && !isCancelled && (
               <Link to="/pricing">
                 <Button size="sm" className="gradient-primary text-primary-foreground">업그레이드</Button>
               </Link>
