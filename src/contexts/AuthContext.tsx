@@ -170,13 +170,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPlan('pro');
       return;
     }
+    // 가장 최근 구독을 보고, 'active' 또는 (cancelled 이지만 expires_at 미도래)면 plan 유지
     const { data } = await supabase
       .from('subscriptions')
-      .select('plan')
+      .select('plan, status, expires_at')
       .eq('user_id', userId)
-      .eq('status', 'active')
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
-    setPlan(data ? (data.plan as PlanType) : 'free');
+    if (!data) { setPlan('free'); return; }
+    const notExpired = !data.expires_at || new Date(data.expires_at).getTime() > Date.now();
+    if (data.status === 'active' || (data.status === 'cancelled' && notExpired)) {
+      setPlan(data.plan as PlanType);
+    } else {
+      setPlan('free');
+    }
   };
 
   const signOut = async () => {
