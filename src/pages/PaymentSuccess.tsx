@@ -52,6 +52,8 @@ export default function PaymentSuccess() {
           plan: meta?.plan,
           cycle: meta?.cycle,
           coupon_code: meta?.coupon_code ?? undefined,
+          // 사용자가 직접 결제 페이지를 통과한 흐름이므로 명시적 재구독 의도로 처리
+          reactivate: true,
         };
 
     supabase.functions
