@@ -188,11 +188,13 @@ Deno.serve(async (req) => {
     const periodDays = cycle === "yearly" ? 365 : 30;
     const expiresAt = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString();
 
+    // 가장 최근 구독을 가져와 갱신(재구독 포함). 없으면 새로 생성.
     const { data: existingSub } = await adminClient
       .from("subscriptions")
       .select("id")
       .eq("user_id", userId)
-      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existingSub) {
@@ -200,6 +202,8 @@ Deno.serve(async (req) => {
         .from("subscriptions")
         .update({
           plan,
+          status: "active",
+          payment_enabled: true,
           billing_cycle: cycle,
           started_at: new Date().toISOString(),
           expires_at: expiresAt,
@@ -211,6 +215,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         plan,
         status: "active",
+        payment_enabled: true,
         billing_cycle: cycle,
         expires_at: expiresAt,
       });
