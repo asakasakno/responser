@@ -356,6 +356,35 @@ export default function SettingsPage() {
                     <li>크롬 확장프로그램 / 응답 스타일 선택 등 부가 기능 제한</li>
                     <li>에너지 추가 구매 가격 할인 혜택 종료</li>
                   </ul>
+
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-sm font-medium">해지 사유를 알려주세요 <span className="text-destructive">*</span></Label>
+                    <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="grid grid-cols-2 gap-2">
+                      {CANCEL_REASONS.map(r => (
+                        <label
+                          key={r.value}
+                          htmlFor={`reason-${r.value}`}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                            cancelReason === r.value
+                              ? 'border-primary bg-primary/5 text-foreground'
+                              : 'border-border text-muted-foreground hover:border-primary/50'
+                          }`}
+                        >
+                          <RadioGroupItem id={`reason-${r.value}`} value={r.value} />
+                          {r.label}
+                        </label>
+                      ))}
+                    </RadioGroup>
+                    <Textarea
+                      placeholder="더 자세한 의견이 있다면 알려주세요 (선택)"
+                      value={cancelDetail}
+                      onChange={e => setCancelDetail(e.target.value)}
+                      maxLength={500}
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+
                   <p className="text-xs text-muted-foreground">
                     ※ 이미 결제된 이용기간({subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString('ko-KR') : '-'})까지는 그대로 사용하실 수 있으며, 다음 결제일부터 자동결제가 중단됩니다.
                   </p>
@@ -363,7 +392,7 @@ export default function SettingsPage() {
                     <Button
                       variant="outline"
                       onClick={handleCancelSubscription}
-                      disabled={cancelling}
+                      disabled={cancelling || !cancelReason}
                       className="bg-muted text-muted-foreground hover:bg-muted/80 border-border"
                     >
                       {cancelling ? '처리 중...' : '해지하기'}
@@ -380,9 +409,21 @@ export default function SettingsPage() {
               </Dialog>
             )}
             {isCancelled && (
-              <span className="inline-flex items-center gap-1 text-xs text-destructive">
-                <XCircle className="w-3.5 h-3.5" /> 해지 예약됨
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                  <XCircle className="w-3.5 h-3.5" /> 해지 예약됨
+                  {subscription?.expires_at && (
+                    <span className="text-muted-foreground ml-1">
+                      ({new Date(subscription.expires_at).toLocaleDateString('ko-KR')}까지 이용 가능)
+                    </span>
+                  )}
+                </span>
+                <Link to="/pricing">
+                  <Button size="sm" className="gradient-primary text-primary-foreground gap-1">
+                    <RefreshCw className="w-3.5 h-3.5" /> 다시 구독하기
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
           {plan !== 'free' && (
