@@ -174,17 +174,24 @@ export default function SettingsPage() {
   };
 
   const handleCancelSubscription = async () => {
+    if (!cancelReason) {
+      toast({ title: '해지 사유를 선택해주세요', variant: 'destructive' });
+      return;
+    }
     setCancelling(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('로그인이 필요합니다.');
       const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+        body: { reason: cancelReason, reason_detail: cancelDetail.trim() },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       await refreshSubscription();
       setCancelOpen(false);
+      setCancelReason('');
+      setCancelDetail('');
       toast({
         title: '구독이 해지되었습니다',
         description: data?.expires_at
