@@ -194,11 +194,13 @@ Deno.serve(async (req) => {
 
         if (!consistent) {
           console.error("[change_plan mismatch]", { user_id, mismatches });
+          // 검증은 실패했지만 update 자체는 성공했으므로 경고만 반환
           return jsonResponse({
-            success: false,
-            error: "플랜 변경 후 데이터 정합성 오류가 감지되었습니다.",
+            success: true,
+            verified: false,
+            warning: "플랜 변경은 적용되었으나 정합성 검증에 실패했습니다.",
             mismatches,
-          }, 500);
+          });
         }
 
         return jsonResponse({ success: true, verified: true });
