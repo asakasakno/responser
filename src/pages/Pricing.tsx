@@ -344,30 +344,35 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {[
+                  // 모든 플랜에서 가능한 항목 (위쪽)
+                  ['리뷰/문의/클레임 응답', '가능', '가능', '가능'],
+                  ['답변 스타일 선택 (감사/사과/간단/원칙)', '가능', '가능', '가능'],
+                  ['미션 보너스 에너지', '가능', '가능', '가능'],
+                  ['주변 사장님 추천 보상', '가능', '가능', '가능'],
+                  // 수치/단계 차이 항목 (가운데)
                   ['월 응답에너지', '20', '200', '1,000'],
                   ['최대 보유량', '100', '500', '2,000'],
-                  ['리뷰/문의/클레임 응답', true, true, true],
                   ['이미지당 최대 처리', '5개', '10개', '30개'],
-                  ['웹 캡처 업로드', false, true, true],
-                  ['답변 스타일 선택 (감사/사과/간단/원칙)', false, true, true],
-                  ['크롬 확장프로그램 사용', false, true, true],
                   ['상품 등록', '3개', '무제한', '무제한'],
                   ['연간 결제', '준비 중', '준비 중', '준비 중'],
-                  ['에너지 추가 구매', false, true, true],
-                  ['미션 보너스 에너지', true, true, true],
-                  ['주변 사장님 추천 보상', true, true, true],
+                  // Free에서만 불가한 항목 (아래쪽)
+                  ['웹 캡처 업로드', '불가', '가능', '가능'],
+                  ['크롬 확장프로그램 사용', '불가', '가능', '가능'],
+                  ['에너지 추가 구매', '불가', '가능', '가능'],
                 ].map((row, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
                     <td className="p-4 text-sm text-foreground">{row[0] as string}</td>
-                    {[1, 2, 3].map(j => (
-                      <td key={j} className="p-4 text-center text-sm">
-                        {typeof row[j] === 'boolean' ? (
-                          row[j] ? <Check className="w-4 h-4 text-accent mx-auto" /> : <X className="w-4 h-4 text-muted-foreground/30 mx-auto" />
-                        ) : (
-                          <span className="text-foreground font-medium">{row[j] as string}</span>
-                        )}
-                      </td>
-                    ))}
+                    {[1, 2, 3].map(j => {
+                      const val = row[j] as string;
+                      const isUnavailable = val === '불가' || val === '준비 중';
+                      return (
+                        <td key={j} className="p-4 text-center text-sm">
+                          <span className={isUnavailable ? 'text-muted-foreground/60' : 'text-foreground font-medium'}>
+                            {val}
+                          </span>
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
