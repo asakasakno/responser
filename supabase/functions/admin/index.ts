@@ -115,12 +115,13 @@ Deno.serve(async (req) => {
         const PLAN_MAX: Record<string, number> = { free: 100, basic: 500, pro: 2000 };
         const expectedMax = PLAN_MAX[plan];
 
-        // 변경 전 상태 스냅샷
+        // 변경 전 상태 스냅샷 — 가장 최근 구독 (status 무관, 관리자 오버라이드)
         const { data: beforeSub } = await adminClient
           .from("subscriptions")
-          .select("plan")
+          .select("id, plan, status")
           .eq("user_id", user_id)
-          .eq("status", "active")
+          .order("updated_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
         const { data: beforeProfile } = await adminClient
           .from("profiles")
@@ -128,13 +129,20 @@ Deno.serve(async (req) => {
           .eq("user_id", user_id)
           .maybeSingle();
 
+        if (!beforeSub?.id) {
+          return jsonResponse({ error: "구독 정보를 찾을 수 없습니다." }, 404);
+        }
+
+        // 관리자가 플랜을 변경하면 status도 active로 복구 (해지 상태였더라도)
         const { error } = await adminClient
           .from("subscriptions")
-          .update({ plan, updated_at: new Date().toISOString() })
-          .eq("user_id", user_id)
-          .eq("status", "active");
+          .update({ plan, status: "active", updated_at: new Date().toISOString() })
+          .eq("id", beforeSub.id);
 
-        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
+        if (error) {
+          console.error("[change_plan update error]", error);
+          return jsonResponse({ error: "처리에 실패했습니다." }, 500);
+        }
 
         // DB 트리거가 동기화하지만, 안전장치로 명시적으로도 동기화
         await adminClient
@@ -146,8 +154,7 @@ Deno.serve(async (req) => {
         const { data: afterSub } = await adminClient
           .from("subscriptions")
           .select("plan")
-          .eq("user_id", user_id)
-          .eq("status", "active")
+          .eq("id", beforeSub.id)
           .maybeSingle();
         const { data: afterProfile } = await adminClient
           .from("profiles")
