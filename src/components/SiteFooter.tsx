@@ -21,6 +21,7 @@ export default function SiteFooter() {
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link to="/pricing" className="hover:text-foreground transition-colors">요금제</Link>
             <Link to="/extension" className="hover:text-foreground transition-colors">확장 프로그램</Link>
+            <Link to="/contact" className="hover:text-foreground transition-colors">문의하기</Link>
             <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
             <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
             <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
