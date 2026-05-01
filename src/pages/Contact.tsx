@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, MessageCircle, ArrowLeft, Mail, Phone } from 'lucide-react';
 import SiteFooter from '@/components/SiteFooter';
 
-const KAKAO_URL = 'https://pf.kakao.com/_xexkLn'; // TODO: 실제 카카오톡 채널 URL로 교체
+const KAKAO_URL = 'http://pf.kakao.com/_vXYTX/chat';
 
 const inquirySchema = z.object({
   name: z.string().trim().min(1, '이름을 입력해주세요').max(100),
