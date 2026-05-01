@@ -55,7 +55,10 @@ export default function Contact() {
 
     setSubmitting(true);
     const { error } = await supabase.from('contact_inquiries').insert({
-      ...parsed.data,
+      name: parsed.data.name,
+      email: parsed.data.email,
+      subject: parsed.data.subject,
+      message: parsed.data.message,
       user_id: user?.id,
     });
     setSubmitting(false);
