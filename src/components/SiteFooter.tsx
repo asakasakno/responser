@@ -61,7 +61,7 @@ export default function SiteFooter() {
             대표자: 배지훈 <span className="mx-1.5 text-border">|</span>
             사업자등록번호: 285-15-02485{" "}
             <a
-              href="https://teht.hometax.go.kr/websquare/websquare.html?w2xPath=/ui/ab/a/a/UTEABAAA13.xml"
+              href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=285-15-02485"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-foreground ml-1"
