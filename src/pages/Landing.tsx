@@ -1,6 +1,6 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   MessageSquare,
   Image,
@@ -16,91 +16,84 @@ import {
   Users,
   ChevronRight,
   Sparkles,
-} from 'lucide-react';
-import SiteFooter from '@/components/SiteFooter';
+} from "lucide-react";
+import SiteFooter from "@/components/SiteFooter";
 
 /* ── Demo data ── */
 const demoExamples = [
   {
-    type: '리뷰',
-    badge: 'bg-primary/10 text-primary',
-    input: '배송은 빨랐는데 포장이 조금 아쉬웠어요.',
+    type: "리뷰",
+    badge: "bg-primary/10 text-primary",
+    input: "배송은 빨랐는데 포장이 조금 아쉬웠어요.",
     output:
-      '소중한 후기 감사합니다. 포장 부분에서 아쉬움을 드려 죄송합니다. 앞으로 더 만족스러운 서비스로 보답하겠습니다.',
+      "소중한 후기 감사합니다. 포장 부분에서 아쉬움을 드려 죄송합니다. 앞으로 더 만족스러운 서비스로 보답하겠습니다.",
   },
   {
-    type: '문의',
-    badge: 'bg-accent/10 text-accent',
-    input: '오늘 주문하면 언제 도착하나요?',
-    output:
-      '문의 감사합니다. 오늘 주문해주시면 보통 1~2일 내 출고되며 지역에 따라 배송 일정이 달라질 수 있습니다.',
+    type: "문의",
+    badge: "bg-accent/10 text-accent",
+    input: "오늘 주문하면 언제 도착하나요?",
+    output: "문의 감사합니다. 오늘 주문해주시면 보통 1~2일 내 출고되며 지역에 따라 배송 일정이 달라질 수 있습니다.",
   },
   {
-    type: '클레임',
-    badge: 'bg-destructive/10 text-destructive',
-    input: '상품이 파손돼서 왔습니다.',
+    type: "클레임",
+    badge: "bg-destructive/10 text-destructive",
+    input: "상품이 파손돼서 왔습니다.",
     output:
-      '불편을 드려 정말 죄송합니다. 파손 상태를 확인할 수 있도록 사진을 보내주시면 빠르게 교환 또는 환불 절차를 안내드리겠습니다.',
+      "불편을 드려 정말 죄송합니다. 파손 상태를 확인할 수 있도록 사진을 보내주시면 빠르게 교환 또는 환불 절차를 안내드리겠습니다.",
   },
 ];
 
 const comparisonRows = [
-  { label: '리뷰 확인', old: '직접 읽기', now: '이미지 업로드' },
-  { label: '답변 작성', old: '직접 타이핑', now: 'AI 초안 생성' },
-  { label: '여러 건 처리', old: '하나씩 반복 복붙', now: '한 번에 일괄 생성' },
-  { label: '응대 시간', old: '건당 3~5분', now: '빠른 초안 생성' },
+  { label: "리뷰 확인", old: "직접 읽기", now: "이미지 업로드" },
+  { label: "답변 작성", old: "직접 타이핑", now: "AI 초안 생성" },
+  { label: "여러 건 처리", old: "하나씩 반복 복붙", now: "한 번에 일괄 생성" },
+  { label: "응대 시간", old: "건당 3~5분", now: "빠른 초안 생성" },
 ];
 
 const plans = [
   {
-    name: 'Free',
-    price: '₩0',
-    period: '영구 무료',
-    desc: '가볍게 체험해보세요',
-    features: [
-      '월 20 응답에너지',
-      '텍스트 입력',
-      '이미지 업로드 5개까지',
-      '상품 3개 등록',
-      '생성 기록 저장',
-    ],
-    cta: '무료로 시작하기',
-    style: 'border-border',
+    name: "Free",
+    price: "₩0",
+    period: "영구 무료",
+    desc: "가볍게 체험해보세요",
+    features: ["월 20 응답에너지", "텍스트 입력", "이미지 업로드 5개까지", "상품 3개 등록", "생성 기록 저장"],
+    cta: "무료로 시작하기",
+    style: "border-border",
   },
   {
-    name: 'Basic',
-    price: '₩9,900',
-    period: '/ 월',
-    desc: '소규모 셀러를 위한 플랜',
+    name: "Basic",
+    price: "₩9,900",
+    period: "/ 월",
+    desc: "소규모 셀러를 위한 플랜",
     popular: true,
     features: [
-      '월 200 응답에너지',
-      '이미지 업로드 10개까지',
-      '상품 무제한 등록',
-      '생성 기록 저장',
-      '크롬 확장프로그램 사용 가능',
-      '응답 스타일 선택 가능',
-      '에너지 추가 구매 가능',
+      "월 200 응답에너지",
+      "이미지 업로드 10개까지",
+      "상품 무제한 등록",
+      "생성 기록 저장",
+      "크롬 확장프로그램 사용 가능",
+      "응답 스타일 선택 가능",
+      "에너지 추가 구매 가능",
     ],
-    cta: '시작하기',
-    style: 'border-primary shadow-primary-glow',
+    cta: "시작하기",
+    style: "border-primary shadow-primary-glow",
   },
   {
-    name: 'Pro',
-    price: '₩29,900',
-    period: '/ 월',
-    desc: '대량 처리가 필요한 파워 셀러',
+    name: "Pro",
+    price: "₩29,900",
+    period: "/ 월",
+    desc: "대량 처리가 필요한 파워 셀러",
     features: [
-      '월 1,000 응답에너지',
-      '이미지 업로드 30개까지',
-      '다중 이미지 동시 업로드',
-      '상품 무제한 등록',
-      '대량 처리용',
-      '크롬 확장프로그램 사용 가능',
-      '에너지 추가 구매 가능',
+      "월 1,000 응답에너지",
+      "이미지 업로드 30개까지",
+      "다중 이미지 동시 업로드",
+      "상품 무제한 등록",
+      "대량 처리용",
+      "크롬 확장프로그램 사용 가능",
+      "에너지 추가 구매 가능",
     ],
-    cta: '시작하기',
-    style: 'border-border',
+    cta: "시작하기",
+    style: "border-border",
   },
 ];
 
@@ -108,8 +101,11 @@ const plans = [
 export default function Landing() {
   const { user, signOut, companyName } = useAuth();
   const navigate = useNavigate();
-  const handleSignOut = async () => { await signOut(); navigate('/'); };
-  const displayName = companyName || user?.email?.split('@')[0] || '';
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+  const displayName = companyName || user?.email?.split("@")[0] || "";
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ========== HEADER ========== */}
@@ -123,10 +119,14 @@ export default function Landing() {
           </Link>
           <div className="flex items-center gap-2">
             <a href="#pricing" className="hidden sm:inline-flex">
-              <Button variant="ghost" size="sm">요금제</Button>
+              <Button variant="ghost" size="sm">
+                요금제
+              </Button>
             </a>
             <Link to="/extension" className="hidden sm:inline-flex">
-              <Button variant="ghost" size="sm">확장 프로그램</Button>
+              <Button variant="ghost" size="sm">
+                확장 프로그램
+              </Button>
             </Link>
             {user ? (
               <>
@@ -135,17 +135,25 @@ export default function Landing() {
                   <span className="truncate">{displayName}</span>
                 </span>
                 <Link to="/dashboard">
-                  <Button variant="ghost" size="sm">대시보드</Button>
+                  <Button variant="ghost" size="sm">
+                    대시보드
+                  </Button>
                 </Link>
                 <Link to="/settings">
-                  <Button variant="ghost" size="sm">내 정보</Button>
+                  <Button variant="ghost" size="sm">
+                    내 정보
+                  </Button>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={handleSignOut}>로그아웃</Button>
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  로그아웃
+                </Button>
               </>
             ) : (
               <>
                 <Link to="/auth">
-                  <Button variant="ghost" size="sm">로그인</Button>
+                  <Button variant="ghost" size="sm">
+                    로그인
+                  </Button>
                 </Link>
                 <Link to="/auth?mode=signup">
                   <Button size="sm" className="gradient-primary text-primary-foreground shadow-primary-glow">
@@ -178,7 +186,10 @@ export default function Landing() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/auth?mode=signup" className="w-full sm:w-auto">
-                <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 w-full sm:w-auto h-12">
+                <Button
+                  size="lg"
+                  className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 w-full sm:w-auto h-12"
+                >
                   무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -196,9 +207,15 @@ export default function Landing() {
 
             {/* Quick summary strip */}
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-accent" /> 회원가입 후 바로 사용</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-accent" /> 무료 플랜 제공</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-accent" /> 설치 없이 웹에서 사용</span>
+              <span className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-accent" /> 회원가입 후 바로 사용
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-accent" /> 무료 플랜 제공
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-accent" /> 설치 없이 웹에서 사용
+              </span>
             </div>
           </div>
         </div>
@@ -215,32 +232,35 @@ export default function Landing() {
             {[
               {
                 icon: Upload,
-                title: '이미지 업로드 → 텍스트 추출',
-                desc: '리뷰 캡처나 문의 화면을 업로드하면 내용을 자동으로 정리합니다.',
-                accent: 'bg-primary/10 text-primary',
+                title: "이미지 업로드 → 텍스트 추출",
+                desc: "리뷰 캡처나 문의 화면을 업로드하면 내용을 자동으로 정리합니다.",
+                accent: "bg-primary/10 text-primary",
               },
               {
                 icon: FileText,
-                title: '답변 자동 생성',
-                desc: '리뷰, 문의, 클레임 상황에 맞는 답변을 AI가 자연스럽게 작성합니다.',
-                accent: 'bg-accent/10 text-accent',
+                title: "답변 자동 생성",
+                desc: "리뷰, 문의, 클레임 상황에 맞는 답변을 AI가 자연스럽게 작성합니다.",
+                accent: "bg-accent/10 text-accent",
               },
               {
                 icon: Copy,
-                title: '여러 개 한 번에 처리',
-                desc: '여러 리뷰와 문의를 한 번에 입력하고 각각의 답변을 빠르게 생성합니다.',
-                accent: 'bg-primary/10 text-primary',
+                title: "여러 개 한 번에 처리",
+                desc: "여러 리뷰와 문의를 한 번에 입력하고 각각의 답변을 빠르게 생성합니다.",
+                accent: "bg-primary/10 text-primary",
               },
               {
                 icon: Images,
-                title: '다중 이미지 동시 업로드',
-                desc: '여러 장의 이미지를 한번에 드래그 앤 드롭으로 올려 일괄 처리할 수 있습니다.',
-                accent: 'bg-accent/10 text-accent',
-                badge: 'Pro',
+                title: "다중 이미지 동시 업로드",
+                desc: "여러 장의 이미지를 한번에 드래그 앤 드롭으로 올려 일괄 처리할 수 있습니다.",
+                accent: "bg-accent/10 text-accent",
+                badge: "Pro",
               },
             ].map((f, i) => (
-              <div key={i} className="bg-card rounded-xl p-6 border border-border shadow-card hover:shadow-elevated transition-shadow relative">
-                {('badge' in f && f.badge) && (
+              <div
+                key={i}
+                className="bg-card rounded-xl p-6 border border-border shadow-card hover:shadow-elevated transition-shadow relative"
+              >
+                {"badge" in f && f.badge && (
                   <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full gradient-primary text-primary-foreground">
                     {f.badge}
                   </span>
@@ -289,7 +309,9 @@ export default function Landing() {
                     <p className="text-xs font-medium text-primary mb-2 flex items-center gap-1">
                       <Sparkles className="w-3 h-3" /> AI 생성 답변
                     </p>
-                    <p className="text-sm leading-relaxed bg-primary/5 rounded-lg p-3 border border-primary/10">{d.output}</p>
+                    <p className="text-sm leading-relaxed bg-primary/5 rounded-lg p-3 border border-primary/10">
+                      {d.output}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -338,10 +360,10 @@ export default function Landing() {
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-4xl mx-auto">
             {[
-              { icon: Users, text: '스마트스토어 셀러' },
-              { icon: Users, text: '쿠팡 판매자' },
-              { icon: MessageSquare, text: '리뷰 응대가 많은 자영업자' },
-              { icon: Clock, text: '문의 답변이 반복되는 운영자' },
+              { icon: Users, text: "스마트스토어 셀러" },
+              { icon: Users, text: "쿠팡 판매자" },
+              { icon: MessageSquare, text: "리뷰 응대가 많은 자영업자" },
+              { icon: Clock, text: "문의 답변이 반복되는 운영자" },
             ].map((t, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-5 text-center shadow-card">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-3">
@@ -355,9 +377,9 @@ export default function Landing() {
           {/* 기대 효과 */}
           <div className="mt-12 max-w-2xl mx-auto grid sm:grid-cols-3 gap-5 text-center">
             {[
-              { val: '응대 시간 단축', label: '반복 답변 작성 시간 감소' },
-              { val: '↓ 스트레스', label: '답변 작성 부담 감소' },
-              { val: '↑ 속도', label: '초안 생성 속도 향상' },
+              { val: "응대 시간 단축", label: "반복 답변 작성 시간 감소" },
+              { val: "↓ 스트레스", label: "답변 작성 부담 감소" },
+              { val: "↑ 속도", label: "초안 생성 속도 향상" },
             ].map((e, i) => (
               <div key={i} className="bg-secondary/60 rounded-xl p-5">
                 <p className="text-lg font-extrabold text-primary mb-1">{e.val}</p>
@@ -377,10 +399,7 @@ export default function Landing() {
           </p>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {plans.map((p, i) => (
-              <div
-                key={i}
-                className={`relative bg-card rounded-2xl border p-6 flex flex-col ${p.style}`}
-              >
+              <div key={i} className={`relative bg-card rounded-2xl border p-6 flex flex-col ${p.style}`}>
                 {p.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full gradient-primary text-primary-foreground text-xs font-semibold">
                     가장 인기
@@ -402,8 +421,8 @@ export default function Landing() {
                 </ul>
                 <Link to="/auth?mode=signup" className="w-full">
                   <Button
-                    className={`w-full ${p.popular ? 'gradient-primary text-primary-foreground shadow-primary-glow' : ''}`}
-                    variant={p.popular ? 'default' : 'outline'}
+                    className={`w-full ${p.popular ? "gradient-primary text-primary-foreground shadow-primary-glow" : ""}`}
+                    variant={p.popular ? "default" : "outline"}
                   >
                     {p.cta}
                   </Button>
@@ -427,7 +446,10 @@ export default function Landing() {
             무료 플랜으로 바로 사용할 수 있습니다. 설치 없이 웹에서 시작하세요.
           </p>
           <Link to="/auth?mode=signup">
-            <Button size="lg" className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 text-base px-8 font-semibold">
+            <Button
+              size="lg"
+              className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 text-base px-8 font-semibold"
+            >
               무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
@@ -448,14 +470,26 @@ export default function Landing() {
               <span className="font-semibold text-foreground">응대도우미</span>
             </div>
             <div className="flex items-center gap-4 flex-wrap">
-              <Link to="/pricing" className="hover:text-foreground transition-colors">요금제</Link>
-              <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
-              <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
-              <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
+              <Link to="/pricing" className="hover:text-foreground transition-colors">
+                요금제
+              </Link>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">
+                개인정보처리방침
+              </Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">
+                이용약관
+              </Link>
+              <Link to="/refund" className="hover:text-foreground transition-colors">
+                환불정책
+              </Link>
               {user ? (
-                <button onClick={handleSignOut} className="hover:text-foreground transition-colors">로그아웃</button>
+                <button onClick={handleSignOut} className="hover:text-foreground transition-colors">
+                  로그아웃
+                </button>
               ) : (
-                <Link to="/auth" className="hover:text-foreground transition-colors">로그인</Link>
+                <Link to="/auth" className="hover:text-foreground transition-colors">
+                  로그인
+                </Link>
               )}
             </div>
           </div>
@@ -482,7 +516,7 @@ export default function Landing() {
             <p>업태: 정보통신업 / 종목: 응용 소프트웨어 개발 및 공급업, 전자상거래 소매업</p>
             <p>개업연월일: 2023년 12월 09일</p>
             <p>
-              <span>고객센터: 010-5097-9549</span>
+              <span>고객센터: 0502-1946-0111</span>
               <span className="mx-2">|</span>
               <a href="mailto:support@응대도우미.com" className="underline hover:text-foreground">
                 support@응대도우미.com
