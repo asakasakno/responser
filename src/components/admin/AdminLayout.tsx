@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard, Users, CreditCard, Zap, BarChart3,
-  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag
+  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail
 } from 'lucide-react';
 
 const adminNav = [
@@ -15,6 +15,7 @@ const adminNav = [
   { to: '/admin/energy', label: '응답에너지 관리', icon: Zap },
   { to: '/admin/ai-usage', label: 'AI 사용량', icon: BarChart3 },
   { to: '/admin/conversion', label: '전환 분석', icon: TrendingUp },
+  { to: '/admin/inquiries', label: '문의 관리', icon: Mail },
   { to: '/admin/alerts', label: '이상 감지', icon: AlertTriangle },
   { to: '/admin/settings', label: '설정', icon: Settings },
 ];

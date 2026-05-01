@@ -34,6 +34,9 @@ const Rewards = lazy(() => import("./pages/Rewards"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentFail = lazy(() => import("./pages/PaymentFail"));
+const Contact = lazy(() => import("./pages/Contact"));
+const AdminInquiries = lazy(() => import("./pages/AdminInquiries"));
+import FloatingContact from "./components/FloatingContact";
 
 const queryClient = new QueryClient();
 
@@ -84,8 +87,11 @@ const App = () => (
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
               <Route path="/payment/success" element={<PaymentSuccess />} />
               <Route path="/payment/fail" element={<PaymentFail />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/admin/inquiries" element={<ProtectedRoute><AdminInquiries /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <FloatingContact />
           </Suspense>
         </AuthProvider>
       </BrowserRouter>
