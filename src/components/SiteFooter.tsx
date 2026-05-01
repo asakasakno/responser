@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { MessageSquare, ShieldCheck, Lock, CreditCard } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { MessageSquare, ShieldCheck, Lock, CreditCard } from "lucide-react";
 
 /**
  * 전자상거래법 제10조·정보통신망법 기반 사업자 정보 + 정책 링크 통합 푸터.
@@ -19,12 +19,24 @@ export default function SiteFooter() {
             <span className="font-semibold text-foreground">응대도우미</span>
           </Link>
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link to="/pricing" className="hover:text-foreground transition-colors">요금제</Link>
-            <Link to="/extension" className="hover:text-foreground transition-colors">확장 프로그램</Link>
-            <Link to="/contact" className="hover:text-foreground transition-colors">문의하기</Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">이용약관</Link>
-            <Link to="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link>
-            <Link to="/refund" className="hover:text-foreground transition-colors">환불정책</Link>
+            <Link to="/pricing" className="hover:text-foreground transition-colors">
+              요금제
+            </Link>
+            <Link to="/extension" className="hover:text-foreground transition-colors">
+              확장 프로그램
+            </Link>
+            <Link to="/contact" className="hover:text-foreground transition-colors">
+              문의하기
+            </Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">
+              이용약관
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">
+              개인정보처리방침
+            </Link>
+            <Link to="/refund" className="hover:text-foreground transition-colors">
+              환불정책
+            </Link>
           </nav>
         </div>
 
@@ -47,7 +59,7 @@ export default function SiteFooter() {
           <p className="break-keep">
             상호: 응대도우미 <span className="mx-1.5 text-border">|</span>
             대표자: 배지훈 <span className="mx-1.5 text-border">|</span>
-            사업자등록번호: 285-15-02485{' '}
+            사업자등록번호: 285-15-02485{" "}
             <a
               href="https://teht.hometax.go.kr/websquare/websquare.html?w2xPath=/ui/ab/a/a/UTEABAAA13.xml"
               target="_blank"
@@ -63,7 +75,10 @@ export default function SiteFooter() {
           </p>
           <p className="break-keep">업태: 정보통신업 / 종목: 응용 소프트웨어 개발 및 공급업, 전자상거래 소매업</p>
           <p className="break-keep">
-            고객센터: <a href="tel:01050979549" className="hover:text-foreground">010-5097-9549</a>{' '}
+            고객센터:{" "}
+            <a href="tel:050219460111" className="hover:text-foreground">
+              0502-1946-0111
+            </a>{" "}
             <span className="mx-1.5 text-border">|</span>
             <a href="mailto:support@응대도우미.com" className="underline hover:text-foreground">
               support@응대도우미.com
@@ -72,9 +87,7 @@ export default function SiteFooter() {
           <p className="break-keep">운영시간: 평일 10:00 ~ 18:00 (주말·공휴일 휴무)</p>
           <p className="break-keep">개인정보 보호책임자: 배지훈 (support@응대도우미.com)</p>
 
-          <p className="pt-3 text-muted-foreground/70">
-            © {new Date().getFullYear()} 응대도우미. All rights reserved.
-          </p>
+          <p className="pt-3 text-muted-foreground/70">© {new Date().getFullYear()} 응대도우미. All rights reserved.</p>
         </div>
       </div>
     </footer>
