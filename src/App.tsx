@@ -34,6 +34,9 @@ const Rewards = lazy(() => import("./pages/Rewards"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentFail = lazy(() => import("./pages/PaymentFail"));
+const Contact = lazy(() => import("./pages/Contact"));
+const AdminInquiries = lazy(() => import("./pages/AdminInquiries"));
+import FloatingContact from "./components/FloatingContact";
 
 const queryClient = new QueryClient();
 
