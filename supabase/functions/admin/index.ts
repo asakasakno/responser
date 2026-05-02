@@ -305,32 +305,21 @@ Deno.serve(async (req) => {
           if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
           return jsonResponse({ success: true, ...data });
         } else {
-          const { data: profile } = await adminClient
-            .from("profiles")
-            .select("energy_balance")
-            .eq("user_id", user_id)
-            .single();
-
-          if (!profile) return jsonResponse({ error: "사용자를 찾을 수 없습니다." }, 404);
-          if (profile.energy_balance < Math.abs(amount)) {
-            return jsonResponse({ error: "에너지가 부족합니다." }, 400);
-          }
-
           const absAmount = Math.abs(amount);
-          await adminClient
-            .from("profiles")
-            .update({ energy_balance: profile.energy_balance - absAmount })
-            .eq("user_id", user_id);
-
-          await adminClient.from("energy_transactions").insert({
-            user_id,
-            type: "spend",
-            amount: absAmount,
-            reason,
-            description: `관리자 수동 차감: ${reason}`,
+          const { data, error } = await adminClient.rpc("admin_spend_energy", {
+            _user_id: user_id,
+            _amount: absAmount,
+            _reason: reason,
+            _description: `관리자 수동 차감: ${reason}`,
           });
-
-          return jsonResponse({ success: true, balance: profile.energy_balance - absAmount });
+          if (error) {
+            console.error("admin_spend_energy error", error);
+            return jsonResponse({ error: "처리에 실패했습니다." }, 500);
+          }
+          if (data && (data as any).success === false) {
+            return jsonResponse({ error: (data as any).error || "에너지가 부족합니다." }, 400);
+          }
+          return jsonResponse({ success: true, ...(data as any) });
         }
       }
 
