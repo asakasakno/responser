@@ -71,24 +71,36 @@ export default function AdminCoupons() {
   useEffect(() => { load(); }, []);
 
   const handleCreate = async () => {
-    if (!form.coupon_name.trim() || !form.coupon_code.trim() || form.discount_value <= 0) {
-      toast({ title: '필수 항목을 입력해주세요', variant: 'destructive' });
+    const isReward = form.target_type === 'reward';
+    if (!form.coupon_name.trim() || !form.coupon_code.trim()) {
+      toast({ title: '쿠폰 이름과 코드를 입력해주세요', variant: 'destructive' });
+      return;
+    }
+    if (isReward) {
+      if (!form.reward_energy || form.reward_energy <= 0) {
+        toast({ title: '지급 에너지 수량을 입력해주세요', variant: 'destructive' });
+        return;
+      }
+    } else if (form.discount_value <= 0) {
+      toast({ title: '할인값을 입력해주세요', variant: 'destructive' });
       return;
     }
     setSaving(true);
     const payload: any = {
       coupon_name: form.coupon_name.trim(),
       coupon_code: form.coupon_code.trim().toLowerCase(),
-      discount_type: form.discount_type,
-      discount_value: form.discount_value,
-      max_discount_amount: form.max_discount_amount ? Number(form.max_discount_amount) : null,
-      min_purchase_amount: form.min_purchase_amount ? Number(form.min_purchase_amount) : 0,
+      discount_type: isReward ? 'fixed' : form.discount_type,
+      discount_value: isReward ? 0 : form.discount_value,
+      max_discount_amount: !isReward && form.max_discount_amount ? Number(form.max_discount_amount) : null,
+      min_purchase_amount: !isReward && form.min_purchase_amount ? Number(form.min_purchase_amount) : 0,
       target_type: form.target_type,
-      target_plan: form.target_plan || null,
+      target_plan: !isReward ? (form.target_plan || null) : null,
       starts_at: form.starts_at || null,
       expires_at: form.expires_at || null,
       max_total_uses: form.max_total_uses ? Number(form.max_total_uses) : null,
       max_use_per_user: form.max_use_per_user || 1,
+      reward_energy: isReward ? Number(form.reward_energy) : 0,
+      reward_energy_expire_days: isReward && form.reward_energy_expire_days ? Number(form.reward_energy_expire_days) : null,
       is_active: true,
     };
     const { error } = await supabase.from('coupons').insert(payload);
@@ -99,7 +111,7 @@ export default function AdminCoupons() {
     }
     toast({ title: '쿠폰을 생성했습니다.' });
     setOpen(false);
-    setForm({ ...form, coupon_name: '', coupon_code: '', discount_value: 0, max_discount_amount: '', min_purchase_amount: '', target_plan: '', starts_at: '', expires_at: '', max_total_uses: '' });
+    setForm({ ...form, coupon_name: '', coupon_code: '', discount_value: 0, max_discount_amount: '', min_purchase_amount: '', target_plan: '', starts_at: '', expires_at: '', max_total_uses: '', reward_energy: 0, reward_energy_expire_days: '' });
     load();
   };
 
