@@ -81,7 +81,8 @@ Deno.serve(async (req) => {
       .eq("id", sub.id);
 
     if (updErr) {
-      return new Response(JSON.stringify({ error: updErr.message }), {
+      console.error("[cancel-subscription] update error:", updErr);
+      return new Response(JSON.stringify({ error: "처리에 실패했습니다." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -147,7 +148,8 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message ?? "처리 실패" }), {
+    console.error("[cancel-subscription] error:", e);
+    return new Response(JSON.stringify({ error: "처리에 실패했습니다." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
