@@ -8,8 +8,11 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
+  Link,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -22,22 +25,32 @@ export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
 }: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="ko" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>{siteName} 비밀번호를 재설정해주세요</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
+        <Section style={header}>
+          <Heading style={brand}>응대도우미</Heading>
+        </Section>
+
+        <Heading style={h1}>비밀번호 재설정</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          {siteName} 계정의 비밀번호 재설정 요청을 받았어요.<br />
+          아래 버튼을 눌러 새 비밀번호를 설정해주세요.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
+
+        <Section style={ctaSection}>
+          <Button style={button} href={confirmationUrl}>
+            비밀번호 재설정하기
+          </Button>
+        </Section>
+
+        <Hr style={hr} />
+
         <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
+          본인이 요청하지 않았다면 이 메일은 무시하셔도 됩니다.<br />
+          비밀번호는 변경되지 않습니다.
         </Text>
       </Container>
     </Body>
@@ -46,26 +59,50 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
+const main = {
+  backgroundColor: '#ffffff',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, sans-serif',
+}
+const container = { maxWidth: '560px', margin: '0 auto', padding: '32px 24px' }
+const header = { textAlign: 'center' as const, paddingBottom: '24px' }
+const brand = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
+  color: '#3B82F6',
+  margin: 0,
+  letterSpacing: '-0.5px',
+}
+const h1 = {
+  fontSize: '24px',
+  fontWeight: 'bold' as const,
+  color: '#111827',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
 }
 const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  fontSize: '15px',
+  color: '#374151',
+  lineHeight: '1.6',
+  margin: '0 0 24px',
+  textAlign: 'center' as const,
 }
+const ctaSection = { textAlign: 'center' as const, padding: '8px 0 16px' }
 const button = {
-  backgroundColor: '#000000',
+  display: 'inline-block',
+  background: 'linear-gradient(135deg, #3B82F6, #6366F1)',
+  backgroundColor: '#3B82F6',
   color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  fontSize: '16px',
+  fontWeight: 'bold' as const,
+  borderRadius: '12px',
+  padding: '16px 32px',
   textDecoration: 'none',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const hr = { borderColor: '#E5E7EB', margin: '32px 0' }
+const footer = {
+  fontSize: '12px',
+  color: '#9CA3AF',
+  textAlign: 'center' as const,
+  lineHeight: '1.6',
+}
