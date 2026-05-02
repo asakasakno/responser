@@ -51,12 +51,14 @@ export default function AdminCoupons() {
     discount_value: 0,
     max_discount_amount: '',
     min_purchase_amount: '',
-    target_type: 'all' as 'subscription' | 'energy' | 'all',
+    target_type: 'all' as 'subscription' | 'energy' | 'all' | 'reward',
     target_plan: '',
     starts_at: '',
     expires_at: '',
     max_total_uses: '',
     max_use_per_user: 1,
+    reward_energy: 0,
+    reward_energy_expire_days: '',
   });
 
   const load = async () => {
