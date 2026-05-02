@@ -240,10 +240,16 @@ export default function AdminCoupons() {
                     <td className="p-3 font-mono font-semibold">{c.coupon_code}</td>
                     <td className="p-3">{c.coupon_name}</td>
                     <td className="p-3">
-                      {c.discount_type === 'fixed' ? formatKRW(c.discount_value) : `${c.discount_value}%`}
-                      {c.max_discount_amount && <span className="text-xs text-muted-foreground"> (최대 {formatKRW(c.max_discount_amount)})</span>}
+                      {c.target_type === 'reward' ? (
+                        <span className="text-primary font-medium">⚡ +{c.reward_energy} 에너지{c.reward_energy_expire_days ? ` (${c.reward_energy_expire_days}일)` : ''}</span>
+                      ) : (
+                        <>
+                          {c.discount_type === 'fixed' ? formatKRW(c.discount_value) : `${c.discount_value}%`}
+                          {c.max_discount_amount && <span className="text-xs text-muted-foreground"> (최대 {formatKRW(c.max_discount_amount)})</span>}
+                        </>
+                      )}
                     </td>
-                    <td className="p-3 text-xs">{c.target_type}{c.target_plan ? ` / ${c.target_plan}` : ''}</td>
+                    <td className="p-3 text-xs">{c.target_type === 'reward' ? '에너지 지급' : c.target_type}{c.target_plan ? ` / ${c.target_plan}` : ''}</td>
                     <td className="p-3 text-xs">{c.total_uses}{c.max_total_uses ? ` / ${c.max_total_uses}` : ''} <span className="text-muted-foreground">(계정당 {c.max_use_per_user})</span></td>
                     <td className="p-3 text-xs">{c.expires_at ? new Date(c.expires_at).toLocaleDateString('ko-KR') : '무제한'}</td>
                     <td className="p-3 text-center"><Switch checked={c.is_active} onCheckedChange={() => toggleActive(c)} /></td>
