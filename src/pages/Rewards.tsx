@@ -203,6 +203,8 @@ export default function Rewards() {
           )}
         </div>
 
+        <CouponRedeemCard onRedeemed={() => { refreshEnergy(); loadTransactions(); }} />
+
         {/* Missions */}
         {groupedMissions.map(group => (
           <div key={group.key} className="mb-8">
