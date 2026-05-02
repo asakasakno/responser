@@ -109,23 +109,27 @@ export default function ExtensionPage() {
   const { user, plan } = useAuth();
   const isAllowed = plan === 'basic' || plan === 'pro';
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!isAllowed) return;
     setDownloading(true);
-    fetch('/extension.zip')
-      .then(res => {
-        if (!res.ok) throw new Error('다운로드 실패');
-        return res.blob();
-      })
-      .then(blob => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = '응대도우미-extension.zip';
-        a.click();
-        URL.revokeObjectURL(a.href);
-      })
-      .catch(err => alert(err.message))
-      .finally(() => setDownloading(false));
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('download-extension');
+      if (error) throw error;
+      if (!data?.url) throw new Error('다운로드 링크를 받지 못했습니다.');
+      const res = await fetch(data.url);
+      if (!res.ok) throw new Error('다운로드 실패');
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '응대도우미-extension.zip';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (err: any) {
+      alert(err?.message || '다운로드에 실패했습니다.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
