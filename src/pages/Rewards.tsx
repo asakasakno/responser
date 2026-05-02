@@ -8,6 +8,7 @@ import { Zap, Check, Gift, Users, CreditCard, Flame, Copy, ArrowRight } from 'lu
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
+import CouponRedeemCard from '@/components/CouponRedeemCard';
 
 interface MissionItem {
   id: string;
