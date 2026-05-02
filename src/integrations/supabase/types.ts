@@ -141,6 +141,8 @@ export type Database = {
           max_total_uses: number | null
           max_use_per_user: number
           min_purchase_amount: number | null
+          reward_energy: number
+          reward_energy_expire_days: number | null
           starts_at: string | null
           target_plan: string | null
           target_type: string
@@ -160,6 +162,8 @@ export type Database = {
           max_total_uses?: number | null
           max_use_per_user?: number
           min_purchase_amount?: number | null
+          reward_energy?: number
+          reward_energy_expire_days?: number | null
           starts_at?: string | null
           target_plan?: string | null
           target_type?: string
@@ -179,6 +183,8 @@ export type Database = {
           max_total_uses?: number | null
           max_use_per_user?: number
           min_purchase_amount?: number | null
+          reward_energy?: number
+          reward_energy_expire_days?: number | null
           starts_at?: string | null
           target_plan?: string | null
           target_type?: string
@@ -713,6 +719,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_spend_energy: {
+        Args: {
+          _amount: number
+          _description?: string
+          _reason: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       check_rate_limit: {
         Args: { _action: string; _max_per_second?: number; _user_id: string }
         Returns: boolean
@@ -801,6 +816,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      redeem_energy_coupon: { Args: { _code: string }; Returns: Json }
       spend_energy: {
         Args: { _amount: number; _description?: string; _reason: string }
         Returns: Json
