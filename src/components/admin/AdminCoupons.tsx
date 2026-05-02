@@ -139,44 +139,61 @@ export default function AdminCoupons() {
                 <Input value={form.coupon_name} onChange={e => setForm({ ...form, coupon_name: e.target.value })} placeholder="런칭 기념 20% 할인" /></div>
               <div><Label>쿠폰 코드 (사용자 입력)</Label>
                 <Input value={form.coupon_code} onChange={e => setForm({ ...form, coupon_code: e.target.value })} placeholder="LAUNCH20" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>할인 방식</Label>
-                  <Select value={form.discount_type} onValueChange={(v: any) => setForm({ ...form, discount_type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fixed">정액 (원)</SelectItem>
-                      <SelectItem value="percent">정률 (%)</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                <div><Label>할인값</Label>
-                  <Input type="number" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>최대 할인액 (선택)</Label>
-                  <Input type="number" value={form.max_discount_amount} onChange={e => setForm({ ...form, max_discount_amount: e.target.value })} /></div>
-                <div><Label>최소 결제금액 (선택)</Label>
-                  <Input type="number" value={form.min_purchase_amount} onChange={e => setForm({ ...form, min_purchase_amount: e.target.value })} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>적용 대상</Label>
-                  <Select value={form.target_type} onValueChange={(v: any) => setForm({ ...form, target_type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">전체</SelectItem>
-                      <SelectItem value="subscription">구독만</SelectItem>
-                      <SelectItem value="energy">에너지 구매만</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                <div><Label>플랜 한정 (선택)</Label>
-                  <Select value={form.target_plan || 'any'} onValueChange={(v) => setForm({ ...form, target_plan: v === 'any' ? '' : v })}>
-                    <SelectTrigger><SelectValue placeholder="제한 없음" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">제한 없음</SelectItem>
-                      <SelectItem value="basic">Basic</SelectItem>
-                      <SelectItem value="pro">Pro</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-              </div>
+
+              <div><Label>쿠폰 종류</Label>
+                <Select value={form.target_type} onValueChange={(v: any) => setForm({ ...form, target_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">결제 할인 — 전체</SelectItem>
+                    <SelectItem value="subscription">결제 할인 — 구독만</SelectItem>
+                    <SelectItem value="energy">결제 할인 — 에너지 구매만</SelectItem>
+                    <SelectItem value="reward">에너지 지급 (결제 불필요)</SelectItem>
+                  </SelectContent>
+                </Select></div>
+
+              {form.target_type === 'reward' ? (
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div><Label>지급 에너지 수량</Label>
+                    <Input type="number" min={1} value={form.reward_energy}
+                      onChange={e => setForm({ ...form, reward_energy: Number(e.target.value) })}
+                      placeholder="100" /></div>
+                  <div><Label>유효 기간 (일, 선택)</Label>
+                    <Input type="number" min={1} value={form.reward_energy_expire_days}
+                      onChange={e => setForm({ ...form, reward_energy_expire_days: e.target.value })}
+                      placeholder="비우면 무기한" /></div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>할인 방식</Label>
+                      <Select value={form.discount_type} onValueChange={(v: any) => setForm({ ...form, discount_type: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fixed">정액 (원)</SelectItem>
+                          <SelectItem value="percent">정률 (%)</SelectItem>
+                        </SelectContent>
+                      </Select></div>
+                    <div><Label>할인값</Label>
+                      <Input type="number" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>최대 할인액 (선택)</Label>
+                      <Input type="number" value={form.max_discount_amount} onChange={e => setForm({ ...form, max_discount_amount: e.target.value })} /></div>
+                    <div><Label>최소 결제금액 (선택)</Label>
+                      <Input type="number" value={form.min_purchase_amount} onChange={e => setForm({ ...form, min_purchase_amount: e.target.value })} /></div>
+                  </div>
+                  <div><Label>플랜 한정 (선택)</Label>
+                    <Select value={form.target_plan || 'any'} onValueChange={(v) => setForm({ ...form, target_plan: v === 'any' ? '' : v })}>
+                      <SelectTrigger><SelectValue placeholder="제한 없음" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">제한 없음</SelectItem>
+                        <SelectItem value="basic">Basic</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                      </SelectContent>
+                    </Select></div>
+                </>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>시작일 (선택)</Label>
                   <Input type="datetime-local" value={form.starts_at} onChange={e => setForm({ ...form, starts_at: e.target.value })} /></div>
