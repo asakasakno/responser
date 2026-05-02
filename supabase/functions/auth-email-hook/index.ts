@@ -17,12 +17,12 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: '[응대도우미] 10초만에 시작하는 고객응대 자동화 — 인증을 완료해주세요',
+  invite: '[응대도우미] 초대장이 도착했어요',
+  magiclink: '[응대도우미] 로그인 링크입니다',
+  recovery: '[응대도우미] 비밀번호 재설정 안내',
+  email_change: '[응대도우미] 이메일 주소 변경 확인',
+  reauthentication: '[응대도우미] 본인 인증 코드',
 }
 
 // Template mapping
@@ -36,10 +36,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "responser"
+const SITE_NAME = "응대도우미"
 const SENDER_DOMAIN = "notify.xn--vk1booh7ruql6wa.com"
 const ROOT_DOMAIN = "xn--vk1booh7ruql6wa.com"
-const FROM_DOMAIN = "xn--vk1booh7ruql6wa.com" // Domain shown in From address (may be root or sender subdomain)
+const FROM_DOMAIN = "xn--vk1booh7ruql6wa.com"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
