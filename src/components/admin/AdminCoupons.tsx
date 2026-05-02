@@ -21,7 +21,7 @@ interface Coupon {
   discount_value: number;
   max_discount_amount: number | null;
   min_purchase_amount: number | null;
-  target_type: 'subscription' | 'energy' | 'all';
+  target_type: 'subscription' | 'energy' | 'all' | 'reward';
   target_plan: string | null;
   starts_at: string | null;
   expires_at: string | null;
@@ -29,6 +29,8 @@ interface Coupon {
   max_total_uses: number | null;
   max_use_per_user: number;
   total_uses: number;
+  reward_energy: number;
+  reward_energy_expire_days: number | null;
   created_at: string;
 }
 
