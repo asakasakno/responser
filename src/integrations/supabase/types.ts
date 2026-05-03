@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_response_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expire_at: string
+          hit_count: number
+          id: string
+          response: string
+          user_id: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expire_at?: string
+          hit_count?: number
+          id?: string
+          response: string
+          user_id: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expire_at?: string
+          hit_count?: number
+          id?: string
+          response?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -728,6 +758,7 @@ export type Database = {
         }
         Returns: Json
       }
+      check_plan_rate_limit: { Args: { _action: string }; Returns: Json }
       check_rate_limit: {
         Args: { _action: string; _max_per_second?: number; _user_id: string }
         Returns: boolean
@@ -736,6 +767,8 @@ export type Database = {
         Args: { _amount: number; _description: string; _reward_key: string }
         Returns: Json
       }
+      cleanup_ai_response_cache: { Args: never; Returns: number }
+      cleanup_old_audit_logs: { Args: never; Returns: number }
       cleanup_old_energy_transactions_global: { Args: never; Returns: number }
       consume_coupon: {
         Args: {
@@ -818,6 +851,10 @@ export type Database = {
         }[]
       }
       redeem_energy_coupon: { Args: { _code: string }; Returns: Json }
+      refund_energy: {
+        Args: { _amount: number; _description?: string; _reason: string }
+        Returns: Json
+      }
       spend_energy: {
         Args: { _amount: number; _description?: string; _reason: string }
         Returns: Json

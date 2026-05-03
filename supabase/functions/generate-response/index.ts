@@ -225,14 +225,24 @@ serve(async (req) => {
       return jsonRes({ error: "크롬 확장프로그램은 Basic 이상 플랜에서 사용할 수 있습니다." }, 403);
     }
 
-    // [7] Rate limit check
-    const { data: allowed } = await adminClient.rpc("check_rate_limit", {
+    // [7] Burst rate limit (per-second)
+    const { data: burstOk } = await adminClient.rpc("check_rate_limit", {
       _user_id: userId,
       _action: "generate",
       _max_per_second: 2,
     });
-    if (!allowed) {
+    if (!burstOk) {
       return jsonRes({ error: "요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요." }, 429);
+    }
+
+    // Per-plan rate limit (minute + day)
+    const { data: planLimit } = await userClient.rpc("check_plan_rate_limit", { _action: "generate" });
+    const pl: any = planLimit;
+    if (pl && pl.allowed === false) {
+      const msg = pl.reason === "day"
+        ? `오늘 사용 한도(${pl.limit}회)를 모두 사용했습니다.`
+        : `분당 요청 한도(${pl.limit}회)를 초과했습니다. 잠시 후 다시 시도해주세요.`;
+      return jsonRes({ error: msg, plan: pl.plan }, 429);
     }
 
     // Parse body
@@ -279,6 +289,36 @@ serve(async (req) => {
 
     const cost = Number.isFinite(energy_cost) && energy_cost > 0 && energy_cost <= 5 ? energy_cost : 1;
 
+    // [Cache] Compute cache key from inputs (skip when no cache desirable)
+    const cacheRaw = JSON.stringify({
+      type,
+      text: text.trim(),
+      style: appliedStyle,
+      product_id: product?.id ?? null,
+      platform_id: platform?.id ?? null,
+    });
+    const cacheKeyBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cacheRaw));
+    const cacheKey = Array.from(new Uint8Array(cacheKeyBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+    // Try cache hit first - free if hit (no energy spent)
+    const { data: cached } = await adminClient
+      .from("ai_response_cache")
+      .select("id, response, expire_at")
+      .eq("user_id", userId)
+      .eq("cache_key", cacheKey)
+      .gt("expire_at", new Date().toISOString())
+      .maybeSingle();
+
+    if (cached?.response) {
+      await adminClient
+        .from("ai_response_cache")
+        .update({
+          expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+        })
+        .eq("id", cached.id);
+      return jsonRes({ response: cached.response, cached: true });
+    }
+
     // [2] 서버에서 에너지 차감 (spend_energy RPC는 이미 SECURITY DEFINER)
     const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
       _amount: cost,
@@ -294,6 +334,17 @@ serve(async (req) => {
     if (!result?.success) {
       return jsonRes({ error: result?.error === "Insufficient energy" ? "에너지가 부족합니다." : "요청을 처리할 수 없습니다." }, 403);
     }
+
+    // Helper: refund energy if AI fails after spend
+    const refund = async () => {
+      try {
+        await userClient.rpc("refund_energy", {
+          _amount: cost,
+          _reason: type,
+          _description: "AI 호출 실패 환불",
+        });
+      } catch (_) { /* ignore */ }
+    };
 
     // Increment usage for streak tracking
     await userClient.rpc("increment_usage");
@@ -358,32 +409,53 @@ serve(async (req) => {
       systemPrompt += STYLE_GUIDES[appliedStyle];
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: text },
+          ],
+        }),
+      });
+    } catch (err) {
+      await refund();
+      console.error("AI gateway network error", err);
+      return jsonRes({ error: "AI 서버 연결에 실패했습니다. 에너지가 환불되었습니다." }, 502);
+    }
 
     if (!response.ok) {
-      // [9] 에러 메시지 최소화 - 내부 상세 노출 금지
+      await refund();
       console.error(`AI gateway error: ${response.status}`);
       if (response.status === 429) {
-        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }, 429);
+        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (에너지 환불됨)" }, 429);
       }
-      return jsonRes({ error: "답변 생성에 실패했습니다." }, 500);
+      return jsonRes({ error: "답변 생성에 실패했습니다. 에너지가 환불되었습니다." }, 500);
     }
 
     const data = await response.json();
-    const responseText = data.choices?.[0]?.message?.content || "답변을 생성할 수 없습니다.";
+    const responseText = data.choices?.[0]?.message?.content;
+    if (!responseText) {
+      await refund();
+      return jsonRes({ error: "답변을 생성할 수 없습니다. 에너지가 환불되었습니다." }, 500);
+    }
+
+    // Store in cache (best-effort, 7 days)
+    try {
+      await adminClient.from("ai_response_cache").upsert({
+        user_id: userId,
+        cache_key: cacheKey,
+        response: responseText,
+        expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      }, { onConflict: "user_id,cache_key" });
+    } catch (_) { /* ignore cache failures */ }
 
     return jsonRes({ response: responseText });
   } catch (e) {
