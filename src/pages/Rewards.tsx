@@ -117,12 +117,14 @@ export default function Rewards() {
 
   const loadTransactions = async () => {
     if (!user) return;
+    const since = new Date(Date.now() - period * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from('energy_transactions')
       .select('*')
       .eq('user_id', user.id)
+      .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(200);
     setTransactions(data || []);
   };
 
