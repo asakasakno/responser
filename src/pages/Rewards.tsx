@@ -273,9 +273,25 @@ export default function Rewards() {
 
         {/* Transaction history */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">에너지 내역</h2>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h2 className="text-lg font-semibold text-foreground">에너지 내역</h2>
+            <div className="flex gap-1 bg-secondary rounded-lg p-1">
+              {([1, 7, 30, 90] as const).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setPeriod(d)}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    period === d ? 'bg-card text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {d}일
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">※ 90일이 지난 내역은 자동으로 삭제되어 표시되지 않습니다.</p>
           {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">아직 내역이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">해당 기간에 내역이 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {transactions.map((tx: any) => (
