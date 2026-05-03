@@ -27,10 +27,12 @@ export default function Rewards() {
   const [loading, setLoading] = useState(true);
   const [allTx, setAllTx] = useState<any[]>([]);
   const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
+  const [txFilter, setTxFilter] = useState<'all' | 'earn' | 'spend'>('all');
   const limits = PLAN_LIMITS[plan];
 
   const sinceMs = Date.now() - period * 24 * 60 * 60 * 1000;
-  const transactions = allTx.filter(t => new Date(t.created_at).getTime() >= sinceMs);
+  const periodTx = allTx.filter(t => new Date(t.created_at).getTime() >= sinceMs);
+  const transactions = periodTx.filter(t => txFilter === 'all' || t.type === txFilter);
   const periodTotals = ([1, 7, 30, 90] as const).map(d => {
     const cutoff = Date.now() - d * 24 * 60 * 60 * 1000;
     const list = allTx.filter(t => new Date(t.created_at).getTime() >= cutoff);
@@ -42,7 +44,7 @@ export default function Rewards() {
   useEffect(() => {
     if (user) {
       loadMissions();
-      supabase.rpc('cleanup_old_energy_transactions' as any).then(() => loadTransactions());
+      loadTransactions();
     }
   }, [user]);
 
