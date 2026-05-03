@@ -109,18 +109,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: (response, error) => {
+          const escapeHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
           const resultDiv = document.getElementById('응대도우미-result');
           if (!resultDiv) return;
 
           if (error) {
-            resultDiv.innerHTML = `<div style="color: #ef4444; font-size: 13px; padding: 12px;">❌ ${error}</div>`;
+            resultDiv.innerHTML = `<div style="color: #ef4444; font-size: 13px; padding: 12px;">❌ ${escapeHtml(error)}</div>`;
             return;
           }
 
           resultDiv.innerHTML = `
             <div style="width: 100%;">
               <div style="font-size: 11px; color: #3b82f6; margin-bottom: 6px; font-weight: 600;">✨ AI 생성 답변</div>
-              <div style="font-size: 13px; color: #1f2937; line-height: 1.6; background: #eff6ff; border-radius: 10px; padding: 12px; border: 1px solid #dbeafe; white-space: pre-wrap;">${response}</div>
+              <div style="font-size: 13px; color: #1f2937; line-height: 1.6; background: #eff6ff; border-radius: 10px; padding: 12px; border: 1px solid #dbeafe; white-space: pre-wrap;">${escapeHtml(response)}</div>
               <button id="응대도우미-copy" style="margin-top: 10px; padding: 8px 16px; background: linear-gradient(135deg, #3b82f6, #6366f1); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; width: 100%;">
                 📋 답변 복사하기
               </button>
