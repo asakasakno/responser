@@ -312,7 +312,9 @@ serve(async (req) => {
     if (cached?.response) {
       await adminClient
         .from("ai_response_cache")
-        .update({ hit_count: (await adminClient.rpc as any) && undefined, expire_at: new Date(Date.now() + 7*24*3600*1000).toISOString() })
+        .update({
+          expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+        })
         .eq("id", cached.id);
       return jsonRes({ response: cached.response, cached: true });
     }
