@@ -25,17 +25,26 @@ export default function Rewards() {
   const { toast } = useToast();
   const [missions, setMissions] = useState<MissionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [allTx, setAllTx] = useState<any[]>([]);
   const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
   const limits = PLAN_LIMITS[plan];
+
+  const sinceMs = Date.now() - period * 24 * 60 * 60 * 1000;
+  const transactions = allTx.filter(t => new Date(t.created_at).getTime() >= sinceMs);
+  const periodTotals = ([1, 7, 30, 90] as const).map(d => {
+    const cutoff = Date.now() - d * 24 * 60 * 60 * 1000;
+    const list = allTx.filter(t => new Date(t.created_at).getTime() >= cutoff);
+    const earn = list.filter(t => t.type === 'earn').reduce((s, t) => s + t.amount, 0);
+    const spend = list.filter(t => t.type === 'spend').reduce((s, t) => s + t.amount, 0);
+    return { d, earn, spend, net: earn - spend };
+  });
 
   useEffect(() => {
     if (user) {
       loadMissions();
-      // Cleanup old (>90d) then load
       supabase.rpc('cleanup_old_energy_transactions' as any).then(() => loadTransactions());
     }
-  }, [user, period]);
+  }, [user]);
 
   const loadMissions = async () => {
     if (!user) return;
@@ -117,15 +126,15 @@ export default function Rewards() {
 
   const loadTransactions = async () => {
     if (!user) return;
-    const since = new Date(Date.now() - period * 24 * 60 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from('energy_transactions')
       .select('*')
       .eq('user_id', user.id)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(200);
-    setTransactions(data || []);
+      .limit(1000);
+    setAllTx(data || []);
   };
 
   const calculateStreak = (dates: string[]) => {
@@ -309,6 +318,24 @@ export default function Rewards() {
               ))}
             </div>
           )}
+
+          <div className="mt-6 pt-4 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">기간별 합계</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {periodTotals.map(({ d, earn, spend, net }) => (
+                <div key={d} className="bg-secondary/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">{d}일</p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-accent">+{earn}</span>
+                    <span className="text-destructive">-{spend}</span>
+                  </div>
+                  <p className={`text-sm font-bold tabular-nums mt-1 ${net >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                    순 {net >= 0 ? '+' : ''}{net}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </Layout>
