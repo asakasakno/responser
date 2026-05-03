@@ -61,7 +61,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         <div style="padding: 16px 20px; background: linear-gradient(135deg, #3b82f6, #6366f1); color: #fff; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div style="font-weight: 700; font-size: 15px;">응대도우미</div>
-            <div style="font-size: 12px; opacity: 0.85;">${type === 'review' ? '리뷰 답변' : type === 'inquiry' ? '문의 답변' : '클레임 대응'} 생성 중...</div>
+            <div style="font-size: 12px; opacity: 0.85;">${escapeHtml(type === 'review' ? '리뷰 답변' : type === 'inquiry' ? '문의 답변' : '클레임 대응')} 생성 중...</div>
           </div>
           <button id="응대도우미-close" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px;">✕</button>
         </div>
