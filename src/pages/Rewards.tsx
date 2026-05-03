@@ -26,6 +26,7 @@ export default function Rewards() {
   const [missions, setMissions] = useState<MissionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
   const limits = PLAN_LIMITS[plan];
 
   useEffect(() => {
