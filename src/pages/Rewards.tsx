@@ -300,6 +300,23 @@ export default function Rewards() {
               ))}
             </div>
           </div>
+          <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-3 w-fit">
+            {([
+              { k: 'all', label: '전체' },
+              { k: 'earn', label: '지급' },
+              { k: 'spend', label: '사용' },
+            ] as const).map(({ k, label }) => (
+              <button
+                key={k}
+                onClick={() => setTxFilter(k)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  txFilter === k ? 'bg-card text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground mb-3">※ 90일이 지난 내역은 자동으로 삭제되어 표시되지 않습니다.</p>
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground">해당 기간에 내역이 없습니다.</p>
