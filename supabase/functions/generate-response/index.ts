@@ -289,6 +289,34 @@ serve(async (req) => {
 
     const cost = Number.isFinite(energy_cost) && energy_cost > 0 && energy_cost <= 5 ? energy_cost : 1;
 
+    // [Cache] Compute cache key from inputs (skip when no cache desirable)
+    const cacheRaw = JSON.stringify({
+      type,
+      text: text.trim(),
+      style: appliedStyle,
+      product_id: product?.id ?? null,
+      platform_id: platform?.id ?? null,
+    });
+    const cacheKeyBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cacheRaw));
+    const cacheKey = Array.from(new Uint8Array(cacheKeyBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+    // Try cache hit first - free if hit (no energy spent)
+    const { data: cached } = await adminClient
+      .from("ai_response_cache")
+      .select("id, response, expire_at")
+      .eq("user_id", userId)
+      .eq("cache_key", cacheKey)
+      .gt("expire_at", new Date().toISOString())
+      .maybeSingle();
+
+    if (cached?.response) {
+      await adminClient
+        .from("ai_response_cache")
+        .update({ hit_count: (await adminClient.rpc as any) && undefined, expire_at: new Date(Date.now() + 7*24*3600*1000).toISOString() })
+        .eq("id", cached.id);
+      return jsonRes({ response: cached.response, cached: true });
+    }
+
     // [2] 서버에서 에너지 차감 (spend_energy RPC는 이미 SECURITY DEFINER)
     const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
       _amount: cost,
@@ -304,6 +332,17 @@ serve(async (req) => {
     if (!result?.success) {
       return jsonRes({ error: result?.error === "Insufficient energy" ? "에너지가 부족합니다." : "요청을 처리할 수 없습니다." }, 403);
     }
+
+    // Helper: refund energy if AI fails after spend
+    const refund = async () => {
+      try {
+        await userClient.rpc("refund_energy", {
+          _amount: cost,
+          _reason: type,
+          _description: "AI 호출 실패 환불",
+        });
+      } catch (_) { /* ignore */ }
+    };
 
     // Increment usage for streak tracking
     await userClient.rpc("increment_usage");
