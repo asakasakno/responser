@@ -32,9 +32,10 @@ export default function Rewards() {
   useEffect(() => {
     if (user) {
       loadMissions();
-      loadTransactions();
+      // Cleanup old (>90d) then load
+      supabase.rpc('cleanup_old_energy_transactions' as any).then(() => loadTransactions());
     }
-  }, [user]);
+  }, [user, period]);
 
   const loadMissions = async () => {
     if (!user) return;
