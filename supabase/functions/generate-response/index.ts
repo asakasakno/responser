@@ -1,15 +1,44 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-client-source, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const PROD_ORIGINS = [
+  "https://responser.lovable.app",
+];
+const DEV_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+];
+
+const allowedOrigins = new Set([
+  ...PROD_ORIGINS,
+  ...DEV_ORIGINS,
+  ...((Deno.env.get("ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean)),
+]);
+
+function buildCorsHeaders(origin: string | null) {
+  const isAllowed = !!origin && allowedOrigins.has(origin);
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : PROD_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-client-source, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 const PLAN_LIMITS: Record<string, { maxPerDay: number }> = {
   free: { maxPerDay: 20 },
   basic: { maxPerDay: 200 },
   pro: { maxPerDay: 1000 },
+};
+const PLAN_PER_MINUTE: Record<string, number> = {
+  free: 3,
+  basic: 10,
+  pro: 30,
 };
 
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -158,7 +187,7 @@ const PLATFORM_GUIDES: Record<string, { name: string; review: string; inquiry: s
 };
 
 
-function jsonRes(data: any, status = 200) {
+function jsonRes(data: any, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -166,15 +195,28 @@ function jsonRes(data: any, status = 200) {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = buildCorsHeaders(origin);
+  let reservationId: string | null = null;
+  let reservationDone = false;
+  let completeReservation: (status: "success" | "failed" | "failed_timeout", code?: string) => Promise<void> = async () => {};
+
   if (req.method === "OPTIONS") {
+    if (origin && !allowedOrigins.has(origin)) {
+      return new Response("forbidden", { status: 403, headers: corsHeaders });
+    }
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (origin && !allowedOrigins.has(origin)) {
+    return jsonRes({ error: "허용되지 않은 Origin입니다." }, corsHeaders, 403);
   }
 
   try {
     // [1] 서버 인증 필수
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return jsonRes({ error: "인증이 필요합니다." }, 401);
+      return jsonRes({ error: "인증이 필요합니다." }, corsHeaders, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -189,9 +231,12 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
-      return jsonRes({ error: "인증이 유효하지 않습니다." }, 401);
+      return jsonRes({ error: "인증이 유효하지 않습니다." }, corsHeaders, 401);
     }
-    const userId = claimsData.claims.sub as string;
+    const userId = claimsData.claims.sub as string | undefined;
+    if (!userId) {
+      return jsonRes({ error: "인증이 유효하지 않습니다." }, corsHeaders, 401);
+    }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -202,8 +247,8 @@ serve(async (req) => {
       .eq("user_id", userId)
       .single();
 
-    if (!profile) return jsonRes({ error: "사용자를 찾을 수 없습니다." }, 404);
-    if (profile.suspended) return jsonRes({ error: "계정이 정지되었습니다." }, 403);
+    if (!profile) return jsonRes({ error: "사용자를 찾을 수 없습니다." }, corsHeaders, 404);
+    if (profile.suspended) return jsonRes({ error: "계정이 정지되었습니다." }, corsHeaders, 403);
 
     // 플랜 체크: 확장프로그램은 Basic+ 필요, 답변 스타일도 Basic+ 필요
     const clientSource = req.headers.get("x-client-source");
@@ -214,6 +259,8 @@ serve(async (req) => {
       .eq("status", "active")
       .maybeSingle();
     const userPlan = sub?.plan ?? "free";
+    const perMinuteLimit = PLAN_PER_MINUTE[userPlan] ?? PLAN_PER_MINUTE.free;
+    const perDayLimit = PLAN_LIMITS[userPlan]?.maxPerDay ?? PLAN_LIMITS.free.maxPerDay;
 
     if (clientSource === "extension" && userPlan === "free") {
       await adminClient.from("audit_logs").insert({
@@ -222,43 +269,33 @@ serve(async (req) => {
         details: { plan: userPlan },
         severity: "warning",
       });
-      return jsonRes({ error: "크롬 확장프로그램은 Basic 이상 플랜에서 사용할 수 있습니다." }, 403);
+      return jsonRes({ error: "크롬 확장프로그램은 Basic 이상 플랜에서 사용할 수 있습니다." }, corsHeaders, 403);
     }
 
-    // [7] Burst rate limit (per-second)
-    const { data: burstOk } = await adminClient.rpc("check_rate_limit", {
-      _user_id: userId,
-      _action: "generate",
-      _max_per_second: 2,
-    });
-    if (!burstOk) {
-      return jsonRes({ error: "요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요." }, 429);
-    }
-
-    // Per-plan rate limit (minute + day)
+    // Per-plan rate limit (minute + day) - 기존 로직 유지
     const { data: planLimit } = await userClient.rpc("check_plan_rate_limit", { _action: "generate" });
     const pl: any = planLimit;
     if (pl && pl.allowed === false) {
       const msg = pl.reason === "day"
         ? `오늘 사용 한도(${pl.limit}회)를 모두 사용했습니다.`
         : `분당 요청 한도(${pl.limit}회)를 초과했습니다. 잠시 후 다시 시도해주세요.`;
-      return jsonRes({ error: msg, plan: pl.plan }, 429);
+      return jsonRes({ error: msg, plan: pl.plan }, corsHeaders, 429);
     }
 
     // Parse body
     const { type, text, product, energy_cost, style, platform } = await req.json();
 
     if (!type || !text) {
-      return jsonRes({ error: "필수 항목이 누락되었습니다." }, 400);
+      return jsonRes({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
     }
 
     if (!["review", "inquiry", "claim"].includes(type)) {
-      return jsonRes({ error: "잘못된 요청입니다." }, 400);
+      return jsonRes({ error: "잘못된 요청입니다." }, corsHeaders, 400);
     }
 
     // Sanitize text input length
     if (typeof text !== "string" || text.length > 5000) {
-      return jsonRes({ error: "입력이 너무 깁니다." }, 400);
+      return jsonRes({ error: "입력이 너무 깁니다." }, corsHeaders, 400);
     }
 
     // 답변 스타일은 Basic 이상에서만 적용
@@ -266,10 +303,10 @@ serve(async (req) => {
     let appliedStyle: string | null = null;
     if (style) {
       if (!validStyles.includes(style)) {
-        return jsonRes({ error: "잘못된 스타일입니다." }, 400);
+        return jsonRes({ error: "잘못된 스타일입니다." }, corsHeaders, 400);
       }
       if (userPlan === "free") {
-        return jsonRes({ error: "답변 스타일 선택은 Basic 이상 플랜에서 사용할 수 있습니다." }, 403);
+        return jsonRes({ error: "답변 스타일 선택은 Basic 이상 플랜에서 사용할 수 있습니다." }, corsHeaders, 403);
       }
       appliedStyle = style;
     }
@@ -283,7 +320,7 @@ serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
       if (!ownProduct) {
-        return jsonRes({ error: "상품 정보가 유효하지 않습니다." }, 403);
+        return jsonRes({ error: "상품 정보가 유효하지 않습니다." }, corsHeaders, 403);
       }
     }
 
@@ -316,8 +353,63 @@ serve(async (req) => {
           expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
         })
         .eq("id", cached.id);
-      return jsonRes({ response: cached.response, cached: true });
+      return jsonRes({ response: cached.response, cached: true }, corsHeaders);
     }
+
+    // 원자적 예약 기반 rate limit (동시 요청 우회 방지)
+    const { data: reserveData } = await userClient.rpc("reserve_generate_request", {
+      _max_per_second: 2,
+      _per_min: perMinuteLimit,
+      _per_day: perDayLimit,
+    });
+    const reservation = reserveData as any;
+    if (!reservation?.allowed || !reservation?.reservation_id) {
+      const reason = reservation?.reason;
+      const msg = reason === "day"
+        ? `오늘 사용 한도(${reservation?.limit ?? perDayLimit}회)를 모두 사용했습니다.`
+        : reason === "minute"
+          ? `분당 요청 한도(${reservation?.limit ?? perMinuteLimit}회)를 초과했습니다. 잠시 후 다시 시도해주세요.`
+          : "요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.";
+      return jsonRes({ error: msg, plan: userPlan }, corsHeaders, 429);
+    }
+    reservationId = reservation.reservation_id as string;
+    completeReservation = async (status: "success" | "failed" | "failed_timeout", code?: string) => {
+      try {
+        await userClient.rpc("complete_generate_request", {
+          _reservation_id: reservationId,
+          _status: status,
+          _error_code: code ?? null,
+        });
+        reservationDone = true;
+      } catch (_) { /* ignore */ }
+    };
+    let refundDone = false;
+    const refundAndMark = async (errorCode: string) => {
+      if (refundDone) return { ok: true, duplicated: true };
+      const { data: refundData, error: refundError } = await userClient.rpc("refund_energy", {
+        _amount: cost,
+        _reason: type,
+        _description: "AI 호출 실패 환불",
+      });
+      const refundOk = !refundError && !!(refundData as any)?.success;
+      if (!refundOk) {
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "generate_refund_failed",
+          details: {
+            reservation_id: reservationId,
+            error_code: errorCode,
+            refund_error: refundError?.message ?? (refundData as any)?.error ?? "unknown",
+          },
+          severity: "error",
+        });
+        await completeReservation("failed", "refund_failed");
+        return { ok: false, duplicated: false };
+      }
+      refundDone = true;
+      await completeReservation("failed", "ai_failed_refunded");
+      return { ok: true, duplicated: false };
+    };
 
     // [2] 서버에서 에너지 차감 (spend_energy RPC는 이미 SECURITY DEFINER)
     const { data: spendResult, error: spendError } = await userClient.rpc("spend_energy", {
@@ -327,24 +419,15 @@ serve(async (req) => {
     });
 
     if (spendError) {
-      return jsonRes({ error: "처리 중 오류가 발생했습니다." }, 500);
+      await completeReservation("failed", "spend_error");
+      return jsonRes({ error: "처리 중 오류가 발생했습니다.", reservation_id: reservationId }, corsHeaders, 500);
     }
 
     const result = spendResult as any;
     if (!result?.success) {
-      return jsonRes({ error: result?.error === "Insufficient energy" ? "에너지가 부족합니다." : "요청을 처리할 수 없습니다." }, 403);
+      await completeReservation("failed", result?.error === "Insufficient energy" ? "insufficient_energy" : "spend_failed");
+      return jsonRes({ error: result?.error === "Insufficient energy" ? "에너지가 부족합니다." : "요청을 처리할 수 없습니다.", reservation_id: reservationId }, corsHeaders, 403);
     }
-
-    // Helper: refund energy if AI fails after spend
-    const refund = async () => {
-      try {
-        await userClient.rpc("refund_energy", {
-          _amount: cost,
-          _reason: type,
-          _description: "AI 호출 실패 환불",
-        });
-      } catch (_) { /* ignore */ }
-    };
 
     // Increment usage for streak tracking
     await userClient.rpc("increment_usage");
@@ -383,7 +466,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY not configured");
-      return jsonRes({ error: "서비스 설정 오류입니다." }, 500);
+      await completeReservation("failed", "config_missing");
+      return jsonRes({ error: "서비스 설정 오류입니다.", reservation_id: reservationId }, corsHeaders, 500);
     }
 
     let systemPrompt = SYSTEM_PROMPTS[type] || SYSTEM_PROMPTS.review;
@@ -426,25 +510,34 @@ serve(async (req) => {
         }),
       });
     } catch (err) {
-      await refund();
+      const refundResult = await refundAndMark("ai_network_error");
       console.error("AI gateway network error", err);
-      return jsonRes({ error: "AI 서버 연결에 실패했습니다. 에너지가 환불되었습니다." }, 502);
+      if (!refundResult.ok) {
+        return jsonRes({ error: "AI 호출 실패 후 환불 처리에 실패했습니다. 문의해주세요.", reservation_id: reservationId }, corsHeaders, 500);
+      }
+      return jsonRes({ error: "AI 서버 연결에 실패했습니다. 에너지가 환불되었습니다.", reservation_id: reservationId }, corsHeaders, 502);
     }
 
     if (!response.ok) {
-      await refund();
+      const refundResult = await refundAndMark(`ai_http_${response.status}`);
       console.error(`AI gateway error: ${response.status}`);
-      if (response.status === 429) {
-        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (에너지 환불됨)" }, 429);
+      if (!refundResult.ok) {
+        return jsonRes({ error: "AI 호출 실패 후 환불 처리에 실패했습니다. 문의해주세요.", reservation_id: reservationId }, corsHeaders, 500);
       }
-      return jsonRes({ error: "답변 생성에 실패했습니다. 에너지가 환불되었습니다." }, 500);
+      if (response.status === 429) {
+        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (에너지 환불됨)", reservation_id: reservationId }, corsHeaders, 429);
+      }
+      return jsonRes({ error: "답변 생성에 실패했습니다. 에너지가 환불되었습니다.", reservation_id: reservationId }, corsHeaders, 500);
     }
 
     const data = await response.json();
     const responseText = data.choices?.[0]?.message?.content;
     if (!responseText) {
-      await refund();
-      return jsonRes({ error: "답변을 생성할 수 없습니다. 에너지가 환불되었습니다." }, 500);
+      const refundResult = await refundAndMark("empty_response");
+      if (!refundResult.ok) {
+        return jsonRes({ error: "응답 생성 실패 후 환불 처리에 실패했습니다. 문의해주세요.", reservation_id: reservationId }, corsHeaders, 500);
+      }
+      return jsonRes({ error: "답변을 생성할 수 없습니다. 에너지가 환불되었습니다.", reservation_id: reservationId }, corsHeaders, 500);
     }
 
     // Store in cache (best-effort, 7 days)
@@ -457,10 +550,28 @@ serve(async (req) => {
       }, { onConflict: "user_id,cache_key" });
     } catch (_) { /* ignore cache failures */ }
 
-    return jsonRes({ response: responseText });
+    await completeReservation("success");
+    return jsonRes({ response: responseText, reservation_id: reservationId }, corsHeaders);
   } catch (e) {
     // [9] 에러 메시지 최소화
+    if (reservationId && !reservationDone) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const authHeader = req.headers.get("Authorization");
+        if (authHeader?.startsWith("Bearer ")) {
+          const fallbackUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } },
+          });
+          await fallbackUserClient.rpc("complete_generate_request", {
+            _reservation_id: reservationId,
+            _status: "failed",
+            _error_code: "unexpected_error",
+          });
+        }
+      } catch (_) { /* ignore */ }
+    }
     console.error("generate-response error:", e);
-    return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
+    return jsonRes({ error: "요청을 처리할 수 없습니다." }, corsHeaders, 500);
   }
 });
