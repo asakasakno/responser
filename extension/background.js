@@ -68,7 +68,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         <div style="padding: 16px 20px;">
           <div style="background: #f3f4f6; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
             <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 600;">원문</div>
-            <div style="font-size: 13px; color: #374151; line-height: 1.5;">${text.length > 200 ? text.substring(0, 200) + '...' : text}</div>
+            <div style="font-size: 13px; color: #374151; line-height: 1.5;">${escapeHtml(text.length > 200 ? text.substring(0, 200) + '...' : text)}</div>
           </div>
           <div id="응대도우미-result" style="display: flex; align-items: center; justify-content: center; padding: 24px;">
             <div style="width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: 응대spin 0.8s linear infinite;"></div>
