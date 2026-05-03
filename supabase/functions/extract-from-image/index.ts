@@ -82,14 +82,24 @@ serve(async (req) => {
       }
     }
 
-    // [7] Rate limit (batch는 별도 제한: 초당 1회)
-    const { data: allowed } = await adminClient.rpc("check_rate_limit", {
+    // [7] Burst rate limit
+    const { data: burstOk } = await adminClient.rpc("check_rate_limit", {
       _user_id: userId,
       _action: "extract_image",
       _max_per_second: 1,
     });
-    if (!allowed) {
+    if (!burstOk) {
       return jsonRes({ error: "요청이 너무 빠릅니다." }, 429);
+    }
+
+    // Per-plan rate limit (minute + day)
+    const { data: planLimit } = await userClient.rpc("check_plan_rate_limit", { _action: "extract_image" });
+    const pl: any = planLimit;
+    if (pl && pl.allowed === false) {
+      const msg = pl.reason === "day"
+        ? `오늘 이미지 처리 한도(${pl.limit}회)를 모두 사용했습니다.`
+        : `분당 이미지 처리 한도(${pl.limit}회)를 초과했습니다.`;
+      return jsonRes({ error: msg, plan: pl.plan }, 429);
     }
 
     const { image, type } = await req.json();
