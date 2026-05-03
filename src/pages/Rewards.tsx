@@ -25,17 +25,26 @@ export default function Rewards() {
   const { toast } = useToast();
   const [missions, setMissions] = useState<MissionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [allTx, setAllTx] = useState<any[]>([]);
   const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
   const limits = PLAN_LIMITS[plan];
+
+  const sinceMs = Date.now() - period * 24 * 60 * 60 * 1000;
+  const transactions = allTx.filter(t => new Date(t.created_at).getTime() >= sinceMs);
+  const periodTotals = ([1, 7, 30, 90] as const).map(d => {
+    const cutoff = Date.now() - d * 24 * 60 * 60 * 1000;
+    const list = allTx.filter(t => new Date(t.created_at).getTime() >= cutoff);
+    const earn = list.filter(t => t.type === 'earn').reduce((s, t) => s + t.amount, 0);
+    const spend = list.filter(t => t.type === 'spend').reduce((s, t) => s + t.amount, 0);
+    return { d, earn, spend, net: earn - spend };
+  });
 
   useEffect(() => {
     if (user) {
       loadMissions();
-      // Cleanup old (>90d) then load
       supabase.rpc('cleanup_old_energy_transactions' as any).then(() => loadTransactions());
     }
-  }, [user, period]);
+  }, [user]);
 
   const loadMissions = async () => {
     if (!user) return;
