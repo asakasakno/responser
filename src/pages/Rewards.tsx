@@ -27,10 +27,12 @@ export default function Rewards() {
   const [loading, setLoading] = useState(true);
   const [allTx, setAllTx] = useState<any[]>([]);
   const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
+  const [txFilter, setTxFilter] = useState<'all' | 'earn' | 'spend'>('all');
   const limits = PLAN_LIMITS[plan];
 
   const sinceMs = Date.now() - period * 24 * 60 * 60 * 1000;
-  const transactions = allTx.filter(t => new Date(t.created_at).getTime() >= sinceMs);
+  const periodTx = allTx.filter(t => new Date(t.created_at).getTime() >= sinceMs);
+  const transactions = periodTx.filter(t => txFilter === 'all' || t.type === txFilter);
   const periodTotals = ([1, 7, 30, 90] as const).map(d => {
     const cutoff = Date.now() - d * 24 * 60 * 60 * 1000;
     const list = allTx.filter(t => new Date(t.created_at).getTime() >= cutoff);
@@ -42,7 +44,7 @@ export default function Rewards() {
   useEffect(() => {
     if (user) {
       loadMissions();
-      supabase.rpc('cleanup_old_energy_transactions' as any).then(() => loadTransactions());
+      loadTransactions();
     }
   }, [user]);
 
@@ -297,6 +299,23 @@ export default function Rewards() {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-3 w-fit">
+            {([
+              { k: 'all', label: '전체' },
+              { k: 'earn', label: '지급' },
+              { k: 'spend', label: '사용' },
+            ] as const).map(({ k, label }) => (
+              <button
+                key={k}
+                onClick={() => setTxFilter(k)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  txFilter === k ? 'bg-card text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           <p className="text-xs text-muted-foreground mb-3">※ 90일이 지난 내역은 자동으로 삭제되어 표시되지 않습니다.</p>
           {transactions.length === 0 ? (

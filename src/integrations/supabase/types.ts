@@ -736,7 +736,7 @@ export type Database = {
         Args: { _amount: number; _description: string; _reward_key: string }
         Returns: Json
       }
-      cleanup_old_energy_transactions: { Args: never; Returns: number }
+      cleanup_old_energy_transactions_global: { Args: never; Returns: number }
       consume_coupon: {
         Args: {
           _billing_order_id: string
