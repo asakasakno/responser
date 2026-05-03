@@ -43,6 +43,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: (text, type) => {
+      const escapeHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
       // Create floating result panel
       const existing = document.getElementById('응대도우미-panel');
       if (existing) existing.remove();
