@@ -409,32 +409,53 @@ serve(async (req) => {
       systemPrompt += STYLE_GUIDES[appliedStyle];
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: text },
+          ],
+        }),
+      });
+    } catch (err) {
+      await refund();
+      console.error("AI gateway network error", err);
+      return jsonRes({ error: "AI 서버 연결에 실패했습니다. 에너지가 환불되었습니다." }, 502);
+    }
 
     if (!response.ok) {
-      // [9] 에러 메시지 최소화 - 내부 상세 노출 금지
+      await refund();
       console.error(`AI gateway error: ${response.status}`);
       if (response.status === 429) {
-        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }, 429);
+        return jsonRes({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (에너지 환불됨)" }, 429);
       }
-      return jsonRes({ error: "답변 생성에 실패했습니다." }, 500);
+      return jsonRes({ error: "답변 생성에 실패했습니다. 에너지가 환불되었습니다." }, 500);
     }
 
     const data = await response.json();
-    const responseText = data.choices?.[0]?.message?.content || "답변을 생성할 수 없습니다.";
+    const responseText = data.choices?.[0]?.message?.content;
+    if (!responseText) {
+      await refund();
+      return jsonRes({ error: "답변을 생성할 수 없습니다. 에너지가 환불되었습니다." }, 500);
+    }
+
+    // Store in cache (best-effort, 7 days)
+    try {
+      await adminClient.from("ai_response_cache").upsert({
+        user_id: userId,
+        cache_key: cacheKey,
+        response: responseText,
+        expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      }, { onConflict: "user_id,cache_key" });
+    } catch (_) { /* ignore cache failures */ }
 
     return jsonRes({ response: responseText });
   } catch (e) {
