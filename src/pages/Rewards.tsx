@@ -318,6 +318,24 @@ export default function Rewards() {
               ))}
             </div>
           )}
+
+          <div className="mt-6 pt-4 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">기간별 합계</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {periodTotals.map(({ d, earn, spend, net }) => (
+                <div key={d} className="bg-secondary/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">{d}일</p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-accent">+{earn}</span>
+                    <span className="text-destructive">-{spend}</span>
+                  </div>
+                  <p className={`text-sm font-bold tabular-nums mt-1 ${net >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                    순 {net >= 0 ? '+' : ''}{net}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </Layout>
