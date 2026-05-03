@@ -145,8 +145,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: (msg) => {
+          const escapeHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
           const r = document.getElementById('응대도우미-result');
-          if (r) r.innerHTML = `<div style="color: #ef4444; font-size: 13px;">❌ ${msg}</div>`;
+          if (r) r.innerHTML = `<div style="color: #ef4444; font-size: 13px;">❌ ${escapeHtml(msg)}</div>`;
         },
         args: [err.message || '네트워크 오류가 발생했습니다.']
       });
