@@ -225,14 +225,24 @@ serve(async (req) => {
       return jsonRes({ error: "크롬 확장프로그램은 Basic 이상 플랜에서 사용할 수 있습니다." }, 403);
     }
 
-    // [7] Rate limit check
-    const { data: allowed } = await adminClient.rpc("check_rate_limit", {
+    // [7] Burst rate limit (per-second)
+    const { data: burstOk } = await adminClient.rpc("check_rate_limit", {
       _user_id: userId,
       _action: "generate",
       _max_per_second: 2,
     });
-    if (!allowed) {
+    if (!burstOk) {
       return jsonRes({ error: "요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요." }, 429);
+    }
+
+    // Per-plan rate limit (minute + day)
+    const { data: planLimit } = await userClient.rpc("check_plan_rate_limit", { _action: "generate" });
+    const pl: any = planLimit;
+    if (pl && pl.allowed === false) {
+      const msg = pl.reason === "day"
+        ? `오늘 사용 한도(${pl.limit}회)를 모두 사용했습니다.`
+        : `분당 요청 한도(${pl.limit}회)를 초과했습니다. 잠시 후 다시 시도해주세요.`;
+      return jsonRes({ error: msg, plan: pl.plan }, 429);
     }
 
     // Parse body
