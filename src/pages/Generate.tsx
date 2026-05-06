@@ -1,16 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle } from '@/types';
+import {
+  ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle,
+  TONES, type Tone,
+  BUSINESS_CATEGORIES, type BusinessCategory,
+  INQUIRY_CATEGORIES, type InquiryCategory,
+  COMPENSATIONS, type Compensation,
+  CLAIM_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+} from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Image, Loader2, ArrowUp, AlertTriangle, Zap } from 'lucide-react';
+import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
