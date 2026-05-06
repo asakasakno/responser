@@ -73,14 +73,27 @@ Deno.serve(async (req) => {
       return jsonRes({ error: "유효하지 않은 플랜 정보입니다." }, 400);
     }
 
+    const orderIdHash = await sha256Hex(orderId);
+    const orderIdMasked = maskIdentifier(orderId);
+    const paymentKeyHash = await sha256Hex(paymentKey);
+    const paymentKeyMasked = maskIdentifier(paymentKey);
+    const idempotencyKey = `toss:${orderIdHash}`;
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // 중복 처리 방지
+    // 중복 처리 방지: idempotency_key 기반(우선) + 기존 hash details 기반
+    const { data: dupPay } = await adminClient
+      .from("payments")
+      .select("id")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (dupPay) return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
+
     const { data: dup } = await adminClient
       .from("audit_logs")
       .select("id")
       .eq("action", "payment_success")
-      .contains("details", { orderId })
+      .contains("details", { order_id_hash: orderIdHash })
       .maybeSingle();
     if (dup) return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
 
