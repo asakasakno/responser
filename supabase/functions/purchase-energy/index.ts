@@ -1,171 +1,266 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildCorsHeaders, isOriginAllowed } from "../_shared/cors.ts";
 
-// 에너지 추가 구매: Toss Payments 서버 검증 후에만 에너지 지급
-// 클라이언트가 보낸 payment_key/order_id/amount는 절대 신뢰하지 않고,
-// Toss confirm API로 검증 + 금액 일치 확인 후에만 grant.
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
+const CORS_HEADERS = {
+  allowHeaders:
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  allowMethods: "POST, OPTIONS",
 };
 
-function jsonRes(data: any, status = 200) {
+function jsonResponse(data: unknown, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function maskIdentifier(value: string): string {
+  if (value.length <= 8) return "***";
+  return `${value.slice(0, 4)}***${value.slice(-4)}`;
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const origin = req.headers.get("origin");
+  const corsHeaders = buildCorsHeaders(origin, CORS_HEADERS);
+
+  if (req.method === "OPTIONS") {
+    if (origin && !isOriginAllowed(origin)) {
+      return new Response("forbidden", { status: 403, headers: corsHeaders });
+    }
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (origin && !isOriginAllowed(origin)) {
+    return jsonResponse({ error: "Origin not allowed." }, corsHeaders, 403);
+  }
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return jsonRes({ error: "인증이 필요합니다." }, 401);
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResponse({ error: "Authentication required." }, corsHeaders, 401);
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) return jsonRes({ error: "인증 실패" }, 401);
-    const userId = claimsData.claims.sub as string;
+    const userId = claimsData?.claims?.sub as string | undefined;
+    if (claimsError || !userId) {
+      return jsonResponse({ error: "Invalid authentication." }, corsHeaders, 401);
+    }
 
-    const admin = createClient(supabaseUrl, serviceKey);
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const body = await req.json().catch(() => ({}));
     const { pack_id, payment_key, order_id, amount, coupon_code } = body ?? {};
 
-    // 입력 검증
     if (!pack_id || typeof pack_id !== "string") {
-      return jsonRes({ error: "상품을 선택해주세요." }, 400);
+      return jsonResponse({ error: "A valid pack is required." }, corsHeaders, 400);
     }
-    if (!payment_key || !order_id || typeof payment_key !== "string" || typeof order_id !== "string") {
-      return jsonRes({ error: "결제 정보가 누락되었습니다." }, 400);
+    if (!payment_key || typeof payment_key !== "string" || !order_id || typeof order_id !== "string") {
+      return jsonResponse({ error: "Payment information is missing." }, corsHeaders, 400);
     }
-    if (typeof amount !== "number" || amount <= 0) {
-      return jsonRes({ error: "잘못된 결제 금액입니다." }, 400);
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+      return jsonResponse({ error: "Invalid payment amount." }, corsHeaders, 400);
     }
 
-    // 상품(에너지팩) 조회 - 가격은 서버 DB 기준만 신뢰
-    const { data: pack } = await admin
+    const orderIdHash = await sha256Hex(order_id);
+    const paymentKeyHash = await sha256Hex(payment_key);
+    const orderIdMasked = maskIdentifier(order_id);
+    const paymentKeyMasked = maskIdentifier(payment_key);
+
+    const { data: pack } = await adminClient
       .from("energy_packs")
       .select("id, energy, price, active")
       .eq("id", pack_id)
       .maybeSingle();
-    if (!pack || !pack.active) return jsonRes({ error: "유효하지 않은 상품입니다." }, 400);
 
-    // 쿠폰 적용 시 서버에서 최종 금액 계산
-    let couponInfo: any = null;
+    if (!pack || !pack.active) {
+      return jsonResponse({ error: "Energy pack not found." }, corsHeaders, 400);
+    }
+
     let expectedAmount = pack.price;
+    let couponInfo: any = null;
+
     if (coupon_code && typeof coupon_code === "string") {
-      const { data: cv } = await userClient.rpc("validate_coupon", {
+      const { data: couponValidation } = await userClient.rpc("validate_coupon", {
         _code: coupon_code,
         _amount: pack.price,
         _target_type: "energy",
         _target_plan: null,
       });
-      if (!cv || !cv.valid) {
-        return jsonRes({ error: cv?.error || "쿠폰을 사용할 수 없습니다." }, 400);
+
+      if (!couponValidation || !couponValidation.valid) {
+        return jsonResponse(
+          { error: couponValidation?.error || "Coupon is not valid." },
+          corsHeaders,
+          400,
+        );
       }
-      couponInfo = cv;
-      expectedAmount = cv.final_amount;
+
+      couponInfo = couponValidation;
+      expectedAmount = couponValidation.final_amount;
     }
 
-    // 클라이언트 amount와 서버 계산 최종 금액 일치 검증
     if (amount !== expectedAmount) {
-      await admin.from("audit_logs").insert({
+      await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "purchase_energy_amount_mismatch",
-        details: { pack_id, client_amount: amount, expected: expectedAmount, order_id },
+        details: {
+          pack_id,
+          client_amount: amount,
+          expected_amount: expectedAmount,
+          order_id_masked: orderIdMasked,
+          order_id_hash: orderIdHash,
+        },
         severity: "warning",
       });
-      return jsonRes({ error: "결제 금액이 일치하지 않습니다." }, 400);
+
+      return jsonResponse({ error: "Payment amount mismatch." }, corsHeaders, 400);
     }
 
-    // 중복 처리 방지: 동일 order_id로 이미 성공 결제가 있으면 거부
-    const { data: existing } = await admin
-      .from("audit_logs")
-      .select("id")
-      .eq("action", "purchase_energy_success")
-      .contains("details", { order_id })
-      .maybeSingle();
-    if (existing) {
-      return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
-    }
-
-    // 결제 시도 감사 로그
-    await admin.from("audit_logs").insert({
+    await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: "purchase_energy_attempt",
-      details: { pack_id, payment_key, order_id, amount },
+      details: {
+        pack_id,
+        amount: expectedAmount,
+        order_id_masked: orderIdMasked,
+        order_id_hash: orderIdHash,
+        payment_key_masked: paymentKeyMasked,
+        payment_key_hash: paymentKeyHash,
+      },
       severity: "info",
     });
 
-    // Toss Payments 서버 검증
-    const TOSS_SECRET_KEY = Deno.env.get("TOSS_SECRET_KEY");
-    if (!TOSS_SECRET_KEY) {
-      console.error("TOSS_SECRET_KEY not configured");
-      return jsonRes({ error: "결제 시스템이 설정되지 않았습니다." }, 503);
+    const tossSecretKey = Deno.env.get("TOSS_SECRET_KEY");
+    if (!tossSecretKey) {
+      return jsonResponse({ error: "Payment service is unavailable." }, corsHeaders, 503);
     }
 
     const tossResponse = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
       method: "POST",
       headers: {
-        Authorization: `Basic ${btoa(TOSS_SECRET_KEY + ":")}`,
+        Authorization: `Basic ${btoa(`${tossSecretKey}:`)}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ paymentKey: payment_key, orderId: order_id, amount: expectedAmount }),
+      body: JSON.stringify({
+        paymentKey: payment_key,
+        orderId: order_id,
+        amount: expectedAmount,
+      }),
     });
 
     const tossData = await tossResponse.json().catch(() => ({}));
 
     if (!tossResponse.ok) {
-      await admin.from("payments").insert({
+      await adminClient.from("payments").insert({
         user_id: userId,
-        amount: pack.price,
-        product_name: `에너지 ${pack.energy}개`,
+        amount: expectedAmount,
+        product_name: `Energy ${pack.energy}`,
         status: "failed",
         payment_method: "toss",
       });
-      await admin.from("audit_logs").insert({
+
+      await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "purchase_energy_failed",
-        details: { pack_id, order_id, toss_code: tossData?.code, toss_message: tossData?.message },
+        details: {
+          pack_id,
+          toss_code: tossData?.code ?? null,
+          order_id_masked: orderIdMasked,
+          order_id_hash: orderIdHash,
+          payment_key_masked: paymentKeyMasked,
+          payment_key_hash: paymentKeyHash,
+        },
         severity: "warning",
       });
-      return jsonRes({ error: "결제 검증에 실패했습니다." }, 400);
+
+      return jsonResponse({ error: "Payment confirmation failed." }, corsHeaders, 400);
     }
 
-    // Toss 응답 금액과 서버 최종 금액 재검증
-    if (typeof tossData?.totalAmount !== "number" || tossData.totalAmount !== expectedAmount) {
-      await admin.from("audit_logs").insert({
+    if (tossData?.orderId !== order_id || tossData?.paymentKey !== payment_key) {
+      await adminClient.from("audit_logs").insert({
         user_id: userId,
-        action: "purchase_energy_toss_amount_mismatch",
-        details: { pack_id, order_id, toss_total: tossData?.totalAmount, server_price: pack.price },
+        action: "purchase_energy_toss_id_mismatch",
+        details: {
+          pack_id,
+          order_id_hash: orderIdHash,
+          payment_key_hash: paymentKeyHash,
+        },
         severity: "error",
       });
-      return jsonRes({ error: "결제 금액 검증에 실패했습니다." }, 400);
+
+      return jsonResponse({ error: "Payment identifier verification failed." }, corsHeaders, 400);
     }
 
-    // 검증 성공 → 에너지 지급 (구매분: 무기한, max 캡 적용)
-    const { data: result } = await admin.rpc("earn_energy", {
+    if (typeof tossData?.totalAmount !== "number" || tossData.totalAmount !== expectedAmount) {
+      await adminClient.from("audit_logs").insert({
+        user_id: userId,
+        action: "purchase_energy_toss_amount_mismatch",
+        details: {
+          pack_id,
+          toss_total_amount: tossData?.totalAmount ?? null,
+          expected_amount: expectedAmount,
+          order_id_hash: orderIdHash,
+        },
+        severity: "error",
+      });
+
+      return jsonResponse({ error: "Payment amount verification failed." }, corsHeaders, 400);
+    }
+
+    const productName = `Energy ${pack.energy}${couponInfo ? ` (coupon ${couponInfo.coupon_code})` : ""}`;
+    const { data: finalizeResult, error: finalizeError } = await adminClient.rpc("finalize_energy_purchase", {
       _user_id: userId,
-      _amount: pack.energy,
-      _reason: "purchase",
-      _description: `에너지 ${pack.energy}개 추가 구매`,
-      _source: "purchase",
-      _expire_days: null,
+      _amount: expectedAmount,
+      _product_name: productName,
+      _payment_method: tossData?.method || "toss",
+      _order_id: order_id,
+      _payment_key: payment_key,
+      _energy: pack.energy,
+      _energy_description: `Energy ${pack.energy} purchase`,
     });
 
-    // 쿠폰 사용 기록
-    if (couponInfo) {
-      await admin.rpc("consume_coupon", {
+    if (finalizeError) {
+      console.error("finalize_energy_purchase error:", finalizeError);
+      return jsonResponse({ error: "Payment finalization failed." }, corsHeaders, 500);
+    }
+
+    if (!finalizeResult?.success) {
+      if (finalizeResult?.owner_mismatch) {
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "purchase_energy_owner_mismatch",
+          details: {
+            order_id_hash: orderIdHash,
+            payment_key_hash: paymentKeyHash,
+          },
+          severity: "error",
+        });
+
+        return jsonResponse({ error: "Payment ownership mismatch." }, corsHeaders, 403);
+      }
+
+      return jsonResponse({ error: "Payment processing failed." }, corsHeaders, 500);
+    }
+
+    if (couponInfo && !finalizeResult?.already_processed) {
+      await adminClient.rpc("consume_coupon", {
         _user_id: userId,
         _coupon_id: couponInfo.coupon_id,
         _original_amount: pack.price,
@@ -176,25 +271,33 @@ serve(async (req) => {
       });
     }
 
-    // 결제 성공 기록
-    await admin.from("payments").insert({
-      user_id: userId,
-      amount: expectedAmount,
-      product_name: `에너지 ${pack.energy}개${couponInfo ? ` (쿠폰 ${couponInfo.coupon_code})` : ''}`,
-      status: "success",
-      payment_method: tossData?.method || "toss",
-    });
+    if (!finalizeResult?.already_processed) {
+      await adminClient.from("audit_logs").insert({
+        user_id: userId,
+        action: "purchase_energy_success",
+        details: {
+          pack_id,
+          energy: pack.energy,
+          original_price: pack.price,
+          paid_amount: expectedAmount,
+          coupon_code: couponInfo?.coupon_code ?? null,
+          order_id_masked: orderIdMasked,
+          order_id_hash: orderIdHash,
+          payment_key_masked: paymentKeyMasked,
+          payment_key_hash: paymentKeyHash,
+        },
+        severity: "info",
+      });
+    }
 
-    await admin.from("audit_logs").insert({
-      user_id: userId,
-      action: "purchase_energy_success",
-      details: { pack_id, energy: pack.energy, original_price: pack.price, paid: expectedAmount, coupon: couponInfo?.coupon_code, order_id },
-      severity: "info",
-    });
-
-    return jsonRes({ success: true, result });
-  } catch (e) {
-    console.error("purchase-energy error:", e);
-    return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
+    return jsonResponse({
+      success: true,
+      idempotent_replay: !!finalizeResult?.idempotent_replay || !!finalizeResult?.already_processed,
+      result: finalizeResult?.energy ?? null,
+      payment: finalizeResult?.payment ?? null,
+    }, corsHeaders);
+  } catch (error) {
+    console.error("purchase-energy error:", error);
+    return jsonResponse({ error: "Unable to process the purchase." }, corsHeaders, 500);
   }
 });
