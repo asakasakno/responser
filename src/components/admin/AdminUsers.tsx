@@ -76,6 +76,12 @@ export default function AdminUsers() {
     setEnergyReason('');
   };
 
+  const submitReason = async () => {
+    if (!reasonDialog || reasonText.trim().length < 5) return;
+    await adminAction(reasonDialog.action, { ...reasonDialog.params, reason: reasonText });
+    setReasonDialog(null);
+    setReasonText('');
+  };
   const filtered = users.filter(u => {
     const q = searchQuery.toLowerCase();
     const matchSearch = !q || u.email.toLowerCase().includes(q) || (u.name && u.name.toLowerCase().includes(q));
