@@ -386,14 +386,25 @@ serve(async (req) => {
     const requestBody = await req.json().catch(() => null);
     const {
       type, text, product, energy_cost, style, platform,
-      tone, business_category, review, inquiry, claim,
+      tone, business_category, review, inquiry, claim, lodging,
     } = requestBody ?? {};
 
     // 통합된 톤 (구 RESPONSE_STYLES + TONES 통합)
     const VALID_TONES = new Set(["thanks", "apology", "simple", "principle", "friendly", "firm"]);
-    const VALID_CATEGORIES = new Set(["fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital", "other"]);
+    const VALID_CATEGORIES = new Set([
+      "fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital",
+      "hotel", "motel", "pension", "poolvilla", "guesthouse", "glamping", "camping", "lodging_other",
+      "other",
+    ]);
     const VALID_INQUIRY_CATS = new Set(["shipping", "exchange", "refund", "size", "stock", "usage", "other"]);
     const VALID_COMPENSATIONS = new Set(["reship", "partial_refund", "full_refund", "coupon", "none"]);
+    const VALID_LODGING_ISSUES = new Set([
+      "cleanliness", "noise", "smell", "bedding", "parking", "staff", "reservation",
+      "refund", "facility_old", "hvac", "pest_mold", "photo_mismatch", "other",
+    ]);
+    const VALID_LODGING_COMPS = new Set([
+      "revisit_discount", "room_inspection", "staff_training", "refund_guide", "none",
+    ]);
 
     // 하위 호환: 구 클라이언트가 보낸 style 값도 tone으로 흡수
     const incomingTone = (typeof tone === "string" && tone) ? tone : (typeof style === "string" ? style : null);
