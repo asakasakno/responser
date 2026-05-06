@@ -7,11 +7,14 @@ import {
   ENERGY_COSTS,
   TONES, type Tone,
   BUSINESS_CATEGORIES, type BusinessCategory,
+  BUSINESS_GROUPS, type BusinessGroup,
   INQUIRY_CATEGORIES, type InquiryCategory,
   COMPENSATIONS, type Compensation,
   LODGING_ISSUES, type LodgingIssue,
   LODGING_COMPENSATIONS, type LodgingCompensation,
-  CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+  SERVICE_ISSUES, type ServiceIssue,
+  SERVICE_COMPENSATIONS, type ServiceCompensation,
+  CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, SERVICE_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +28,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
-import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext } from '@/lib/platforms';
+import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext, isServiceContext, SERVICE_CATEGORY_IDS, LODGING_CATEGORY_IDS } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
