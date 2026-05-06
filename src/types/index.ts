@@ -161,6 +161,11 @@ export const LODGING_RISK_KEYWORDS = [
   '환불', '신고', '소비자원', '공정위', '고소', '사진 올리겠다', '위생', '벌레', '곰팡이',
   '악취', '도난', '몰카', '성추행', '경찰', '보건소', '최악', '사기',
 ];
+export const SERVICE_RISK_KEYWORDS = [
+  '환불', '신고', '소비자원', '공정위', '고소', '사기', '최악',
+  '사진 올리겠다', '리뷰 테러', '경찰', '위생', '불친절',
+  '머리 망침', '피부 뒤집어짐', '부작용', '화상', '상처',
+];
 export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
   smartstore: 1000, coupang: 500, '11st': 500, gmarket: 500, auction: 500, interpark: 500,
 };
