@@ -81,11 +81,18 @@ export default function Generate() {
   const energyCost = ENERGY_COSTS[genType] || 1;
   const isLimitReached = energyBalance < energyCost;
 
-  // Risk keyword detection (claim only)
-  const detectedRisks = useMemo(
-    () => genType === 'claim' ? CLAIM_RISK_KEYWORDS.filter(k => inputText.includes(k)) : [],
-    [inputText, genType]
+  // Risk keyword detection
+  const isLodging = useMemo(
+    () => isLodgingContext(selectedPlatform, businessCategory === 'none' ? null : businessCategory),
+    [selectedPlatform, businessCategory]
   );
+  const detectedRisks = useMemo(() => {
+    const pool = isLodging
+      ? Array.from(new Set([...CLAIM_RISK_KEYWORDS, ...LODGING_RISK_KEYWORDS]))
+      : CLAIM_RISK_KEYWORDS;
+    if (!isLodging && genType !== 'claim') return [];
+    return pool.filter(k => inputText.includes(k));
+  }, [inputText, genType, isLodging]);
 
   const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
 
