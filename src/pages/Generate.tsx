@@ -741,7 +741,81 @@ export default function Generate() {
           </div>
         )}
 
-        <div className="mb-2">
+        {/* 서비스업 전용 입력 */}
+        {isService && (
+          <div className="mb-4 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <p className="text-xs font-semibold text-primary">서비스업 전용 옵션</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">방문일 (선택)</label>
+                <Input value={serviceVisitDate} onChange={e => setServiceVisitDate(e.target.value)} placeholder="예: 2026-04-12" maxLength={30} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">예약 여부</label>
+                <Select value={serviceReserved} onValueChange={(v) => setServiceReserved(v as any)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안 함</SelectItem>
+                    <SelectItem value="yes">예약 방문</SelectItem>
+                    <SelectItem value="no">워크인/비예약</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">담당자/디자이너명 (선택)</label>
+                <Input value={serviceStaff} onChange={e => setServiceStaff(e.target.value)} placeholder="예: 지영 디자이너" maxLength={30} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">서비스 종류 (선택)</label>
+                <Input value={serviceKind} onChange={e => setServiceKind(e.target.value)} placeholder="예: 펌, 젤네일, 슬리밍" maxLength={60} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">문제 유형 (복수 선택)</label>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_ISSUES.map(i => {
+                  const checked = serviceIssues.includes(i.id);
+                  return (
+                    <button key={i.id} type="button"
+                      onClick={() => setServiceIssues(prev => checked ? prev.filter(x => x !== i.id) : [...prev, i.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{i.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">후속조치/보상안 (복수 선택)</label>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_COMPENSATIONS.map(c => {
+                  const checked = serviceComps.includes(c.id);
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setServiceComps(prev => checked ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{c.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
+              <input type="checkbox" checked={serviceRevisit} onChange={e => setServiceRevisit(e.target.checked)} />
+              재방문 유도 문구 포함
+            </label>
+            {genType !== 'claim' && detectedRisks.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">⚠️ 사장님 직접 검토 권장</p>
+                  <p className="text-muted-foreground mt-0.5">감지된 위험 키워드: {detectedRisks.join(', ')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-foreground">내용 입력</label>
             {charLimit && (
