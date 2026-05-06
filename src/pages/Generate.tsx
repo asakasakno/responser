@@ -205,7 +205,7 @@ export default function Generate() {
       const { data, error } = await supabase.functions.invoke('generate-response', {
         body: {
           type: genType, text: inputText, product: getProductContext(),
-          energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload(),
+          energy_cost: energyCost, platform: getPlatformPayload(),
           ...buildExtraPayload(),
         },
       });
