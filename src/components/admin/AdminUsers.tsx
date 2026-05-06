@@ -38,6 +38,14 @@ export default function AdminUsers() {
   const [energyAmount, setEnergyAmount] = useState('');
   const [energyReason, setEnergyReason] = useState('');
 
+  // Generic reason dialog (plan / suspend)
+  const [reasonDialog, setReasonDialog] = useState<null | {
+    title: string;
+    action: string;
+    params: Record<string, any>;
+  }>(null);
+  const [reasonText, setReasonText] = useState('');
+
   const fetchUsers = async () => {
     setLoadingUsers(true);
     const data = await invoke('list_users');
