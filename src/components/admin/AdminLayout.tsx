@@ -1,10 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import StepUpDialog from './StepUpDialog';
+import { registerStepUpHandler } from '@/hooks/useAdminAction';
 import {
   LayoutDashboard, Users, CreditCard, Zap, BarChart3,
-  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail
+  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail, Siren, FileText
 } from 'lucide-react';
 
 const adminNav = [
@@ -16,7 +18,9 @@ const adminNav = [
   { to: '/admin/ai-usage', label: 'AI 사용량', icon: BarChart3 },
   { to: '/admin/conversion', label: '전환 분석', icon: TrendingUp },
   { to: '/admin/inquiries', label: '문의 관리', icon: Mail },
-  { to: '/admin/alerts', label: '이상 감지', icon: AlertTriangle },
+  { to: '/admin/anomalies', label: '이상 탐지', icon: Siren },
+  { to: '/admin/audit', label: '감사 로그', icon: FileText },
+  { to: '/admin/alerts', label: '알림', icon: AlertTriangle },
   { to: '/admin/settings', label: '설정', icon: Settings },
 ];
 
