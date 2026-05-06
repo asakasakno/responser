@@ -43,7 +43,7 @@ export default function Generate() {
   const [genType, setGenType] = useState<GenType>(initType);
   const [inputText, setInputText] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<string>('none');
-  const [selectedStyle, setSelectedStyle] = useState<ResponseStyle | 'none'>('none');
+  // (deprecated: 답변 스타일 → 답변 톤으로 통합됨)
   const [products, setProducts] = useState<Product[]>([]);
   const [userPlatforms, setUserPlatforms] = useState<string[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('auto');
