@@ -150,11 +150,16 @@ export default function AdminUsers() {
                       <TableCell>
                         <Select
                           value={u.plan}
-                          onValueChange={plan => adminAction('change_plan', { user_id: u.user_id, plan })}
+                          onValueChange={plan => {
+                            if (plan === u.plan) return;
+                            setReasonDialog({
+                              title: `플랜 변경 — ${u.email} (${u.plan} → ${plan})`,
+                              action: 'change_plan',
+                              params: { user_id: u.user_id, plan },
+                            });
+                          }}
                         >
-                          <SelectTrigger className="w-[85px] h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger className="w-[85px] h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="free">Free</SelectItem>
                             <SelectItem value="basic">Basic</SelectItem>
