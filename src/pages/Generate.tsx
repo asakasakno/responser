@@ -465,14 +465,36 @@ export default function Generate() {
             )}
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">답변 톤</label>
-            <Select value={tone} onValueChange={(v) => setTone(v as any)}>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">
+              답변 톤
+              {plan === 'free' && <span className="ml-1 text-[11px] text-muted-foreground">(수동 선택은 유료 플랜)</span>}
+            </label>
+            <Select
+              value={tone}
+              onValueChange={(v) => setTone(v as any)}
+            >
               <SelectTrigger><SelectValue placeholder="톤 선택" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">자동 추천</SelectItem>
-                {TONES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                {TONES.map(t => (
+                  <SelectItem key={t.id} value={t.id} disabled={plan === 'free'}>
+                    {t.label}{plan === 'free' ? ' 🔒' : ''}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {plan === 'free' && tone !== 'none' && (
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs">
+                <Zap className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-foreground font-medium">수동 톤 선택은 유료 플랜 전용입니다</p>
+                  <p className="text-muted-foreground mt-0.5">업그레이드하면 7가지 톤을 자유롭게 사용할 수 있어요.</p>
+                </div>
+                <Link to="/pricing" className="text-primary font-semibold whitespace-nowrap hover:underline">
+                  업그레이드 →
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
