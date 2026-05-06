@@ -544,7 +544,29 @@ serve(async (req) => {
       };
     }
 
-    if (!type || typeof text !== "string") {
+    let safeService: {
+      visit_date?: string | null; reserved?: string | null;
+      staff?: string | null; kind?: string | null;
+      issues?: string[] | null; revisit?: boolean | null; compensations?: string[] | null;
+    } | null = null;
+    if (service && typeof service === "object") {
+      const visit = typeof (service as any).visit_date === "string" ? String((service as any).visit_date).trim().slice(0, 30) : "";
+      const reserved = (service as any).reserved;
+      const staff = typeof (service as any).staff === "string" ? String((service as any).staff).trim().slice(0, 30) : "";
+      const kind = typeof (service as any).kind === "string" ? String((service as any).kind).trim().slice(0, 60) : "";
+      const issues = Array.isArray((service as any).issues) ? (service as any).issues : [];
+      const scomps = Array.isArray((service as any).compensations) ? (service as any).compensations : [];
+      safeService = {
+        visit_date: visit || null,
+        reserved: reserved === "yes" || reserved === "no" ? reserved : null,
+        staff: staff || null,
+        kind: kind || null,
+        issues: issues.filter((i: any) => typeof i === "string" && VALID_SERVICE_ISSUES.has(i)).slice(0, 8),
+        revisit: (service as any).revisit === true,
+        compensations: scomps.filter((c: any) => typeof c === "string" && VALID_SERVICE_COMPS.has(c)).slice(0, 5),
+      };
+    }
+
       return respond({ error: "Missing required fields.", reservation_id: null }, 400);
     }
     if (!["review", "inquiry", "claim"].includes(type)) {
