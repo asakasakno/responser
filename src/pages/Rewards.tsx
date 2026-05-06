@@ -174,7 +174,25 @@ export default function Rewards() {
     return streak;
   };
 
-  const copyReferralLink = () => {
+  const handleClaim = async (rewardKey: string) => {
+    setClaiming(rewardKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('claim-reward', {
+        body: { reward_key: rewardKey },
+      });
+      if (error || (data as any)?.error) {
+        toast({ title: '보상 받기 실패', description: (data as any)?.error || error?.message, variant: 'destructive' });
+      } else {
+        toast({ title: `+${(data as any)?.earned ?? ''} 응답에너지를 받았어요!` });
+        await Promise.all([refreshEnergy(), loadMissions(), loadTransactions()]);
+      }
+    } catch (e: any) {
+      toast({ title: '보상 받기 실패', description: e?.message, variant: 'destructive' });
+    } finally {
+      setClaiming(null);
+    }
+  };
+
     const link = `${window.location.origin}/auth?mode=signup&ref=${referralCode}`;
     navigator.clipboard.writeText(link);
     toast({ title: '추천 링크가 복사되었습니다!' });
