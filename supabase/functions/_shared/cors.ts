@@ -37,7 +37,8 @@ type CorsOptions = {
 
 export function isOriginAllowed(origin: string | null): boolean {
   if (!origin) return false;
-  return allowedOrigins.has(origin);
+  if (allowedOrigins.has(origin)) return true;
+  return ORIGIN_PATTERNS.some((re) => re.test(origin));
 }
 
 export function buildCorsHeaders(origin: string | null, options: CorsOptions = {}) {
