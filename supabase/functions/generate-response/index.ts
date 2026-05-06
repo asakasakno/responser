@@ -814,6 +814,7 @@ serve(async (req) => {
       inquiry: safeInquiry,
       claim: safeClaim,
       lodging: safeLodging,
+      service: safeService,
     });
 
     let aiResponse: Response;
