@@ -205,6 +205,15 @@ export default function Generate() {
     if (genType === 'claim') {
       extra.claim = { severity: claimSeverity, compensations };
     }
+    if (isLodging) {
+      extra.lodging = {
+        room: lodgingRoom.trim() || null,
+        visit_date: lodgingVisitDate.trim() || null,
+        issues: lodgingIssues,
+        revisit: lodgingRevisit,
+        compensations: lodgingComps,
+      };
+    }
     return extra;
   };
 
