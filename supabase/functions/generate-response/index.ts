@@ -587,6 +587,11 @@ serve(async (req) => {
       style: appliedStyle,
       product,
       platform,
+      tone: safeTone,
+      business_category: safeBizCat,
+      review: safeReview,
+      inquiry: safeInquiry,
+      claim: safeClaim,
     });
 
     let aiResponse: Response;
