@@ -595,7 +595,7 @@ serve(async (req) => {
       severity: "info",
     });
 
-    await grantMilestoneRewards(adminClient, userId);
+    // 마일스톤 보상은 사용자가 /rewards 페이지에서 직접 "보상 받기" 버튼으로 수령합니다.
 
     if (!lovableApiKey) {
       await completeReservation("failed", "missing_api_key");
