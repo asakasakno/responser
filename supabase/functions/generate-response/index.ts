@@ -206,6 +206,15 @@ function buildPrompt(input: {
     revisit?: boolean | null;
     compensations?: string[] | null;
   } | null;
+  service?: {
+    visit_date?: string | null;
+    reserved?: string | null;
+    staff?: string | null;
+    kind?: string | null;
+    issues?: string[] | null;
+    revisit?: boolean | null;
+    compensations?: string[] | null;
+  } | null;
 }) {
   const sections = [TYPE_INSTRUCTIONS[input.type] || TYPE_INSTRUCTIONS.review];
 
