@@ -17,40 +17,40 @@ export function useAdminAction() {
     const key = loadingKey || action;
     setLoading(key);
     try {
+    const callOnce = async () => {
       const { data, error } = await supabase.functions.invoke('admin', {
         body: { action, ...params },
       });
 
+      let body: any = data;
       if (error) {
-        // Step-up 필요시 다이얼로그 띄우고 재시도
         const ctx: any = (error as any).context;
-        let body: any = data;
         try {
-          if (!body && ctx?.body) body = typeof ctx.body === 'string' ? JSON.parse(ctx.body) : ctx.body;
-        } catch { /* ignore */ }
-        if (body?.code === 'STEP_UP_REQUIRED' && stepUpHandler) {
-          const ok = await stepUpHandler();
-          if (ok) {
-            const retry = await supabase.functions.invoke('admin', { body: { action, ...params } });
-            if (retry.error) throw retry.error;
-            return retry.data;
+          if (ctx && typeof ctx.json === 'function') {
+            body = await ctx.clone().json();
+          } else if (ctx?.body) {
+            body = typeof ctx.body === 'string' ? JSON.parse(ctx.body) : ctx.body;
           }
-          return null;
-        }
-        throw error;
+        } catch { /* ignore */ }
       }
+      return { data, body, error };
+    };
 
-      if (data?.code === 'STEP_UP_REQUIRED' && stepUpHandler) {
+    try {
+      const first = await callOnce();
+      if (first.body?.code === 'STEP_UP_REQUIRED' && stepUpHandler) {
         const ok = await stepUpHandler();
-        if (ok) {
-          const retry = await supabase.functions.invoke('admin', { body: { action, ...params } });
-          if (retry.error) throw retry.error;
-          return retry.data;
+        if (!ok) return null;
+        const retry = await callOnce();
+        if (retry.error && retry.body?.code !== 'STEP_UP_REQUIRED') {
+          throw new Error(retry.body?.error || retry.error.message);
         }
-        return null;
+        return retry.data ?? retry.body;
       }
-
-      return data;
+      if (first.error) {
+        throw new Error(first.body?.error || first.error.message);
+      }
+      return first.data;
     } catch (err: any) {
       toast({ title: '오류', description: err.message || '작업에 실패했습니다.', variant: 'destructive' });
       return null;
