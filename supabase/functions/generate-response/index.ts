@@ -447,6 +447,24 @@ serve(async (req) => {
       };
     }
 
+    let safeLodging: {
+      room?: string | null; visit_date?: string | null;
+      issues?: string[] | null; revisit?: boolean | null; compensations?: string[] | null;
+    } | null = null;
+    if (lodging && typeof lodging === "object") {
+      const room = typeof (lodging as any).room === "string" ? String((lodging as any).room).trim().slice(0, 60) : "";
+      const visit = typeof (lodging as any).visit_date === "string" ? String((lodging as any).visit_date).trim().slice(0, 30) : "";
+      const issues = Array.isArray((lodging as any).issues) ? (lodging as any).issues : [];
+      const lcomps = Array.isArray((lodging as any).compensations) ? (lodging as any).compensations : [];
+      safeLodging = {
+        room: room || null,
+        visit_date: visit || null,
+        issues: issues.filter((i: any) => typeof i === "string" && VALID_LODGING_ISSUES.has(i)).slice(0, 8),
+        revisit: (lodging as any).revisit === true,
+        compensations: lcomps.filter((c: any) => typeof c === "string" && VALID_LODGING_COMPS.has(c)).slice(0, 5),
+      };
+    }
+
     if (!type || typeof text !== "string") {
       return respond({ error: "Missing required fields.", reservation_id: null }, 400);
     }
