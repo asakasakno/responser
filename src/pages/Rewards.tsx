@@ -55,14 +55,19 @@ export default function Rewards() {
     if (!user) return;
     setLoading(true);
 
-    // Check which rewards have been earned
-    const { data: txs } = await supabase
-      .from('energy_transactions')
-      .select('reason')
-      .eq('user_id', user.id)
-      .eq('type', 'earn');
+    // Check which rewards have been earned (reward_claims uses reward_key)
+    const { data: claims } = await supabase
+      .from('reward_claims')
+      .select('reward_key')
+      .eq('user_id', user.id);
+    const claimedKeys = new Set((claims || []).map((c: any) => c.reward_key));
 
-    const earnedReasons = new Set(txs?.map(t => t.reason) || []);
+    // Generation count for first/ten eligibility
+    const { count: genCount } = await supabase
+      .from('generations')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    const totalGens = genCount ?? 0;
 
     // Check streak
     const { data: usageData } = await supabase
@@ -74,8 +79,6 @@ export default function Rewards() {
 
     const dates = usageData?.map(u => u.date) || [];
     const streak = calculateStreak(dates);
-
-    const earned = (key: string) => Array.from(earnedReasons).some(r => r === `reward_${key}` || r === key);
 
     const missionList: MissionItem[] = [
       {
