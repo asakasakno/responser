@@ -503,9 +503,6 @@ export default function Generate() {
               <p className="text-[11px] text-muted-foreground mt-1">선택한 플랫폼에 맞는 업종만 표시됩니다.</p>
             )}
           </div>
-              </SelectContent>
-            </Select>
-          </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-1.5 block">답변 톤</label>
             <Select value={tone} onValueChange={(v) => setTone(v as any)}>
