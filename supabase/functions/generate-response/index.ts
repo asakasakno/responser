@@ -84,8 +84,46 @@ const CATEGORY_GUIDES: Record<string, Record<string, string>> = {
   pet: { rule: "수의학적 진단/치료 표현 금지. 수의사 상담 권유 가능." },
   baby: { rule: "안전 인증 강조. 의약 효능 표현 금지." },
   digital: { rule: "환불·교환 정책(콘텐츠 특성)을 명확히 안내." },
+  hotel: { rule: "객실 컨디션과 위생 관리 책임을 인정하고, 점검·청소 프로세스 강화 의지를 표현." },
+  motel: { rule: "청결·소음·위생 이슈는 방어 없이 사과 우선. 점검 강화 의지를 표현." },
+  pension: { rule: "단체/장기 투숙 특성을 고려해 시설·소모품 점검 의지를 표현." },
+  poolvilla: { rule: "수영장/온수/위생 점검을 중심으로 안내. 안전 관리 책임을 명확히 표현." },
+  guesthouse: { rule: "공용공간·소음·청결 이슈에 사과와 운영 개선 의지를 표현." },
+  glamping: { rule: "야외 시설 특성과 벌레/위생/온수 점검 의지를 명확히 표현." },
+  camping: { rule: "사이트 컨디션·위생·안전 점검 의지를 표현. 자연환경 변수는 신중히 안내." },
+  lodging_other: { rule: "숙박업 일반 가이드를 따르며 청결·안전·응대 책임을 명확히 표현." },
   other: { rule: "" },
 };
+
+const LODGING_PLATFORMS = new Set([
+  "yanolja", "yeogieotte", "naverbooking", "kakaomap", "googlemaps", "tripadvisor",
+]);
+const LODGING_CATEGORIES = new Set([
+  "hotel", "motel", "pension", "poolvilla", "guesthouse", "glamping", "camping", "lodging_other",
+]);
+const LODGING_ISSUE_LABEL: Record<string, string> = {
+  cleanliness: "청결", noise: "소음", smell: "냄새", bedding: "침구", parking: "주차",
+  staff: "직원 응대", reservation: "예약 착오", refund: "환불", facility_old: "시설 노후",
+  hvac: "온수/난방/에어컨", pest_mold: "벌레/곰팡이", photo_mismatch: "사진과 다름", other: "기타",
+};
+const LODGING_COMPENSATION_LABEL: Record<string, string> = {
+  revisit_discount: "재방문 할인",
+  room_inspection: "객실 점검",
+  staff_training: "직원 교육",
+  refund_guide: "환불 안내",
+  none: "별도 보상 없음",
+};
+const LODGING_GUIDE = [
+  "[숙박 리뷰 답변 원칙]",
+  "- 공개 리뷰 답변이므로 고객 개인정보, 예약번호, 전화번호, 객실 상세 식별정보를 절대 노출하지 않습니다.",
+  "- 청결/벌레/곰팡이/냄새/소음 문제는 방어적으로 말하지 말고 먼저 사과합니다.",
+  "- 사실관계 다툼이 있어도 고객을 탓하지 않고 정중하게 표현합니다.",
+  "- 조치 계획은 구체적으로 표현합니다. 예: 객실 점검, 침구 교체, 청소 프로세스 재확인, 직원 교육.",
+  "- 환불/보상이 확정되지 않았다면 단정하지 말고 '확인 후 안내' 형태로 작성합니다.",
+  "- 긍정 리뷰에는 재방문을 유도하는 따뜻한 문구를 포함합니다.",
+  "- 부정 리뷰에는 '사과 → 개선 조치 → 재방문 기회 요청' 구조로 작성합니다.",
+  "- 법적 판단이나 확정적 보상 약속은 하지 않습니다.",
+].join("\n");
 
 const INQUIRY_CATEGORY_HINT: Record<string, string> = {
   shipping: "배송 일정/방법에 대한 명확한 안내를 우선하세요.",
