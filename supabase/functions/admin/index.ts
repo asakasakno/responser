@@ -359,18 +359,26 @@ Deno.serve(async (req) => {
 
         const subMap = new Map((subs || []).map((s: any) => [s.user_id, s.plan]));
         const issues: any[] = [];
+        let overCapCount = 0;
+        let mismatchCount = 0;
 
         for (const p of profiles || []) {
           const plan = subMap.get(p.user_id) || "free";
           const expectedMax = PLAN_MAX[plan];
           const problems: string[] = [];
+          let isMismatch = false;
+          let isOverCap = false;
           if (p.max_energy !== expectedMax) {
             problems.push(`max_energy=${p.max_energy}, expected=${expectedMax}`);
+            isMismatch = true;
           }
           if (p.energy_balance > p.max_energy) {
-            problems.push(`balance(${p.energy_balance}) > max(${p.max_energy})`);
+            problems.push(`over_cap:balance(${p.energy_balance}) > max(${p.max_energy})`);
+            isOverCap = true;
           }
           if (problems.length) {
+            if (isMismatch) mismatchCount++;
+            if (isOverCap && !isMismatch) overCapCount++;
             issues.push({
               user_id: p.user_id,
               email: p.email,
@@ -379,6 +387,8 @@ Deno.serve(async (req) => {
               energy_balance: p.energy_balance,
               expected_max: expectedMax,
               problems,
+              status: isMismatch ? "mismatch" : "allowed_over_cap",
+              over_cap: isOverCap,
             });
           }
         }
@@ -386,14 +396,16 @@ Deno.serve(async (req) => {
         await adminClient.from("audit_logs").insert({
           user_id: userId,
           action: "verify_plan_consistency",
-          severity: issues.length ? "warning" : "info",
-          details: { total_checked: profiles?.length || 0, issue_count: issues.length },
+          severity: mismatchCount > 0 ? "warning" : "info",
+          details: { total_checked: profiles?.length || 0, issue_count: issues.length, mismatch_count: mismatchCount, over_cap_count: overCapCount },
         });
 
         return jsonResponse({
           success: true,
           total_checked: profiles?.length || 0,
           issue_count: issues.length,
+          mismatch_count: mismatchCount,
+          over_cap_count: overCapCount,
           issues,
         }, corsHeaders);
       }
