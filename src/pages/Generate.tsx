@@ -241,6 +241,17 @@ export default function Generate() {
         compensations: lodgingComps,
       };
     }
+    if (isService) {
+      extra.service = {
+        visit_date: serviceVisitDate.trim() || null,
+        reserved: serviceReserved === 'none' ? null : serviceReserved,
+        staff: serviceStaff.trim() || null,
+        kind: serviceKind.trim() || null,
+        issues: serviceIssues,
+        revisit: serviceRevisit,
+        compensations: serviceComps,
+      };
+    }
     return extra;
   };
 
