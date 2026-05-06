@@ -70,6 +70,12 @@ export default function Generate() {
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [claimSeverity, setClaimSeverity] = useState<'low' | 'normal' | 'high'>('normal');
   const [compensations, setCompensations] = useState<Compensation[]>([]);
+  // 숙박 전용 입력
+  const [lodgingRoom, setLodgingRoom] = useState('');
+  const [lodgingVisitDate, setLodgingVisitDate] = useState('');
+  const [lodgingIssues, setLodgingIssues] = useState<LodgingIssue[]>([]);
+  const [lodgingRevisit, setLodgingRevisit] = useState(false);
+  const [lodgingComps, setLodgingComps] = useState<LodgingCompensation[]>([]);
   const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
 
   const energyCost = ENERGY_COSTS[genType] || 1;
