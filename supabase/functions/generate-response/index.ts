@@ -97,6 +97,11 @@ function buildPrompt(input: {
   style: string | null;
   product: any;
   platform: any;
+  tone?: string | null;
+  business_category?: string | null;
+  review?: { rating?: number | null; nickname?: string | null } | null;
+  inquiry?: { category?: string | null; slots?: Record<string, string> | null } | null;
+  claim?: { severity?: string | null; compensations?: string[] | null } | null;
 }) {
   const sections = [TYPE_INSTRUCTIONS[input.type] || TYPE_INSTRUCTIONS.review];
 
@@ -111,19 +116,81 @@ function buildPrompt(input: {
     );
   }
 
+  if (input.business_category && CATEGORY_GUIDES[input.business_category]?.rule) {
+    sections.push(`[업종 가이드: ${input.business_category}]\n${CATEGORY_GUIDES[input.business_category].rule}`);
+  }
+
   if (input.platform?.label || input.platform?.id) {
     sections.push(
       `[판매 플랫폼]\n${input.platform.label || input.platform.id} 플랫폼의 톤과 고객 기대에 맞춰 답변하세요.`,
     );
   }
 
+  if (input.tone && TONE_GUIDES[input.tone]) {
+    sections.push(`[답변 톤]\n${TONE_GUIDES[input.tone]}`);
+  }
+
   if (input.style && STYLE_GUIDES[input.style]) {
     sections.push(`[답변 스타일]\n${STYLE_GUIDES[input.style]}`);
   }
 
-  sections.push("출력은 답변 본문만 반환하세요.");
+  if (input.type === "review" && input.review) {
+    const lines: string[] = [];
+    if (input.review.rating) {
+      const r = Math.max(1, Math.min(5, Number(input.review.rating)));
+      lines.push(`별점: ${r}/5 (${r <= 2 ? "부정 → 사과 우선" : r === 3 ? "중립 → 개선 의지" : "긍정 → 감사 강화"})`);
+    }
+    if (input.review.nickname) {
+      lines.push(`고객 호칭: ${input.review.nickname.trim()}님 (답변 첫머리에 자연스럽게 사용)`);
+    }
+    if (lines.length) sections.push(`[리뷰 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  if (input.type === "inquiry" && input.inquiry) {
+    const lines: string[] = [];
+    if (input.inquiry.category && INQUIRY_CATEGORY_HINT[input.inquiry.category]) {
+      lines.push(`문의 유형: ${input.inquiry.category} — ${INQUIRY_CATEGORY_HINT[input.inquiry.category]}`);
+    }
+    const slots = input.inquiry.slots || {};
+    const slotLabels: Record<string, string> = {
+      ship_date: "발송일",
+      restock_date: "재입고 예정일",
+      tracking_no: "운송장 번호",
+      cs_phone: "CS 연락처",
+      business_hours: "영업시간",
+    };
+    const filledSlots = Object.entries(slots)
+      .filter(([_, v]) => typeof v === "string" && v.trim().length > 0)
+      .map(([k, v]) => `- ${slotLabels[k] || k}: ${String(v).trim()}`);
+    if (filledSlots.length) {
+      lines.push("아래 정보를 답변에 자연스럽게 포함하세요:");
+      lines.push(...filledSlots);
+    }
+    if (lines.length) sections.push(`[문의 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  if (input.type === "claim" && input.claim) {
+    const lines: string[] = [];
+    const sev = input.claim.severity;
+    if (sev === "high") {
+      lines.push("심각도: 높음 — 강한 사과와 책임자 직접 연결 안내를 포함하세요.");
+    } else if (sev === "low") {
+      lines.push("심각도: 낮음 — 가벼운 사과와 빠른 해결 안내 중심으로 작성하세요.");
+    } else if (sev === "normal") {
+      lines.push("심각도: 보통 — 정중한 사과와 명확한 해결 절차를 안내하세요.");
+    }
+    const comps = (input.claim.compensations || []).filter((c) => COMPENSATION_LABEL[c]);
+    if (comps.length) {
+      lines.push(`제안할 보상안: ${comps.map((c) => COMPENSATION_LABEL[c]).join(", ")}`);
+      lines.push("위 보상안을 답변에 자연스럽게 제시하세요.");
+    }
+    if (lines.length) sections.push(`[클레임 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
   return sections.join("\n\n");
 }
+
 
 async function grantMilestoneRewards(adminClient: ReturnType<typeof createClient>, userId: string) {
   try {
