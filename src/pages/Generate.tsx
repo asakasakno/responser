@@ -59,8 +59,29 @@ export default function Generate() {
 
   const [energyAnim, setEnergyAnim] = useState<{ amount: number; type: 'earn' | 'spend' } | null>(null);
 
+  // MVP additions
+  const [tone, setTone] = useState<Tone | 'none'>('none');
+  const [businessCategory, setBusinessCategory] = useState<BusinessCategory | 'none'>('none');
+  const [reviewRating, setReviewRating] = useState<number>(0);
+  const [reviewNickname, setReviewNickname] = useState<string>('');
+  const [inquiryCategory, setInquiryCategory] = useState<InquiryCategory | 'none'>('none');
+  const [slots, setSlots] = useState<Record<string, string>>({});
+  const [claimSeverity, setClaimSeverity] = useState<'low' | 'normal' | 'high'>('normal');
+  const [compensations, setCompensations] = useState<Compensation[]>([]);
+  const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
+
   const energyCost = ENERGY_COSTS[genType] || 1;
   const isLimitReached = energyBalance < energyCost;
+
+  // Risk keyword detection (claim only)
+  const detectedRisks = useMemo(
+    () => genType === 'claim' ? CLAIM_RISK_KEYWORDS.filter(k => inputText.includes(k)) : [],
+    [inputText, genType]
+  );
+
+  const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
+
+  useEffect(() => { localStorage.setItem('autoCopy', autoCopy ? '1' : '0'); }, [autoCopy]);
 
   useEffect(() => {
     if (user) {
