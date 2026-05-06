@@ -496,7 +496,13 @@ export default function Generate() {
               <SelectTrigger><SelectValue placeholder="업종 선택" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">선택 안 함</SelectItem>
-                {BUSINESS_CATEGORIES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+                {filteredBusinessCategories.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {allowedCategoryIds && (
+              <p className="text-[11px] text-muted-foreground mt-1">선택한 플랫폼에 맞는 업종만 표시됩니다.</p>
+            )}
+          </div>
               </SelectContent>
             </Select>
           </div>
