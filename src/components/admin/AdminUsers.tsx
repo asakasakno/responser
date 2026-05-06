@@ -198,7 +198,11 @@ export default function AdminUsers() {
                             <Minus className="w-3.5 h-3.5 text-red-500" />
                           </Button>
                           <Button size="sm" variant={u.suspended ? 'default' : 'destructive'} className="h-7 text-xs px-2"
-                            onClick={() => adminAction('toggle_suspend', { user_id: u.user_id, suspended: !u.suspended })}>
+                            onClick={() => setReasonDialog({
+                              title: `${u.suspended ? '정지 해제' : '계정 정지'} — ${u.email}`,
+                              action: 'toggle_suspend',
+                              params: { user_id: u.user_id, suspended: !u.suspended },
+                            })}>
                             {u.suspended ? '해제' : '정지'}
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="강제 로그아웃"
