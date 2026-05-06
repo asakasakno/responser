@@ -605,7 +605,6 @@ serve(async (req) => {
     const systemPrompt = buildPrompt({
       type,
       text,
-      style: appliedStyle,
       product,
       platform,
       tone: safeTone,
