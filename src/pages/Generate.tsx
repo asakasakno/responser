@@ -81,6 +81,20 @@ export default function Generate() {
 
   const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
 
+  // 플랫폼별 허용 업종 필터
+  const allowedCategoryIds = useMemo(() => getAllowedBusinessCategories(selectedPlatform), [selectedPlatform]);
+  const filteredBusinessCategories = useMemo(
+    () => allowedCategoryIds ? BUSINESS_CATEGORIES.filter(b => allowedCategoryIds.includes(b.id)) : BUSINESS_CATEGORIES,
+    [allowedCategoryIds]
+  );
+
+  // 플랫폼 변경 시 비호환 업종이면 자동 리셋
+  useEffect(() => {
+    if (allowedCategoryIds && businessCategory !== 'none' && !allowedCategoryIds.includes(businessCategory)) {
+      setBusinessCategory('none');
+    }
+  }, [allowedCategoryIds, businessCategory]);
+
   useEffect(() => { localStorage.setItem('autoCopy', autoCopy ? '1' : '0'); }, [autoCopy]);
 
   useEffect(() => {
