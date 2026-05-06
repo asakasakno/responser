@@ -160,6 +160,13 @@ function buildPrompt(input: {
   review?: { rating?: number | null; nickname?: string | null } | null;
   inquiry?: { category?: string | null; slots?: Record<string, string> | null } | null;
   claim?: { severity?: string | null; compensations?: string[] | null } | null;
+  lodging?: {
+    room?: string | null;
+    visit_date?: string | null;
+    issues?: string[] | null;
+    revisit?: boolean | null;
+    compensations?: string[] | null;
+  } | null;
 }) {
   const sections = [TYPE_INSTRUCTIONS[input.type] || TYPE_INSTRUCTIONS.review];
 
