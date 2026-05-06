@@ -12,7 +12,22 @@ const STEP_UP_WINDOW_MINUTES = Math.min(
   10,
   Math.max(5, Number(Deno.env.get("ADMIN_STEP_UP_WINDOW_MINUTES") ?? 10))
 );
-const STEP_UP_EXEMPT_ACTIONS = new Set(["step_up_status", "step_up_verify"]);
+// Read-only / 비민감 액션은 step-up 면제
+const STEP_UP_EXEMPT_ACTIONS = new Set([
+  "step_up_status", "step_up_verify",
+  "list_users", "dashboard_stats", "energy_stats", "payment_stats",
+  "ai_usage_stats", "conversion_stats", "alerts",
+  "verify_plan_consistency",
+  "payments_list", "energy_ledger", "ai_usage_log",
+  "refund_failures_list", "anomalies_list", "audit_log_list",
+  "toggle_payment", "force_logout",
+]);
+
+// 사유 필수 민감 액션
+const REASON_REQUIRED_ACTIONS = new Set([
+  "adjust_energy", "change_plan", "toggle_suspend",
+  "mark_refund_issue", "anomaly_resolve",
+]);
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
