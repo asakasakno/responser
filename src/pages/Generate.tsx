@@ -88,10 +88,12 @@ export default function Generate() {
       supabase.from('products').select('id, name, category, note').eq('user_id', user.id).then(({ data }) => {
         if (data) setProducts(data);
       });
-      supabase.from('profiles').select('platforms').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+      supabase.from('profiles').select('platforms, business_category').eq('user_id', user.id).maybeSingle().then(({ data }) => {
         const list = (data?.platforms as string[]) || [];
         setUserPlatforms(list);
         if (list.length > 0) setSelectedPlatform(list[0]);
+        const bc = (data as any)?.business_category;
+        if (bc) setBusinessCategory(bc);
       });
     }
   }, [user]);
