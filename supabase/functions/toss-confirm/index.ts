@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
         await adminClient.from("audit_logs").insert({
           user_id: userId,
           action: "payment_blocked_cancelled",
-          details: { orderId, plan, current_status: latestSub.status, payment_enabled: latestSub.payment_enabled },
+          details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, plan, current_status: latestSub.status, payment_enabled: latestSub.payment_enabled },
           severity: "warning",
         });
         return jsonRes({ error: "해지된 구독입니다. '다시 구독하기'를 통해 결제를 진행해주세요." }, 409);
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
       await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "payment_amount_mismatch",
-        details: { orderId, client_amount: amount, expected: expectedAmount, plan, cycle },
+        details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, client_amount: amount, expected: expectedAmount, plan, cycle },
         severity: "warning",
       });
       return jsonRes({ error: "결제 금액이 일치하지 않습니다." }, 400);
@@ -153,9 +153,10 @@ Deno.serve(async (req) => {
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: "payment_attempt",
-      details: { paymentKey, orderId, amount, plan, cycle },
+      details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, payment_key_masked: paymentKeyMasked, payment_key_hash: paymentKeyHash, amount, plan, cycle },
       severity: "info",
     });
+
 
     // Toss 서버 승인
     const TOSS_SECRET_KEY = Deno.env.get("TOSS_SECRET_KEY");
