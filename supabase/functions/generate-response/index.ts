@@ -324,12 +324,15 @@ serve(async (req) => {
       tone, business_category, review, inquiry, claim,
     } = requestBody ?? {};
 
-    const VALID_TONES = new Set(["friendly", "polite", "professional", "apology", "firm", "humor"]);
+    // 통합된 톤 (구 RESPONSE_STYLES + TONES 통합)
+    const VALID_TONES = new Set(["thanks", "apology", "simple", "principle", "friendly", "firm"]);
     const VALID_CATEGORIES = new Set(["fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital", "other"]);
     const VALID_INQUIRY_CATS = new Set(["shipping", "exchange", "refund", "size", "stock", "usage", "other"]);
     const VALID_COMPENSATIONS = new Set(["reship", "partial_refund", "full_refund", "coupon", "none"]);
 
-    const safeTone = typeof tone === "string" && VALID_TONES.has(tone) ? tone : null;
+    // 하위 호환: 구 클라이언트가 보낸 style 값도 tone으로 흡수
+    const incomingTone = (typeof tone === "string" && tone) ? tone : (typeof style === "string" ? style : null);
+    const safeTone = incomingTone && VALID_TONES.has(incomingTone) ? incomingTone : null;
     const safeBizCat = typeof business_category === "string" && VALID_CATEGORIES.has(business_category) ? business_category : null;
 
     let safeReview: { rating?: number | null; nickname?: string | null } | null = null;
