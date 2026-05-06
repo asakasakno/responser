@@ -17,6 +17,8 @@ interface MissionItem {
   reward: number;
   icon: typeof Zap;
   completed: boolean;
+  eligible?: boolean;
+  claimable?: boolean;
   category: 'onboarding' | 'usage' | 'conversion';
 }
 
