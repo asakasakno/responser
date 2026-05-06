@@ -38,21 +38,42 @@ const TYPE_INSTRUCTIONS: Record<string, string> = {
   ].join("\n"),
 };
 
-const STYLE_GUIDES: Record<string, string> = {
-  thanks: "감사 표현을 조금 더 따뜻하고 적극적으로 강화하세요.",
-  apology: "사과와 책임 인정을 우선하고 차분한 톤을 유지하세요.",
-  simple: "군더더기 없이 짧고 명료하게 작성하세요.",
-  principle: "정책과 원칙을 분명히 안내하되 차갑지 않게 설명하세요.",
+// 통합된 답변 톤 가이드 (구 STYLE_GUIDES + TONE_GUIDES 병합)
+const TONE_GUIDES: Record<string, string> = {
+  thanks: "감사 표현을 따뜻하고 적극적으로 강화하세요. 긍정적이고 따뜻한 말투를 유지하세요.",
+  apology: "사과와 책임 인정을 우선하고 차분하고 정중한 톤을 유지하세요.",
+  simple: "군더더기 없이 짧고 명료하게 작성하세요. 핵심만 담아 간결하게 답변하세요.",
+  principle: "정책과 원칙을 분명하고 명확히 안내하되 차갑지 않게 설명하세요.",
+  friendly: "친근하고 다정한 말투로, 이모지는 1개 이내로 자연스럽게 사용하세요.",
+  firm: "정책에 따라 단호하지만 무례하지 않게 명확히 안내하세요.",
 };
 
-const TONE_GUIDES: Record<string, string> = {
-  friendly: "친근하고 다정한 말투로, 이모지는 1개 이내로 자연스럽게 사용하세요.",
-  polite: "정중하고 공손한 존댓말 톤을 유지하세요.",
-  professional: "전문적이고 신뢰감 있는 비즈니스 톤으로 작성하세요.",
-  apology: "사과와 책임 인정을 우선하는 차분한 톤을 유지하세요.",
-  firm: "정책에 따라 단호하지만 무례하지 않게 명확히 안내하세요.",
-  humor: "가벼운 위트를 살짝 더해 친근하게 작성하세요. 단, 클레임에서는 사용 금지.",
-};
+// 자동 추천 톤 결정 (별점/심각도/문의 카테고리 등 컨텍스트 기반)
+function autoPickTone(input: {
+  type: string;
+  review?: { rating?: number | null } | null;
+  inquiry?: { category?: string | null } | null;
+  claim?: { severity?: string | null } | null;
+}): string {
+  if (input.type === "review") {
+    const r = input.review?.rating ?? 0;
+    if (r >= 4) return "thanks";
+    if (r > 0 && r <= 2) return "apology";
+    return "friendly";
+  }
+  if (input.type === "claim") {
+    const s = input.claim?.severity;
+    if (s === "high") return "apology";
+    if (s === "low") return "friendly";
+    return "apology";
+  }
+  // inquiry
+  const c = input.inquiry?.category;
+  if (c === "refund" || c === "exchange") return "principle";
+  if (c === "shipping" || c === "stock") return "simple";
+  if (c === "size" || c === "usage") return "friendly";
+  return "simple";
+}
 
 const CATEGORY_GUIDES: Record<string, Record<string, string>> = {
   fashion: { rule: "사이즈/색상/소재 표현은 제품 라벨 기준으로 안내. 효능 표현 금지." },
