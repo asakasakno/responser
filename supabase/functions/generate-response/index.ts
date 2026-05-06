@@ -536,6 +536,10 @@ serve(async (req) => {
       business_category: safeBizCat,
       product_id: product?.id ?? null,
       platform_id: platform?.id ?? null,
+      review: safeReview,
+      inquiry: safeInquiry,
+      claim: safeClaim,
+      lodging: safeLodging,
     });
     const cacheDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
     const cacheKey = Array.from(new Uint8Array(cacheDigest))
