@@ -30,6 +30,7 @@ export default function Rewards() {
   const [allTx, setAllTx] = useState<any[]>([]);
   const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
   const [txFilter, setTxFilter] = useState<'all' | 'earn' | 'spend'>('all');
+  const [claiming, setClaiming] = useState<string | null>(null);
   const limits = PLAN_LIMITS[plan];
 
   const sinceMs = Date.now() - period * 24 * 60 * 60 * 1000;
