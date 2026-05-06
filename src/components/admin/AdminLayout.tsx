@@ -28,6 +28,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const resolveRef = useRef<((ok: boolean) => void) | null>(null);
+
+  useEffect(() => {
+    registerStepUpHandler(() => new Promise<boolean>((resolve) => {
+      resolveRef.current = resolve;
+      setStepUpOpen(true);
+    }));
+    return () => registerStepUpHandler(null);
+  }, []);
 
   const isActive = (path: string, exact?: boolean) => {
     if (exact) return location.pathname === path;
@@ -36,6 +46,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background">
+      <StepUpDialog
+        open={stepUpOpen}
+        onClose={() => { setStepUpOpen(false); resolveRef.current?.(false); resolveRef.current = null; }}
+        onVerified={() => { resolveRef.current?.(true); resolveRef.current = null; }}
+      />
       <aside className="hidden md:flex w-60 flex-col border-r border-border bg-card">
         <div className="p-4 border-b border-border">
           <Link to="/admin" className="flex items-center gap-2">
