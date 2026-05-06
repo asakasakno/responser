@@ -92,6 +92,16 @@ const CATEGORY_GUIDES: Record<string, Record<string, string>> = {
   glamping: { rule: "야외 시설 특성과 벌레/위생/온수 점검 의지를 명확히 표현." },
   camping: { rule: "사이트 컨디션·위생·안전 점검 의지를 표현. 자연환경 변수는 신중히 안내." },
   lodging_other: { rule: "숙박업 일반 가이드를 따르며 청결·안전·응대 책임을 명확히 표현." },
+  hair: { rule: "스타일 결과는 개인차가 있을 수 있음을 정중히 안내. 재시술/수정 안내 가능." },
+  nail: { rule: "디자인/지속력은 개인차 안내. 위생 도구 관리 강조." },
+  skin: { rule: "효과는 개인차가 있음을 안내. 자극/부작용은 즉시 상담 권유." },
+  waxing: { rule: "위생 관리와 사후 관리 안내를 명확히. 자극 반응은 상담 권유." },
+  massage: { rule: "강도/효과는 개인차 안내. 의학적 효능 표현 금지." },
+  pilates: { rule: "동작/난이도는 개인차 안내. 부상 예방 가이드 표현." },
+  pt_gym: { rule: "트레이닝 효과는 개인차 안내. 환불/이용권 정책은 정확히." },
+  academy: { rule: "수업/강사 운영 정책 명확히 안내. 결과는 단정 표현 금지." },
+  carwash: { rule: "차량 컨디션/사후 관리 안내. 손상 클레임은 검토 후 안내." },
+  service_other: { rule: "서비스업 일반 가이드를 따르며 응대/위생/사후관리 책임을 명확히 표현." },
   other: { rule: "" },
 };
 
@@ -124,6 +134,35 @@ const LODGING_GUIDE = [
   "- 부정 리뷰에는 '사과 → 개선 조치 → 재방문 기회 요청' 구조로 작성합니다.",
   "- 법적 판단이나 확정적 보상 약속은 하지 않습니다.",
 ].join("\n");
+
+const SERVICE_CATEGORIES = new Set([
+  "hair", "nail", "skin", "waxing", "massage", "pilates", "pt_gym", "academy", "carwash", "service_other",
+]);
+const SERVICE_ISSUE_LABEL: Record<string, string> = {
+  reservation_delay: "예약 지연", wait_time: "대기 시간", staff: "직원 응대",
+  result_unsatisfied: "결과 불만족", style_mismatch: "원하는 스타일과 다름",
+  price_info: "가격 안내 부족", extra_charge: "추가금 불만", hygiene: "위생/청결",
+  noise_atmosphere: "소음/분위기", parking: "주차", refund_request: "환불 요청",
+  redo_request: "재시술 요청", other: "기타",
+};
+const SERVICE_COMPENSATION_LABEL: Record<string, string> = {
+  redo_guide: "재시술 안내",
+  staff_check: "담당자 확인",
+  refund_consult: "환불 상담 안내",
+  next_visit_benefit: "다음 방문 혜택",
+  none: "별도 보상 없음",
+};
+const SERVICE_GUIDE = [
+  "[서비스업 답변 원칙]",
+  "- 공개 리뷰/문의 답변이므로 고객 개인정보(이름/연락처/예약번호 등)를 노출하지 않습니다.",
+  "- 결과 불만족, 예약 지연, 직원 응대 불만, 가격 불만은 공감과 사과를 먼저 표현합니다.",
+  "- 사실관계가 다르더라도 고객을 직접 탓하지 않습니다.",
+  "- 재시술, 담당자 확인, 상담 예정 등 후속조치는 가능한 한 구체적으로 안내합니다.",
+  "- 환불은 확정되지 않았다면 '확인 후 안내' 형태로 작성합니다.",
+  "- 긍정 리뷰는 감사 + 재방문 유도, 부정 리뷰는 '사과 → 개선/확인 → 재방문 기회 요청' 구조로 작성합니다.",
+  "- 법적 판단이나 확정적 보상 약속은 임의로 하지 않습니다.",
+].join("\n");
+
 
 const INQUIRY_CATEGORY_HINT: Record<string, string> = {
   shipping: "배송 일정/방법에 대한 명확한 안내를 우선하세요.",
@@ -163,6 +202,15 @@ function buildPrompt(input: {
   lodging?: {
     room?: string | null;
     visit_date?: string | null;
+    issues?: string[] | null;
+    revisit?: boolean | null;
+    compensations?: string[] | null;
+  } | null;
+  service?: {
+    visit_date?: string | null;
+    reserved?: string | null;
+    staff?: string | null;
+    kind?: string | null;
     issues?: string[] | null;
     revisit?: boolean | null;
     compensations?: string[] | null;
@@ -271,6 +319,28 @@ function buildPrompt(input: {
       lines.push("위 보상/안내를 단정적이지 않게 자연스럽게 표현하세요. 환불·금액은 '확인 후 안내' 형태로.");
     }
     if (lines.length) sections.push(`[숙박 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  // 서비스업 컨텍스트
+  const isService = SERVICE_CATEGORIES.has(input.business_category ?? "");
+  if (isService) {
+    sections.push(SERVICE_GUIDE);
+    const sv = input.service || {};
+    const lines: string[] = [];
+    if (sv.visit_date) lines.push(`방문일: ${String(sv.visit_date).slice(0, 30)}`);
+    if (sv.reserved === "yes") lines.push("예약 방문 고객");
+    else if (sv.reserved === "no") lines.push("워크인(비예약) 고객");
+    if (sv.staff) lines.push(`담당자/디자이너: ${String(sv.staff).slice(0, 30)} (필요 시 자연스럽게 언급)`);
+    if (sv.kind) lines.push(`서비스 종류: ${String(sv.kind).slice(0, 60)}`);
+    const issues = (sv.issues || []).filter((i) => SERVICE_ISSUE_LABEL[i]);
+    if (issues.length) lines.push(`문제 유형: ${issues.map((i) => SERVICE_ISSUE_LABEL[i]).join(", ")}`);
+    if (sv.revisit) lines.push("재방문 유도 문구를 반드시 포함하세요.");
+    const scomps = (sv.compensations || []).filter((c) => SERVICE_COMPENSATION_LABEL[c]);
+    if (scomps.length) {
+      lines.push(`후속조치/보상안: ${scomps.map((c) => SERVICE_COMPENSATION_LABEL[c]).join(", ")}`);
+      lines.push("후속조치는 단정 짓지 말고 '확인 후 안내' 또는 '상담 안내' 형태로 표현하세요.");
+    }
+    if (lines.length) sections.push(`[서비스업 컨텍스트]\n${lines.join("\n")}`);
   }
 
   sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
@@ -386,7 +456,7 @@ serve(async (req) => {
     const requestBody = await req.json().catch(() => null);
     const {
       type, text, product, energy_cost, style, platform,
-      tone, business_category, review, inquiry, claim, lodging,
+      tone, business_category, review, inquiry, claim, lodging, service,
     } = requestBody ?? {};
 
     // 통합된 톤 (구 RESPONSE_STYLES + TONES 통합)
@@ -394,6 +464,7 @@ serve(async (req) => {
     const VALID_CATEGORIES = new Set([
       "fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital",
       "hotel", "motel", "pension", "poolvilla", "guesthouse", "glamping", "camping", "lodging_other",
+      "hair", "nail", "skin", "waxing", "massage", "pilates", "pt_gym", "academy", "carwash", "service_other",
       "other",
     ]);
     const VALID_INQUIRY_CATS = new Set(["shipping", "exchange", "refund", "size", "stock", "usage", "other"]);
@@ -404,6 +475,14 @@ serve(async (req) => {
     ]);
     const VALID_LODGING_COMPS = new Set([
       "revisit_discount", "room_inspection", "staff_training", "refund_guide", "none",
+    ]);
+    const VALID_SERVICE_ISSUES = new Set([
+      "reservation_delay", "wait_time", "staff", "result_unsatisfied", "style_mismatch",
+      "price_info", "extra_charge", "hygiene", "noise_atmosphere", "parking",
+      "refund_request", "redo_request", "other",
+    ]);
+    const VALID_SERVICE_COMPS = new Set([
+      "redo_guide", "staff_check", "refund_consult", "next_visit_benefit", "none",
     ]);
 
     // 하위 호환: 구 클라이언트가 보낸 style 값도 tone으로 흡수
@@ -462,6 +541,29 @@ serve(async (req) => {
         issues: issues.filter((i: any) => typeof i === "string" && VALID_LODGING_ISSUES.has(i)).slice(0, 8),
         revisit: (lodging as any).revisit === true,
         compensations: lcomps.filter((c: any) => typeof c === "string" && VALID_LODGING_COMPS.has(c)).slice(0, 5),
+      };
+    }
+
+    let safeService: {
+      visit_date?: string | null; reserved?: string | null;
+      staff?: string | null; kind?: string | null;
+      issues?: string[] | null; revisit?: boolean | null; compensations?: string[] | null;
+    } | null = null;
+    if (service && typeof service === "object") {
+      const visit = typeof (service as any).visit_date === "string" ? String((service as any).visit_date).trim().slice(0, 30) : "";
+      const reserved = (service as any).reserved;
+      const staff = typeof (service as any).staff === "string" ? String((service as any).staff).trim().slice(0, 30) : "";
+      const kind = typeof (service as any).kind === "string" ? String((service as any).kind).trim().slice(0, 60) : "";
+      const issues = Array.isArray((service as any).issues) ? (service as any).issues : [];
+      const scomps = Array.isArray((service as any).compensations) ? (service as any).compensations : [];
+      safeService = {
+        visit_date: visit || null,
+        reserved: reserved === "yes" || reserved === "no" ? reserved : null,
+        staff: staff || null,
+        kind: kind || null,
+        issues: issues.filter((i: any) => typeof i === "string" && VALID_SERVICE_ISSUES.has(i)).slice(0, 8),
+        revisit: (service as any).revisit === true,
+        compensations: scomps.filter((c: any) => typeof c === "string" && VALID_SERVICE_COMPS.has(c)).slice(0, 5),
       };
     }
 
@@ -540,6 +642,7 @@ serve(async (req) => {
       inquiry: safeInquiry,
       claim: safeClaim,
       lodging: safeLodging,
+      service: safeService,
     });
     const cacheDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
     const cacheKey = Array.from(new Uint8Array(cacheDigest))
@@ -711,6 +814,7 @@ serve(async (req) => {
       inquiry: safeInquiry,
       claim: safeClaim,
       lodging: safeLodging,
+      service: safeService,
     });
 
     let aiResponse: Response;

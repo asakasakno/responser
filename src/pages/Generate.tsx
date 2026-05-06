@@ -7,11 +7,14 @@ import {
   ENERGY_COSTS,
   TONES, type Tone,
   BUSINESS_CATEGORIES, type BusinessCategory,
+  BUSINESS_GROUPS, type BusinessGroup,
   INQUIRY_CATEGORIES, type InquiryCategory,
   COMPENSATIONS, type Compensation,
   LODGING_ISSUES, type LodgingIssue,
   LODGING_COMPENSATIONS, type LodgingCompensation,
-  CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+  SERVICE_ISSUES, type ServiceIssue,
+  SERVICE_COMPENSATIONS, type ServiceCompensation,
+  CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, SERVICE_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +28,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
-import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext } from '@/lib/platforms';
+import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext, isServiceContext, SERVICE_CATEGORY_IDS, LODGING_CATEGORY_IDS } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
@@ -76,6 +79,16 @@ export default function Generate() {
   const [lodgingIssues, setLodgingIssues] = useState<LodgingIssue[]>([]);
   const [lodgingRevisit, setLodgingRevisit] = useState(false);
   const [lodgingComps, setLodgingComps] = useState<LodgingCompensation[]>([]);
+  // 업종군 (UI 그룹화)
+  const [businessGroup, setBusinessGroup] = useState<BusinessGroup | 'none'>('none');
+  // 서비스업 전용 입력
+  const [serviceVisitDate, setServiceVisitDate] = useState('');
+  const [serviceReserved, setServiceReserved] = useState<'yes' | 'no' | 'none'>('none');
+  const [serviceStaff, setServiceStaff] = useState('');
+  const [serviceKind, setServiceKind] = useState('');
+  const [serviceIssues, setServiceIssues] = useState<ServiceIssue[]>([]);
+  const [serviceRevisit, setServiceRevisit] = useState(false);
+  const [serviceComps, setServiceComps] = useState<ServiceCompensation[]>([]);
   const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
 
   const energyCost = ENERGY_COSTS[genType] || 1;
@@ -86,29 +99,43 @@ export default function Generate() {
     () => isLodgingContext(selectedPlatform, businessCategory === 'none' ? null : businessCategory),
     [selectedPlatform, businessCategory]
   );
+  const isService = useMemo(
+    () => isServiceContext(businessCategory === 'none' ? null : businessCategory),
+    [businessCategory]
+  );
   const detectedRisks = useMemo(() => {
-    const pool = isLodging
-      ? Array.from(new Set([...CLAIM_RISK_KEYWORDS, ...LODGING_RISK_KEYWORDS]))
-      : CLAIM_RISK_KEYWORDS;
-    if (!isLodging && genType !== 'claim') return [];
-    return pool.filter(k => inputText.includes(k));
-  }, [inputText, genType, isLodging]);
+    let pool: string[] = [];
+    if (genType === 'claim') pool = pool.concat(CLAIM_RISK_KEYWORDS);
+    if (isLodging) pool = pool.concat(LODGING_RISK_KEYWORDS);
+    if (isService) pool = pool.concat(SERVICE_RISK_KEYWORDS);
+    if (pool.length === 0) return [];
+    const uniq = Array.from(new Set(pool));
+    return uniq.filter(k => inputText.includes(k));
+  }, [inputText, genType, isLodging, isService]);
 
   const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
 
   // 플랫폼별 허용 업종 필터
   const allowedCategoryIds = useMemo(() => getAllowedBusinessCategories(selectedPlatform), [selectedPlatform]);
-  const filteredBusinessCategories = useMemo(
-    () => allowedCategoryIds ? BUSINESS_CATEGORIES.filter(b => allowedCategoryIds.includes(b.id)) : BUSINESS_CATEGORIES,
-    [allowedCategoryIds]
-  );
+  const groupCategoryIds = useMemo(() => {
+    if (businessGroup === 'none') return null;
+    return BUSINESS_GROUPS.find(g => g.id === businessGroup)?.categories ?? null;
+  }, [businessGroup]);
+  const filteredBusinessCategories = useMemo(() => {
+    let list = BUSINESS_CATEGORIES;
+    if (allowedCategoryIds) list = list.filter(b => allowedCategoryIds.includes(b.id));
+    if (groupCategoryIds) list = list.filter(b => groupCategoryIds.includes(b.id));
+    return list;
+  }, [allowedCategoryIds, groupCategoryIds]);
 
-  // 플랫폼 변경 시 비호환 업종이면 자동 리셋
+  // 그룹/플랫폼 변경 시 비호환 업종이면 자동 리셋
   useEffect(() => {
-    if (allowedCategoryIds && businessCategory !== 'none' && !allowedCategoryIds.includes(businessCategory)) {
-      setBusinessCategory('none');
+    if (businessCategory !== 'none') {
+      const okPlatform = !allowedCategoryIds || allowedCategoryIds.includes(businessCategory);
+      const okGroup = !groupCategoryIds || groupCategoryIds.includes(businessCategory);
+      if (!okPlatform || !okGroup) setBusinessCategory('none');
     }
-  }, [allowedCategoryIds, businessCategory]);
+  }, [allowedCategoryIds, groupCategoryIds, businessCategory]);
 
   useEffect(() => { localStorage.setItem('autoCopy', autoCopy ? '1' : '0'); }, [autoCopy]);
 
@@ -212,6 +239,17 @@ export default function Generate() {
         issues: lodgingIssues,
         revisit: lodgingRevisit,
         compensations: lodgingComps,
+      };
+    }
+    if (isService) {
+      extra.service = {
+        visit_date: serviceVisitDate.trim() || null,
+        reserved: serviceReserved === 'none' ? null : serviceReserved,
+        staff: serviceStaff.trim() || null,
+        kind: serviceKind.trim() || null,
+        issues: serviceIssues,
+        revisit: serviceRevisit,
+        compensations: serviceComps,
       };
     }
     return extra;
@@ -473,10 +511,20 @@ export default function Generate() {
           </div>
         )}
 
-        {/* 업종 + 톤 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        {/* 업종군 + 업종 + 톤 */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">업종</label>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">업종군</label>
+            <Select value={businessGroup} onValueChange={(v) => setBusinessGroup(v as any)}>
+              <SelectTrigger><SelectValue placeholder="업종군 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">전체</SelectItem>
+                {BUSINESS_GROUPS.map(g => <SelectItem key={g.id} value={g.id}>{g.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">세부 업종</label>
             <Select value={businessCategory} onValueChange={(v) => setBusinessCategory(v as any)}>
               <SelectTrigger><SelectValue placeholder="업종 선택" /></SelectTrigger>
               <SelectContent>
@@ -484,8 +532,8 @@ export default function Generate() {
                 {filteredBusinessCategories.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            {allowedCategoryIds && (
-              <p className="text-[11px] text-muted-foreground mt-1">선택한 플랫폼에 맞는 업종만 표시됩니다.</p>
+            {(allowedCategoryIds || groupCategoryIds) && (
+              <p className="text-[11px] text-muted-foreground mt-1">선택한 업종군/플랫폼에 맞는 항목만 표시됩니다.</p>
             )}
           </div>
           <div>
@@ -679,6 +727,81 @@ export default function Generate() {
             </div>
             <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
               <input type="checkbox" checked={lodgingRevisit} onChange={e => setLodgingRevisit(e.target.checked)} />
+              재방문 유도 문구 포함
+            </label>
+            {genType !== 'claim' && detectedRisks.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">⚠️ 사장님 직접 검토 권장</p>
+                  <p className="text-muted-foreground mt-0.5">감지된 위험 키워드: {detectedRisks.join(', ')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 서비스업 전용 입력 */}
+        {isService && (
+          <div className="mb-4 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <p className="text-xs font-semibold text-primary">서비스업 전용 옵션</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">방문일 (선택)</label>
+                <Input value={serviceVisitDate} onChange={e => setServiceVisitDate(e.target.value)} placeholder="예: 2026-04-12" maxLength={30} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">예약 여부</label>
+                <Select value={serviceReserved} onValueChange={(v) => setServiceReserved(v as any)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안 함</SelectItem>
+                    <SelectItem value="yes">예약 방문</SelectItem>
+                    <SelectItem value="no">워크인/비예약</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">담당자/디자이너명 (선택)</label>
+                <Input value={serviceStaff} onChange={e => setServiceStaff(e.target.value)} placeholder="예: 지영 디자이너" maxLength={30} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">서비스 종류 (선택)</label>
+                <Input value={serviceKind} onChange={e => setServiceKind(e.target.value)} placeholder="예: 펌, 젤네일, 슬리밍" maxLength={60} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">문제 유형 (복수 선택)</label>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_ISSUES.map(i => {
+                  const checked = serviceIssues.includes(i.id);
+                  return (
+                    <button key={i.id} type="button"
+                      onClick={() => setServiceIssues(prev => checked ? prev.filter(x => x !== i.id) : [...prev, i.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{i.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">후속조치/보상안 (복수 선택)</label>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_COMPENSATIONS.map(c => {
+                  const checked = serviceComps.includes(c.id);
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setServiceComps(prev => checked ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{c.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
+              <input type="checkbox" checked={serviceRevisit} onChange={e => setServiceRevisit(e.target.checked)} />
               재방문 유도 문구 포함
             </label>
             {genType !== 'claim' && detectedRisks.length > 0 && (

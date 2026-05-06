@@ -32,6 +32,8 @@ export type BusinessCategory =
   | 'living' | 'pet' | 'baby' | 'digital'
   | 'hotel' | 'motel' | 'pension' | 'poolvilla'
   | 'guesthouse' | 'glamping' | 'camping' | 'lodging_other'
+  | 'hair' | 'nail' | 'skin' | 'waxing' | 'massage'
+  | 'pilates' | 'pt_gym' | 'academy' | 'carwash' | 'service_other'
   | 'other';
 export const BUSINESS_CATEGORIES: { id: BusinessCategory; label: string }[] = [
   { id: 'fashion', label: '패션' },
@@ -50,7 +52,57 @@ export const BUSINESS_CATEGORIES: { id: BusinessCategory; label: string }[] = [
   { id: 'glamping', label: '글램핑' },
   { id: 'camping', label: '캠핑장' },
   { id: 'lodging_other', label: '숙박 기타' },
+  { id: 'hair', label: '미용실' },
+  { id: 'nail', label: '네일샵' },
+  { id: 'skin', label: '피부관리실' },
+  { id: 'waxing', label: '왁싱샵' },
+  { id: 'massage', label: '마사지샵' },
+  { id: 'pilates', label: '필라테스' },
+  { id: 'pt_gym', label: 'PT/헬스' },
+  { id: 'academy', label: '학원/레슨' },
+  { id: 'carwash', label: '세차/디테일링' },
+  { id: 'service_other', label: '기타 서비스업' },
   { id: 'other', label: '기타' },
+];
+
+// 업종군 (UI 그룹화)
+export type BusinessGroup = 'shopping' | 'delivery' | 'lodging' | 'service';
+export const BUSINESS_GROUPS: { id: BusinessGroup; label: string; categories: BusinessCategory[] }[] = [
+  { id: 'shopping', label: '쇼핑몰', categories: ['fashion', 'food', 'beauty', 'electronics', 'living', 'pet', 'baby', 'digital', 'other'] },
+  { id: 'delivery', label: '배달/음식점', categories: ['food'] },
+  { id: 'lodging', label: '숙박/예약', categories: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other'] },
+  { id: 'service', label: '서비스업', categories: ['hair', 'nail', 'skin', 'waxing', 'massage', 'pilates', 'pt_gym', 'academy', 'carwash', 'service_other'] },
+];
+
+// 서비스업 문제 유형
+export type ServiceIssue =
+  | 'reservation_delay' | 'wait_time' | 'staff' | 'result_unsatisfied'
+  | 'style_mismatch' | 'price_info' | 'extra_charge' | 'hygiene'
+  | 'noise_atmosphere' | 'parking' | 'refund_request' | 'redo_request' | 'other';
+export const SERVICE_ISSUES: { id: ServiceIssue; label: string }[] = [
+  { id: 'reservation_delay', label: '예약 지연' },
+  { id: 'wait_time', label: '대기 시간' },
+  { id: 'staff', label: '직원 응대' },
+  { id: 'result_unsatisfied', label: '결과 불만족' },
+  { id: 'style_mismatch', label: '원하는 스타일과 다름' },
+  { id: 'price_info', label: '가격 안내 부족' },
+  { id: 'extra_charge', label: '추가금 불만' },
+  { id: 'hygiene', label: '위생/청결' },
+  { id: 'noise_atmosphere', label: '소음/분위기' },
+  { id: 'parking', label: '주차' },
+  { id: 'refund_request', label: '환불 요청' },
+  { id: 'redo_request', label: '재시술 요청' },
+  { id: 'other', label: '기타' },
+];
+
+// 서비스업 후속조치/보상안
+export type ServiceCompensation = 'redo_guide' | 'staff_check' | 'refund_consult' | 'next_visit_benefit' | 'none';
+export const SERVICE_COMPENSATIONS: { id: ServiceCompensation; label: string }[] = [
+  { id: 'redo_guide', label: '재시술 안내' },
+  { id: 'staff_check', label: '담당자 확인' },
+  { id: 'refund_consult', label: '환불 상담 안내' },
+  { id: 'next_visit_benefit', label: '다음 방문 혜택' },
+  { id: 'none', label: '별도 보상 없음' },
 ];
 
 export type InquiryCategory = 'shipping' | 'exchange' | 'refund' | 'size' | 'stock' | 'usage' | 'other';
@@ -108,6 +160,11 @@ export const CLAIM_RISK_KEYWORDS = ['신고', '고소', '공정위', '소비자�
 export const LODGING_RISK_KEYWORDS = [
   '환불', '신고', '소비자원', '공정위', '고소', '사진 올리겠다', '위생', '벌레', '곰팡이',
   '악취', '도난', '몰카', '성추행', '경찰', '보건소', '최악', '사기',
+];
+export const SERVICE_RISK_KEYWORDS = [
+  '환불', '신고', '소비자원', '공정위', '고소', '사기', '최악',
+  '사진 올리겠다', '리뷰 테러', '경찰', '위생', '불친절',
+  '머리 망침', '피부 뒤집어짐', '부작용', '화상', '상처',
 ];
 export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
   smartstore: 1000, coupang: 500, '11st': 500, gmarket: 500, auction: 500, interpark: 500,
