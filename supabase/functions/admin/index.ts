@@ -302,14 +302,17 @@ Deno.serve(async (req) => {
 
         const afterPlan = afterSub?.plan ? String(afterSub.plan) : undefined;
         const mismatches: string[] = [];
+        const warnings: string[] = [];
         if (afterPlan !== plan) {
           mismatches.push(`subscriptions.plan=${afterPlan} (expected ${plan})`);
         }
         if (afterProfile?.max_energy !== expectedMax) {
           mismatches.push(`profiles.max_energy=${afterProfile?.max_energy} (expected ${expectedMax})`);
         }
+        // Policy: balance > max_energy after downgrade is ALLOWED (over_cap warning, not error).
+        // Existing energy is preserved; only new top-ups are capped.
         if ((afterProfile?.energy_balance ?? 0) > expectedMax) {
-          mismatches.push(`energy_balance=${afterProfile?.energy_balance} > max_energy=${expectedMax}`);
+          warnings.push(`over_cap:energy_balance=${afterProfile?.energy_balance} > max_energy=${expectedMax}`);
         }
 
         const consistent = mismatches.length === 0;
@@ -317,28 +320,29 @@ Deno.serve(async (req) => {
         await adminClient.from("audit_logs").insert({
           user_id: userId,
           action: consistent ? "plan_change_verified" : "plan_change_mismatch",
-          severity: consistent ? "info" : "error",
+          severity: consistent ? (warnings.length ? "warning" : "info") : "error",
           details: {
             target_user_id: user_id,
             before: { plan: beforeSub?.plan, max_energy: beforeProfile?.max_energy, energy_balance: beforeProfile?.energy_balance },
             after: { plan: afterSub?.plan, max_energy: afterProfile?.max_energy, energy_balance: afterProfile?.energy_balance },
             expected: { plan, max_energy: expectedMax },
             mismatches,
+            warnings,
           },
         });
 
         if (!consistent) {
           console.error("[change_plan mismatch]", { user_id, mismatches });
-          // 검증은 실패했지만 update 자체는 성공했으므로 경고만 반환
           return jsonResponse({
             success: true,
             verified: false,
             warning: "플랜 변경은 적용되었으나 정합성 검증에 실패했습니다.",
             mismatches,
+            warnings,
           }, corsHeaders);
         }
 
-        return jsonResponse({ success: true, verified: true }, corsHeaders);
+        return jsonResponse({ success: true, verified: true, warnings }, corsHeaders);
       }
 
       // ========== VERIFY PLAN CONSISTENCY (전 사용자 검증) ==========
@@ -355,18 +359,26 @@ Deno.serve(async (req) => {
 
         const subMap = new Map((subs || []).map((s: any) => [s.user_id, s.plan]));
         const issues: any[] = [];
+        let overCapCount = 0;
+        let mismatchCount = 0;
 
         for (const p of profiles || []) {
           const plan = subMap.get(p.user_id) || "free";
           const expectedMax = PLAN_MAX[plan];
           const problems: string[] = [];
+          let isMismatch = false;
+          let isOverCap = false;
           if (p.max_energy !== expectedMax) {
             problems.push(`max_energy=${p.max_energy}, expected=${expectedMax}`);
+            isMismatch = true;
           }
           if (p.energy_balance > p.max_energy) {
-            problems.push(`balance(${p.energy_balance}) > max(${p.max_energy})`);
+            problems.push(`over_cap:balance(${p.energy_balance}) > max(${p.max_energy})`);
+            isOverCap = true;
           }
           if (problems.length) {
+            if (isMismatch) mismatchCount++;
+            if (isOverCap && !isMismatch) overCapCount++;
             issues.push({
               user_id: p.user_id,
               email: p.email,
@@ -375,6 +387,8 @@ Deno.serve(async (req) => {
               energy_balance: p.energy_balance,
               expected_max: expectedMax,
               problems,
+              status: isMismatch ? "mismatch" : "allowed_over_cap",
+              over_cap: isOverCap,
             });
           }
         }
@@ -382,14 +396,16 @@ Deno.serve(async (req) => {
         await adminClient.from("audit_logs").insert({
           user_id: userId,
           action: "verify_plan_consistency",
-          severity: issues.length ? "warning" : "info",
-          details: { total_checked: profiles?.length || 0, issue_count: issues.length },
+          severity: mismatchCount > 0 ? "warning" : "info",
+          details: { total_checked: profiles?.length || 0, issue_count: issues.length, mismatch_count: mismatchCount, over_cap_count: overCapCount },
         });
 
         return jsonResponse({
           success: true,
           total_checked: profiles?.length || 0,
           issue_count: issues.length,
+          mismatch_count: mismatchCount,
+          over_cap_count: overCapCount,
           issues,
         }, corsHeaders);
       }

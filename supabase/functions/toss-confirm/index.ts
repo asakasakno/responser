@@ -1,5 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+function maskIdentifier(value: string): string {
+  if (!value) return "***";
+  if (value.length <= 8) return "***";
+  return `${value.slice(0, 4)}***${value.slice(-4)}`;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -60,14 +73,27 @@ Deno.serve(async (req) => {
       return jsonRes({ error: "유효하지 않은 플랜 정보입니다." }, 400);
     }
 
+    const orderIdHash = await sha256Hex(orderId);
+    const orderIdMasked = maskIdentifier(orderId);
+    const paymentKeyHash = await sha256Hex(paymentKey);
+    const paymentKeyMasked = maskIdentifier(paymentKey);
+    const idempotencyKey = `toss:${orderIdHash}`;
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // 중복 처리 방지
+    // 중복 처리 방지: idempotency_key 기반(우선) + 기존 hash details 기반
+    const { data: dupPay } = await adminClient
+      .from("payments")
+      .select("id")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (dupPay) return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
+
     const { data: dup } = await adminClient
       .from("audit_logs")
       .select("id")
       .eq("action", "payment_success")
-      .contains("details", { orderId })
+      .contains("details", { order_id_hash: orderIdHash })
       .maybeSingle();
     if (dup) return jsonRes({ error: "이미 처리된 결제입니다." }, 409);
 
@@ -88,7 +114,7 @@ Deno.serve(async (req) => {
         await adminClient.from("audit_logs").insert({
           user_id: userId,
           action: "payment_blocked_cancelled",
-          details: { orderId, plan, current_status: latestSub.status, payment_enabled: latestSub.payment_enabled },
+          details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, plan, current_status: latestSub.status, payment_enabled: latestSub.payment_enabled },
           severity: "warning",
         });
         return jsonRes({ error: "해지된 구독입니다. '다시 구독하기'를 통해 결제를 진행해주세요." }, 409);
@@ -118,7 +144,7 @@ Deno.serve(async (req) => {
       await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "payment_amount_mismatch",
-        details: { orderId, client_amount: amount, expected: expectedAmount, plan, cycle },
+        details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, client_amount: amount, expected: expectedAmount, plan, cycle },
         severity: "warning",
       });
       return jsonRes({ error: "결제 금액이 일치하지 않습니다." }, 400);
@@ -127,9 +153,10 @@ Deno.serve(async (req) => {
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: "payment_attempt",
-      details: { paymentKey, orderId, amount, plan, cycle },
+      details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, payment_key_masked: paymentKeyMasked, payment_key_hash: paymentKeyHash, amount, plan, cycle },
       severity: "info",
     });
+
 
     // Toss 서버 승인
     const TOSS_SECRET_KEY = Deno.env.get("TOSS_SECRET_KEY");
@@ -155,11 +182,13 @@ Deno.serve(async (req) => {
         product_name: `${plan === "pro" ? "Pro" : "Basic"} ${cycle === "yearly" ? "연간" : "월간"}`,
         status: "failed",
         payment_method: "toss",
+        idempotency_key: `${idempotencyKey}:failed`,
+        source_ref: idempotencyKey,
       });
       await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "payment_failed",
-        details: { orderId, toss_code: tossData?.code, toss_message: tossData?.message },
+        details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, toss_code: tossData?.code, toss_message: tossData?.message },
         severity: "warning",
       });
       return jsonRes({ error: tossData?.message || "결제 검증에 실패했습니다." }, 400);
@@ -169,7 +198,7 @@ Deno.serve(async (req) => {
       await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "payment_toss_amount_mismatch",
-        details: { orderId, toss_total: tossData?.totalAmount, expected: expectedAmount },
+        details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, toss_total: tossData?.totalAmount, expected: expectedAmount },
         severity: "error",
       });
       return jsonRes({ error: "결제 금액 검증에 실패했습니다." }, 400);
@@ -182,7 +211,10 @@ Deno.serve(async (req) => {
       product_name: `${plan === "pro" ? "Pro" : "Basic"} ${cycle === "yearly" ? "연간" : "월간"}${couponInfo ? ` (쿠폰 ${couponInfo.coupon_code})` : ""}`,
       status: "success",
       payment_method: tossData.method || "toss",
+      idempotency_key: idempotencyKey,
+      source_ref: idempotencyKey,
     });
+
 
     // 구독 업데이트 (기존 active 행 갱신, 없으면 새로 생성)
     const periodDays = cycle === "yearly" ? 365 : 30;
@@ -256,7 +288,7 @@ Deno.serve(async (req) => {
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: "payment_success",
-      details: { orderId, plan, cycle, amount: tossData.totalAmount },
+      details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, plan, cycle, amount: tossData.totalAmount },
       severity: "info",
     });
 
