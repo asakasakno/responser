@@ -9,7 +9,9 @@ import {
   BUSINESS_CATEGORIES, type BusinessCategory,
   INQUIRY_CATEGORIES, type InquiryCategory,
   COMPENSATIONS, type Compensation,
-  CLAIM_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+  LODGING_ISSUES, type LodgingIssue,
+  LODGING_COMPENSATIONS, type LodgingCompensation,
+  CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +25,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
-import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories } from '@/lib/platforms';
+import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
