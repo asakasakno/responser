@@ -135,6 +135,35 @@ const LODGING_GUIDE = [
   "- 법적 판단이나 확정적 보상 약속은 하지 않습니다.",
 ].join("\n");
 
+const SERVICE_CATEGORIES = new Set([
+  "hair", "nail", "skin", "waxing", "massage", "pilates", "pt_gym", "academy", "carwash", "service_other",
+]);
+const SERVICE_ISSUE_LABEL: Record<string, string> = {
+  reservation_delay: "예약 지연", wait_time: "대기 시간", staff: "직원 응대",
+  result_unsatisfied: "결과 불만족", style_mismatch: "원하는 스타일과 다름",
+  price_info: "가격 안내 부족", extra_charge: "추가금 불만", hygiene: "위생/청결",
+  noise_atmosphere: "소음/분위기", parking: "주차", refund_request: "환불 요청",
+  redo_request: "재시술 요청", other: "기타",
+};
+const SERVICE_COMPENSATION_LABEL: Record<string, string> = {
+  redo_guide: "재시술 안내",
+  staff_check: "담당자 확인",
+  refund_consult: "환불 상담 안내",
+  next_visit_benefit: "다음 방문 혜택",
+  none: "별도 보상 없음",
+};
+const SERVICE_GUIDE = [
+  "[서비스업 답변 원칙]",
+  "- 공개 리뷰/문의 답변이므로 고객 개인정보(이름/연락처/예약번호 등)를 노출하지 않습니다.",
+  "- 결과 불만족, 예약 지연, 직원 응대 불만, 가격 불만은 공감과 사과를 먼저 표현합니다.",
+  "- 사실관계가 다르더라도 고객을 직접 탓하지 않습니다.",
+  "- 재시술, 담당자 확인, 상담 예정 등 후속조치는 가능한 한 구체적으로 안내합니다.",
+  "- 환불은 확정되지 않았다면 '확인 후 안내' 형태로 작성합니다.",
+  "- 긍정 리뷰는 감사 + 재방문 유도, 부정 리뷰는 '사과 → 개선/확인 → 재방문 기회 요청' 구조로 작성합니다.",
+  "- 법적 판단이나 확정적 보상 약속은 임의로 하지 않습니다.",
+].join("\n");
+
+
 const INQUIRY_CATEGORY_HINT: Record<string, string> = {
   shipping: "배송 일정/방법에 대한 명확한 안내를 우선하세요.",
   exchange: "교환 절차와 비용 부담 주체를 명확히 안내하세요.",
