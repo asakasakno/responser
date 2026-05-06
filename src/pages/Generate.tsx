@@ -99,29 +99,43 @@ export default function Generate() {
     () => isLodgingContext(selectedPlatform, businessCategory === 'none' ? null : businessCategory),
     [selectedPlatform, businessCategory]
   );
+  const isService = useMemo(
+    () => isServiceContext(businessCategory === 'none' ? null : businessCategory),
+    [businessCategory]
+  );
   const detectedRisks = useMemo(() => {
-    const pool = isLodging
-      ? Array.from(new Set([...CLAIM_RISK_KEYWORDS, ...LODGING_RISK_KEYWORDS]))
-      : CLAIM_RISK_KEYWORDS;
-    if (!isLodging && genType !== 'claim') return [];
-    return pool.filter(k => inputText.includes(k));
-  }, [inputText, genType, isLodging]);
+    let pool: string[] = [];
+    if (genType === 'claim') pool = pool.concat(CLAIM_RISK_KEYWORDS);
+    if (isLodging) pool = pool.concat(LODGING_RISK_KEYWORDS);
+    if (isService) pool = pool.concat(SERVICE_RISK_KEYWORDS);
+    if (pool.length === 0) return [];
+    const uniq = Array.from(new Set(pool));
+    return uniq.filter(k => inputText.includes(k));
+  }, [inputText, genType, isLodging, isService]);
 
   const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
 
   // 플랫폼별 허용 업종 필터
   const allowedCategoryIds = useMemo(() => getAllowedBusinessCategories(selectedPlatform), [selectedPlatform]);
-  const filteredBusinessCategories = useMemo(
-    () => allowedCategoryIds ? BUSINESS_CATEGORIES.filter(b => allowedCategoryIds.includes(b.id)) : BUSINESS_CATEGORIES,
-    [allowedCategoryIds]
-  );
+  const groupCategoryIds = useMemo(() => {
+    if (businessGroup === 'none') return null;
+    return BUSINESS_GROUPS.find(g => g.id === businessGroup)?.categories ?? null;
+  }, [businessGroup]);
+  const filteredBusinessCategories = useMemo(() => {
+    let list = BUSINESS_CATEGORIES;
+    if (allowedCategoryIds) list = list.filter(b => allowedCategoryIds.includes(b.id));
+    if (groupCategoryIds) list = list.filter(b => groupCategoryIds.includes(b.id));
+    return list;
+  }, [allowedCategoryIds, groupCategoryIds]);
 
-  // 플랫폼 변경 시 비호환 업종이면 자동 리셋
+  // 그룹/플랫폼 변경 시 비호환 업종이면 자동 리셋
   useEffect(() => {
-    if (allowedCategoryIds && businessCategory !== 'none' && !allowedCategoryIds.includes(businessCategory)) {
-      setBusinessCategory('none');
+    if (businessCategory !== 'none') {
+      const okPlatform = !allowedCategoryIds || allowedCategoryIds.includes(businessCategory);
+      const okGroup = !groupCategoryIds || groupCategoryIds.includes(businessCategory);
+      if (!okPlatform || !okGroup) setBusinessCategory('none');
     }
-  }, [allowedCategoryIds, businessCategory]);
+  }, [allowedCategoryIds, groupCategoryIds, businessCategory]);
 
   useEffect(() => { localStorage.setItem('autoCopy', autoCopy ? '1' : '0'); }, [autoCopy]);
 
