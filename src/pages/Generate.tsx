@@ -693,7 +693,9 @@ export default function Generate() {
           </div>
         )}
 
-
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-foreground">내용 입력</label>
             {charLimit && (
               <span className={`text-xs ${inputText.length > charLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {inputText.length} / {charLimit}자
