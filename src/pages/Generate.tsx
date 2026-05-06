@@ -160,7 +160,7 @@ export default function Generate() {
     return p ? { id: p.id, name: p.name, category: p.category, note: p.note } : null;
   };
 
-  const getStylePayload = () => (plan !== 'free' && selectedStyle !== 'none' ? selectedStyle : undefined);
+  // style payload는 통합된 tone으로 대체됨
 
   const getPlatformPayload = () => {
     if (selectedPlatform === 'auto' || !selectedPlatform) return undefined;
