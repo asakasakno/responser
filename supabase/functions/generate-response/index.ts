@@ -391,14 +391,10 @@ serve(async (req) => {
     const userPlan = subscription?.plan ?? "free";
     const perMinuteLimit = PLAN_PER_MINUTE[userPlan] ?? PLAN_PER_MINUTE.free;
     const perDayLimit = PLAN_LIMITS[userPlan]?.maxPerDay ?? PLAN_LIMITS.free.maxPerDay;
-    const validStyles = ["thanks", "apology", "simple", "principle"];
-    const appliedStyle = typeof style === "string" ? style : null;
 
-    if (appliedStyle && !validStyles.includes(appliedStyle)) {
-      return respond({ error: "Invalid style.", reservation_id: null }, 400);
-    }
-    if (appliedStyle && userPlan === "free") {
-      return respond({ error: "Style selection requires a paid plan.", reservation_id: null }, 403);
+    // Free 플랜은 톤 자동 추천만 허용 (수동 톤은 Basic+)
+    if (safeTone && userPlan === "free") {
+      return respond({ error: "Tone selection requires a paid plan.", reservation_id: null }, 403);
     }
 
     const clientSource = req.headers.get("x-client-source");
