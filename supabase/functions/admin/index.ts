@@ -1,28 +1,39 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildCorsHeaders, isOriginAllowed } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-function jsonResponse(data: any, status = 200) {
+function jsonResponse(data: any, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
+const STEP_UP_WINDOW_MINUTES = Math.min(
+  10,
+  Math.max(5, Number(Deno.env.get("ADMIN_STEP_UP_WINDOW_MINUTES") ?? 10))
+);
+const STEP_UP_EXEMPT_ACTIONS = new Set(["step_up_status", "step_up_verify"]);
+
 Deno.serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = buildCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
+    if (origin && !isOriginAllowed(origin)) {
+      return new Response("forbidden", { status: 403, headers: corsHeaders });
+    }
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (origin && !isOriginAllowed(origin)) {
+    return jsonResponse({ error: "허용되지 않은 Origin입니다." }, corsHeaders, 403);
   }
 
   try {
     // [1][3] 서버 인증 - getClaims 기반
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return jsonResponse({ error: "인증이 필요합니다." }, 401);
+      return jsonResponse({ error: "인증이 필요합니다." }, corsHeaders, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -36,9 +47,12 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
-      return jsonResponse({ error: "인증이 유효하지 않습니다." }, 401);
+      return jsonResponse({ error: "인증이 유효하지 않습니다." }, corsHeaders, 401);
     }
-    const userId = claimsData.claims.sub as string;
+    const userId = claimsData.claims.sub as string | undefined;
+    if (!userId) {
+      return jsonResponse({ error: "인증이 유효하지 않습니다." }, corsHeaders, 401);
+    }
 
     // [3] 관리자 권한 검증 - DB user_roles 테이블 기반 (프론트 조건문 금지)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -57,10 +71,41 @@ Deno.serve(async (req) => {
         details: {},
         severity: "warning",
       });
-      return jsonResponse({ error: "접근 권한이 없습니다." }, 403);
+      return jsonResponse({ error: "접근 권한이 없습니다." }, corsHeaders, 403);
     }
 
     const { action, ...params } = await req.json();
+    if (!action || typeof action !== "string") {
+      return jsonResponse({ error: "잘못된 요청입니다." }, corsHeaders, 400);
+    }
+
+    // Step-up: 관리자 API는 최근 재인증(기본 10분, 최소 5분) 없으면 거부
+    if (!STEP_UP_EXEMPT_ACTIONS.has(action)) {
+      const sinceIso = new Date(Date.now() - STEP_UP_WINDOW_MINUTES * 60 * 1000).toISOString();
+      const { data: recentStepUp } = await adminClient
+        .from("audit_logs")
+        .select("id, created_at")
+        .eq("user_id", userId)
+        .eq("action", "admin_stepup_verified")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!recentStepUp) {
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "admin_stepup_required",
+          details: { action, window_minutes: STEP_UP_WINDOW_MINUTES },
+          severity: "warning",
+        });
+        return jsonResponse({
+          error: "관리자 추가 인증이 필요합니다. 최근 재인증 후 다시 시도해주세요.",
+          code: "STEP_UP_REQUIRED",
+          step_up_window_minutes: STEP_UP_WINDOW_MINUTES,
+        }, corsHeaders, 403);
+      }
+    }
 
     // [10] 관리자 액션 감사 로그
     await adminClient.from("audit_logs").insert({
@@ -71,6 +116,70 @@ Deno.serve(async (req) => {
     });
 
     switch (action) {
+      // ========== STEP-UP STATUS ==========
+      case "step_up_status": {
+        const sinceIso = new Date(Date.now() - STEP_UP_WINDOW_MINUTES * 60 * 1000).toISOString();
+        const { data: recentStepUp } = await adminClient
+          .from("audit_logs")
+          .select("created_at")
+          .eq("user_id", userId)
+          .eq("action", "admin_stepup_verified")
+          .gte("created_at", sinceIso)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        return jsonResponse({
+          verified: !!recentStepUp,
+          window_minutes: STEP_UP_WINDOW_MINUTES,
+          verified_at: recentStepUp?.created_at ?? null,
+        }, corsHeaders);
+      }
+
+      // ========== STEP-UP VERIFY ==========
+      case "step_up_verify": {
+        const { password } = params as { password?: string };
+        if (!password || typeof password !== "string" || password.length < 6) {
+          return jsonResponse({ error: "비밀번호를 확인해주세요." }, corsHeaders, 400);
+        }
+
+        const { data: userData, error: userError } = await userClient.auth.getUser(token);
+        const email = userData?.user?.email;
+        if (userError || !email) {
+          return jsonResponse({ error: "사용자 정보를 확인할 수 없습니다." }, corsHeaders, 401);
+        }
+
+        const verifyClient = createClient(supabaseUrl, supabaseAnonKey);
+        const { data: signInData, error: signInError } = await verifyClient.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError || signInData.user?.id !== userId) {
+          await adminClient.from("audit_logs").insert({
+            user_id: userId,
+            action: "admin_stepup_failed",
+            details: {
+              reason: "reauth_failed",
+              error_code: typeof signInError?.status === "number" ? signInError.status : null,
+            },
+            severity: "warning",
+          });
+          return jsonResponse({ error: "관리자 추가 인증에 실패했습니다." }, corsHeaders, 401);
+        }
+
+        // 생성된 재인증 세션 정리
+        await verifyClient.auth.signOut();
+
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "admin_stepup_verified",
+          details: { method: "password_reauth", window_minutes: STEP_UP_WINDOW_MINUTES },
+          severity: "info",
+        });
+
+        return jsonResponse({ success: true, verified: true, window_minutes: STEP_UP_WINDOW_MINUTES }, corsHeaders);
+      }
+
       // ========== LIST USERS ==========
       case "list_users": {
         const { data: profiles } = await adminClient
@@ -103,14 +212,14 @@ Deno.serve(async (req) => {
           };
         });
 
-        return jsonResponse({ users, usage_all: usageData || [] });
+        return jsonResponse({ users, usage_all: usageData || [] }, corsHeaders);
       }
 
       // ========== CHANGE PLAN ==========
       case "change_plan": {
         const { user_id, plan } = params;
-        if (!user_id || !plan) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
-        if (!["free", "basic", "pro"].includes(plan)) return jsonResponse({ error: "잘못된 요청입니다." }, 400);
+        if (!user_id || !plan) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
+        if (!["free", "basic", "pro"].includes(plan)) return jsonResponse({ error: "잘못된 요청입니다." }, corsHeaders, 400);
 
         const PLAN_MAX: Record<string, number> = { free: 100, basic: 500, pro: 2000 };
         const expectedMax = PLAN_MAX[plan];
@@ -130,7 +239,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!beforeSub?.id) {
-          return jsonResponse({ error: "구독 정보를 찾을 수 없습니다." }, 404);
+          return jsonResponse({ error: "구독 정보를 찾을 수 없습니다." }, corsHeaders, 404);
         }
 
         // 관리자가 플랜을 변경하면 status도 active로 복구 (해지 상태였더라도)
@@ -141,7 +250,7 @@ Deno.serve(async (req) => {
 
         if (error) {
           console.error("[change_plan update error]", error);
-          return jsonResponse({ error: "처리에 실패했습니다." }, 500);
+          return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
         }
 
         // DB 트리거가 동기화하지만, 안전장치로 명시적으로도 동기화
@@ -200,10 +309,10 @@ Deno.serve(async (req) => {
             verified: false,
             warning: "플랜 변경은 적용되었으나 정합성 검증에 실패했습니다.",
             mismatches,
-          });
+          }, corsHeaders);
         }
 
-        return jsonResponse({ success: true, verified: true });
+        return jsonResponse({ success: true, verified: true }, corsHeaders);
       }
 
       // ========== VERIFY PLAN CONSISTENCY (전 사용자 검증) ==========
@@ -256,13 +365,13 @@ Deno.serve(async (req) => {
           total_checked: profiles?.length || 0,
           issue_count: issues.length,
           issues,
-        });
+        }, corsHeaders);
       }
 
       // ========== TOGGLE PAYMENT ==========
       case "toggle_payment": {
         const { user_id, payment_enabled } = params;
-        if (!user_id || payment_enabled === undefined) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
+        if (!user_id || payment_enabled === undefined) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
 
         const { error } = await adminClient
           .from("subscriptions")
@@ -270,28 +379,28 @@ Deno.serve(async (req) => {
           .eq("user_id", user_id)
           .eq("status", "active");
 
-        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
-        return jsonResponse({ success: true });
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        return jsonResponse({ success: true }, corsHeaders);
       }
 
       // ========== TOGGLE SUSPEND ==========
       case "toggle_suspend": {
         const { user_id, suspended } = params;
-        if (!user_id || suspended === undefined) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
+        if (!user_id || suspended === undefined) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
 
         const { error } = await adminClient
           .from("profiles")
           .update({ suspended, updated_at: new Date().toISOString() })
           .eq("user_id", user_id);
 
-        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
-        return jsonResponse({ success: true });
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        return jsonResponse({ success: true }, corsHeaders);
       }
 
       // ========== ADMIN ENERGY ADJUST ==========
       case "adjust_energy": {
         const { user_id, amount, reason, type } = params;
-        if (!user_id || !amount || !reason || !type) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
+        if (!user_id || !amount || !reason || !type) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
 
         if (type === "earn") {
           const { data, error } = await adminClient.rpc("earn_energy", {
@@ -302,8 +411,8 @@ Deno.serve(async (req) => {
             _source: "admin",
             _expire_days: null,
           });
-          if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
-          return jsonResponse({ success: true, ...data });
+          if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+          return jsonResponse({ success: true, ...data }, corsHeaders);
         } else {
           const absAmount = Math.abs(amount);
           const { data, error } = await adminClient.rpc("admin_spend_energy", {
@@ -314,12 +423,12 @@ Deno.serve(async (req) => {
           });
           if (error) {
             console.error("admin_spend_energy error", error);
-            return jsonResponse({ error: "처리에 실패했습니다." }, 500);
+            return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
           }
           if (data && (data as any).success === false) {
-            return jsonResponse({ error: (data as any).error || "에너지가 부족합니다." }, 400);
+            return jsonResponse({ error: (data as any).error || "에너지가 부족합니다." }, corsHeaders, 400);
           }
-          return jsonResponse({ success: true, ...(data as any) });
+          return jsonResponse({ success: true, ...(data as any) }, corsHeaders);
         }
       }
 
@@ -372,7 +481,7 @@ Deno.serve(async (req) => {
         return jsonResponse({
           totalUsers, paidUsers, todayRevenue, monthRevenue, totalRevenue,
           totalGenerations, avgUsage, dailyUsage, dailyRevenue,
-        });
+        }, corsHeaders);
       }
 
       // ========== ENERGY STATS ==========
@@ -391,14 +500,14 @@ Deno.serve(async (req) => {
           ? Math.round((profiles || []).reduce((s: number, p: any) => s + p.energy_balance, 0) / (profiles || []).length)
           : 0;
 
-        return jsonResponse({ totalEarned, totalSpent, avgBalance, transactions: transactions || [] });
+        return jsonResponse({ totalEarned, totalSpent, avgBalance, transactions: transactions || [] }, corsHeaders);
       }
 
       // ========== PAYMENT STATS ==========
       case "payment_stats": {
         const { data: payments } = await adminClient
           .from("payments")
-          .select("*")
+          .select("id, user_id, amount, product_name, status, payment_method, created_at, updated_at")
           .order("created_at", { ascending: false })
           .limit(500);
 
@@ -420,21 +529,21 @@ Deno.serve(async (req) => {
           email: profileMap.get(p.user_id) || "알 수 없음",
         }));
 
-        return jsonResponse({ todayRevenue, monthRevenue, totalRevenue, successRate, payments: paymentsWithEmail });
+        return jsonResponse({ todayRevenue, monthRevenue, totalRevenue, successRate, payments: paymentsWithEmail }, corsHeaders);
       }
 
       // ========== UPDATE PAYMENT STATUS ==========
       case "update_payment_status": {
         const { payment_id, status } = params;
-        if (!payment_id || !status) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
+        if (!payment_id || !status) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
 
         const { error } = await adminClient
           .from("payments")
           .update({ status, updated_at: new Date().toISOString() })
           .eq("id", payment_id);
 
-        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
-        return jsonResponse({ success: true });
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        return jsonResponse({ success: true }, corsHeaders);
       }
 
       // ========== AI USAGE STATS ==========
@@ -465,7 +574,7 @@ Deno.serve(async (req) => {
           ...stats,
         }));
 
-        return jsonResponse({ todayTotal, totalGenerations: (generations || []).length, userStats });
+        return jsonResponse({ todayTotal, totalGenerations: (generations || []).length, userStats }, corsHeaders);
       }
 
       // ========== CONVERSION STATS ==========
@@ -494,7 +603,7 @@ Deno.serve(async (req) => {
         return jsonResponse({
           totalUsers, usersWithFirstUse: usersWithGen.size, paidUsers: paidUsers.size,
           firstUseConversion, firstUseToPaid, freeToPaid, retention7d,
-        });
+        }, corsHeaders);
       }
 
       // ========== ALERTS / ABUSE DETECTION ==========
@@ -556,25 +665,25 @@ Deno.serve(async (req) => {
           }
         });
 
-        return jsonResponse({ alerts });
+        return jsonResponse({ alerts }, corsHeaders);
       }
 
       // ========== FORCE LOGOUT ==========
       case "force_logout": {
         const { user_id } = params;
-        if (!user_id) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, 400);
+        if (!user_id) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
 
         const { error } = await adminClient.auth.admin.signOut(user_id);
-        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, 500);
-        return jsonResponse({ success: true });
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        return jsonResponse({ success: true }, corsHeaders);
       }
 
       default:
-        return jsonResponse({ error: "잘못된 요청입니다." }, 400);
+        return jsonResponse({ error: "잘못된 요청입니다." }, corsHeaders, 400);
     }
   } catch (err) {
     // [9] 에러 메시지 최소화 - stack trace 노출 금지
     console.error("Admin function error:", err);
-    return jsonResponse({ error: "요청을 처리할 수 없습니다." }, 500);
+    return jsonResponse({ error: "요청을 처리할 수 없습니다." }, corsHeaders, 500);
   }
 });
