@@ -253,6 +253,26 @@ function buildPrompt(input: {
     if (lines.length) sections.push(`[클레임 컨텍스트]\n${lines.join("\n")}`);
   }
 
+  // 숙박 컨텍스트 (플랫폼 또는 업종이 숙박 계열일 때)
+  const isLodging = LODGING_PLATFORMS.has(input.platform?.id ?? "") ||
+    LODGING_CATEGORIES.has(input.business_category ?? "");
+  if (isLodging) {
+    sections.push(LODGING_GUIDE);
+    const ld = input.lodging || {};
+    const lines: string[] = [];
+    if (ld.room) lines.push(`객실: ${String(ld.room).slice(0, 60)} (식별 가능한 호실/예약번호는 답변에 노출하지 마세요)`);
+    if (ld.visit_date) lines.push(`방문일/숙박일: ${String(ld.visit_date).slice(0, 30)}`);
+    const issues = (ld.issues || []).filter((i) => LODGING_ISSUE_LABEL[i]);
+    if (issues.length) lines.push(`문제 유형: ${issues.map((i) => LODGING_ISSUE_LABEL[i]).join(", ")}`);
+    if (ld.revisit) lines.push("재방문 유도 문구를 반드시 포함하세요.");
+    const lcomps = (ld.compensations || []).filter((c) => LODGING_COMPENSATION_LABEL[c]);
+    if (lcomps.length) {
+      lines.push(`보상/안내: ${lcomps.map((c) => LODGING_COMPENSATION_LABEL[c]).join(", ")}`);
+      lines.push("위 보상/안내를 단정적이지 않게 자연스럽게 표현하세요. 환불·금액은 '확인 후 안내' 형태로.");
+    }
+    if (lines.length) sections.push(`[숙박 컨텍스트]\n${lines.join("\n")}`);
+  }
+
   sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
   return sections.join("\n\n");
 }
