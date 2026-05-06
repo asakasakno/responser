@@ -21,8 +21,7 @@ export const PLATFORM_GROUPS: PlatformGroup[] = [
       { id: '11st', label: '11번가' },
       { id: 'gmarket', label: 'G마켓' },
       { id: 'auction', label: '옥션' },
-      { id: 'tmon', label: '티몬' },
-      { id: 'interpark', label: '인터파크' },
+      { id: 'interpark', label: 'NOL 인터파크' },
       { id: 'tossshopping', label: '토스쇼핑' },
     ],
   },
@@ -89,6 +88,8 @@ export const PLATFORM_BUSINESS_CATEGORIES: Record<string, string[]> = {
   zigzag: ['fashion', 'beauty'],
   // 리빙 전문몰
   ohouse: ['living', 'pet', 'baby'],
+  // NOL 인터파크 → 티켓/숙박/항공권 위주 (별도 업종 없으므로 기타)
+  interpark: ['other'],
 };
 
 export function getAllowedBusinessCategories(platformId?: string | null): string[] | null {

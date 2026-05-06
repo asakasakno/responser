@@ -64,7 +64,7 @@ export const COMPENSATIONS: { id: Compensation; label: string }[] = [
 
 export const CLAIM_RISK_KEYWORDS = ['신고', '고소', '공정위', '소비자원', '별점테러', '환불 안 하면', '환불안하면'];
 export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
-  smartstore: 1000, coupang: 500, '11st': 500, gmarket: 500, auction: 500, wemakeprice: 500, tmon: 500,
+  smartstore: 1000, coupang: 500, '11st': 500, gmarket: 500, auction: 500, interpark: 500,
 };
 
 export interface Subscription {

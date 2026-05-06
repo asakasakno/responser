@@ -17,6 +17,8 @@ interface MissionItem {
   reward: number;
   icon: typeof Zap;
   completed: boolean;
+  eligible?: boolean;
+  claimable?: boolean;
   category: 'onboarding' | 'usage' | 'conversion';
 }
 
@@ -28,6 +30,7 @@ export default function Rewards() {
   const [allTx, setAllTx] = useState<any[]>([]);
   const [period, setPeriod] = useState<1 | 7 | 30 | 90>(30);
   const [txFilter, setTxFilter] = useState<'all' | 'earn' | 'spend'>('all');
+  const [claiming, setClaiming] = useState<string | null>(null);
   const limits = PLAN_LIMITS[plan];
 
   const sinceMs = Date.now() - period * 24 * 60 * 60 * 1000;
@@ -52,14 +55,19 @@ export default function Rewards() {
     if (!user) return;
     setLoading(true);
 
-    // Check which rewards have been earned
-    const { data: txs } = await supabase
-      .from('energy_transactions')
-      .select('reason')
-      .eq('user_id', user.id)
-      .eq('type', 'earn');
+    // Check which rewards have been earned (reward_claims uses reward_key)
+    const { data: claims } = await supabase
+      .from('reward_claims')
+      .select('reward_key')
+      .eq('user_id', user.id);
+    const claimedKeys = new Set((claims || []).map((c: any) => c.reward_key));
 
-    const earnedReasons = new Set(txs?.map(t => t.reason) || []);
+    // Generation count for first/ten eligibility
+    const { count: genCount } = await supabase
+      .from('generations')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    const totalGens = genCount ?? 0;
 
     // Check streak
     const { data: usageData } = await supabase
@@ -72,8 +80,6 @@ export default function Rewards() {
     const dates = usageData?.map(u => u.date) || [];
     const streak = calculateStreak(dates);
 
-    const earned = (key: string) => Array.from(earnedReasons).some(r => r === `reward_${key}` || r === key);
-
     const missionList: MissionItem[] = [
       {
         id: 'signup',
@@ -81,34 +87,42 @@ export default function Rewards() {
         description: '서비스에 가입하고 에너지를 받으세요',
         reward: ENERGY_REWARDS.signup.amount,
         icon: Gift,
-        completed: earnedReasons.has('signup'),
+        completed: claimedKeys.has('signup'),
+        eligible: true,
+        claimable: false,
         category: 'onboarding',
       },
       {
         id: 'first_generation',
         title: '첫 응답 생성',
-        description: '첫 응답을 생성하면 보너스 에너지를 받습니다',
+        description: '첫 응답을 생성하면 보너스 에너지를 받을 수 있어요',
         reward: ENERGY_REWARDS.first_generation.amount,
         icon: Zap,
-        completed: earned('first_generation'),
+        completed: claimedKeys.has('first_generation'),
+        eligible: totalGens >= 1,
+        claimable: !claimedKeys.has('first_generation') && totalGens >= 1,
         category: 'usage',
       },
       {
         id: 'ten_generations',
         title: '응답 10건 생성',
-        description: '서비스를 꾸준히 활용하면 보너스가 자동 지급됩니다',
+        description: '응답을 10건 생성하면 보너스를 받을 수 있어요',
         reward: ENERGY_REWARDS.ten_generations.amount,
         icon: Zap,
-        completed: earned('ten_generations'),
+        completed: claimedKeys.has('ten_generations'),
+        eligible: totalGens >= 10,
+        claimable: !claimedKeys.has('ten_generations') && totalGens >= 10,
         category: 'usage',
       },
       {
         id: 'streak_3day',
         title: '3일 연속 사용',
-        description: '3일 연속으로 서비스를 사용하세요',
+        description: '3일 연속으로 서비스를 사용하면 보너스를 받을 수 있어요',
         reward: ENERGY_REWARDS.streak_3day.amount,
         icon: Flame,
-        completed: earned('streak_3day') || streak >= 3,
+        completed: claimedKeys.has('streak_3day'),
+        eligible: streak >= 3,
+        claimable: !claimedKeys.has('streak_3day') && streak >= 3,
         category: 'usage',
       },
       {
@@ -118,6 +132,8 @@ export default function Rewards() {
         reward: ENERGY_REWARDS.referral_referrer.amount,
         icon: Users,
         completed: false,
+        eligible: true,
+        claimable: false,
         category: 'conversion',
       },
     ];
@@ -158,6 +174,24 @@ export default function Rewards() {
     return streak;
   };
 
+  const handleClaim = async (rewardKey: string) => {
+    setClaiming(rewardKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('claim-reward', {
+        body: { reward_key: rewardKey },
+      });
+      if (error || (data as any)?.error) {
+        toast({ title: '보상 받기 실패', description: (data as any)?.error || error?.message, variant: 'destructive' });
+      } else {
+        toast({ title: `+${(data as any)?.earned ?? ''} 응답에너지를 받았어요!` });
+        await Promise.all([refreshEnergy(), loadMissions(), loadTransactions()]);
+      }
+    } catch (e: any) {
+      toast({ title: '보상 받기 실패', description: e?.message, variant: 'destructive' });
+    } finally {
+      setClaiming(null);
+    }
+  };
   const copyReferralLink = () => {
     const link = `${window.location.origin}/auth?mode=signup&ref=${referralCode}`;
     navigator.clipboard.writeText(link);
@@ -251,9 +285,24 @@ export default function Rewards() {
                     </p>
                     <p className="text-sm text-muted-foreground">{mission.description}</p>
                   </div>
-                  <div className="flex items-center gap-1 text-sm font-bold">
-                    <Zap className="w-4 h-4 text-primary" />
-                    <span className="text-primary">+{mission.reward}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1 text-sm font-bold">
+                      <Zap className="w-4 h-4 text-primary" />
+                      <span className="text-primary">+{mission.reward}</span>
+                    </div>
+                    {mission.id !== 'signup' && mission.id !== 'referral' && !mission.completed && (
+                      <Button
+                        size="sm"
+                        disabled={!mission.claimable || claiming === mission.id}
+                        onClick={() => handleClaim(mission.id)}
+                        className="h-8"
+                      >
+                        {claiming === mission.id ? '받는 중…' : mission.claimable ? '보상 받기' : '조건 미충족'}
+                      </Button>
+                    )}
+                    {mission.completed && (
+                      <span className="text-xs text-muted-foreground">받음</span>
+                    )}
                   </div>
                 </div>
               ))}
