@@ -60,6 +60,18 @@ export const PLATFORM_GROUPS: PlatformGroup[] = [
     ],
   },
   {
+    id: 'lodging',
+    label: '숙박/예약/지도',
+    items: [
+      { id: 'yanolja', label: '야놀자' },
+      { id: 'yeogieotte', label: '여기어때' },
+      { id: 'naverbooking', label: '네이버예약' },
+      { id: 'kakaomap', label: '카카오맵' },
+      { id: 'googlemaps', label: '구글지도' },
+      { id: 'tripadvisor', label: '트립어드바이저' },
+    ],
+  },
+  {
     id: 'etc',
     label: '기타',
     items: [
