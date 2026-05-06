@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: "payment_success",
-      details: { orderId, plan, cycle, amount: tossData.totalAmount },
+      details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, plan, cycle, amount: tossData.totalAmount },
       severity: "info",
     });
 
