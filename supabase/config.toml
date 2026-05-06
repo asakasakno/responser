@@ -7,3 +7,5 @@ project_id = "qbvlgzmivdycuocvcoxy"
     verify_jwt = true
   [functions.toss-config]
     verify_jwt = false
+  [functions.download-extension]
+    verify_jwt = false
