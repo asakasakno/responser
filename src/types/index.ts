@@ -11,24 +11,21 @@ export interface Profile {
   referral_code: string;
 }
 
-export type ResponseStyle = 'thanks' | 'apology' | 'simple' | 'principle';
+// 통합된 답변 톤 (기존 RESPONSE_STYLES와 TONE을 하나로 병합)
+export type Tone = 'thanks' | 'apology' | 'simple' | 'principle' | 'friendly' | 'firm';
 
-export const RESPONSE_STYLES: { id: ResponseStyle; label: string; description: string }[] = [
-  { id: 'thanks', label: '감사형', description: '진심 어린 감사와 긍정적인 톤' },
-  { id: 'apology', label: '사과형', description: '정중한 사과와 책임감 있는 톤' },
+export const TONES: { id: Tone; label: string; description: string }[] = [
+  { id: 'thanks', label: '감사형', description: '진심 어린 감사와 따뜻한 톤' },
+  { id: 'apology', label: '사과형', description: '정중한 사과와 책임 있는 톤' },
   { id: 'simple', label: '간단형', description: '짧고 명료한 핵심 답변' },
-  { id: 'principle', label: '원칙형', description: '정책/원칙을 명확히 안내' },
+  { id: 'principle', label: '원칙형', description: '정책/원칙을 분명히 안내' },
+  { id: 'friendly', label: '친근형', description: '친근하고 다정한 말투' },
+  { id: 'firm', label: '단호형', description: '단호하지만 무례하지 않게' },
 ];
 
-export type Tone = 'friendly' | 'polite' | 'professional' | 'apology' | 'firm' | 'humor';
-export const TONES: { id: Tone; label: string }[] = [
-  { id: 'friendly', label: '친근' },
-  { id: 'polite', label: '공손' },
-  { id: 'professional', label: '프로페셔널' },
-  { id: 'apology', label: '사과' },
-  { id: 'firm', label: '단호' },
-  { id: 'humor', label: '유머' },
-];
+// 하위 호환을 위해 ResponseStyle/RESPONSE_STYLES alias 유지 (사용처 제거됨)
+export type ResponseStyle = Tone;
+export const RESPONSE_STYLES = TONES;
 
 export type BusinessCategory =
   | 'fashion' | 'food' | 'beauty' | 'electronics'
