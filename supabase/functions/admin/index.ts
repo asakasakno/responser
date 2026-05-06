@@ -122,12 +122,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // [10] 관리자 액션 감사 로그
+    // 사유 필수 검증
+    if (REASON_REQUIRED_ACTIONS.has(action)) {
+      const r = (params as any).reason;
+      if (!r || typeof r !== "string" || r.trim().length < 5 || r.length > 500) {
+        return jsonResponse({ error: "사유를 5자 이상 500자 이하로 입력해주세요.", code: "REASON_REQUIRED" }, corsHeaders, 400);
+      }
+    }
+
+    const _ip = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip");
+
+    // [10] 관리자 액션 감사 로그 (진입 기록 — 결과는 각 액션에서 별도 기록)
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: `admin_${action}`,
-      details: { params: Object.keys(params) },
+      details: { target_user_id: (params as any).user_id ?? null, reason: (params as any).reason ?? null },
       severity: "info",
+      ip_address: _ip,
     });
 
     switch (action) {
