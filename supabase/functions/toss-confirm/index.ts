@@ -182,11 +182,13 @@ Deno.serve(async (req) => {
         product_name: `${plan === "pro" ? "Pro" : "Basic"} ${cycle === "yearly" ? "연간" : "월간"}`,
         status: "failed",
         payment_method: "toss",
+        idempotency_key: `${idempotencyKey}:failed`,
+        source_ref: idempotencyKey,
       });
       await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "payment_failed",
-        details: { orderId, toss_code: tossData?.code, toss_message: tossData?.message },
+        details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, toss_code: tossData?.code, toss_message: tossData?.message },
         severity: "warning",
       });
       return jsonRes({ error: tossData?.message || "결제 검증에 실패했습니다." }, 400);
@@ -196,7 +198,7 @@ Deno.serve(async (req) => {
       await adminClient.from("audit_logs").insert({
         user_id: userId,
         action: "payment_toss_amount_mismatch",
-        details: { orderId, toss_total: tossData?.totalAmount, expected: expectedAmount },
+        details: { order_id_masked: orderIdMasked, order_id_hash: orderIdHash, toss_total: tossData?.totalAmount, expected: expectedAmount },
         severity: "error",
       });
       return jsonRes({ error: "결제 금액 검증에 실패했습니다." }, 400);
@@ -209,7 +211,10 @@ Deno.serve(async (req) => {
       product_name: `${plan === "pro" ? "Pro" : "Basic"} ${cycle === "yearly" ? "연간" : "월간"}${couponInfo ? ` (쿠폰 ${couponInfo.coupon_code})` : ""}`,
       status: "success",
       payment_method: tossData.method || "toss",
+      idempotency_key: idempotencyKey,
+      source_ref: idempotencyKey,
     });
+
 
     // 구독 업데이트 (기존 active 행 갱신, 없으면 새로 생성)
     const periodDays = cycle === "yearly" ? 365 : 30;
