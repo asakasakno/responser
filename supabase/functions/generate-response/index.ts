@@ -321,6 +321,28 @@ function buildPrompt(input: {
     if (lines.length) sections.push(`[숙박 컨텍스트]\n${lines.join("\n")}`);
   }
 
+  // 서비스업 컨텍스트
+  const isService = SERVICE_CATEGORIES.has(input.business_category ?? "");
+  if (isService) {
+    sections.push(SERVICE_GUIDE);
+    const sv = input.service || {};
+    const lines: string[] = [];
+    if (sv.visit_date) lines.push(`방문일: ${String(sv.visit_date).slice(0, 30)}`);
+    if (sv.reserved === "yes") lines.push("예약 방문 고객");
+    else if (sv.reserved === "no") lines.push("워크인(비예약) 고객");
+    if (sv.staff) lines.push(`담당자/디자이너: ${String(sv.staff).slice(0, 30)} (필요 시 자연스럽게 언급)`);
+    if (sv.kind) lines.push(`서비스 종류: ${String(sv.kind).slice(0, 60)}`);
+    const issues = (sv.issues || []).filter((i) => SERVICE_ISSUE_LABEL[i]);
+    if (issues.length) lines.push(`문제 유형: ${issues.map((i) => SERVICE_ISSUE_LABEL[i]).join(", ")}`);
+    if (sv.revisit) lines.push("재방문 유도 문구를 반드시 포함하세요.");
+    const scomps = (sv.compensations || []).filter((c) => SERVICE_COMPENSATION_LABEL[c]);
+    if (scomps.length) {
+      lines.push(`후속조치/보상안: ${scomps.map((c) => SERVICE_COMPENSATION_LABEL[c]).join(", ")}`);
+      lines.push("후속조치는 단정 짓지 말고 '확인 후 안내' 또는 '상담 안내' 형태로 표현하세요.");
+    }
+    if (lines.length) sections.push(`[서비스업 컨텍스트]\n${lines.join("\n")}`);
+  }
+
   sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
   return sections.join("\n\n");
 }
