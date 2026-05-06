@@ -16,7 +16,8 @@ export function useAdminAction() {
   const invoke = useCallback(async (action: string, params: Record<string, any> = {}, loadingKey?: string) => {
     const key = loadingKey || action;
     setLoading(key);
-    try {
+
+
     const callOnce = async () => {
       const { data, error } = await supabase.functions.invoke('admin', {
         body: { action, ...params },
