@@ -79,6 +79,16 @@ export default function Generate() {
   const [lodgingIssues, setLodgingIssues] = useState<LodgingIssue[]>([]);
   const [lodgingRevisit, setLodgingRevisit] = useState(false);
   const [lodgingComps, setLodgingComps] = useState<LodgingCompensation[]>([]);
+  // 업종군 (UI 그룹화)
+  const [businessGroup, setBusinessGroup] = useState<BusinessGroup | 'none'>('none');
+  // 서비스업 전용 입력
+  const [serviceVisitDate, setServiceVisitDate] = useState('');
+  const [serviceReserved, setServiceReserved] = useState<'yes' | 'no' | 'none'>('none');
+  const [serviceStaff, setServiceStaff] = useState('');
+  const [serviceKind, setServiceKind] = useState('');
+  const [serviceIssues, setServiceIssues] = useState<ServiceIssue[]>([]);
+  const [serviceRevisit, setServiceRevisit] = useState(false);
+  const [serviceComps, setServiceComps] = useState<ServiceCompensation[]>([]);
   const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
 
   const energyCost = ENERGY_COSTS[genType] || 1;
