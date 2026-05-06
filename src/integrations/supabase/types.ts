@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_anomalies: {
+        Row: {
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          kind: string
+          payload: Json
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_response_cache: {
         Row: {
           cache_key: string
@@ -320,6 +359,7 @@ export type Database = {
           reason: string
           remaining: number
           source: string
+          source_ref: string | null
           user_id: string
         }
         Insert: {
@@ -331,6 +371,7 @@ export type Database = {
           reason: string
           remaining: number
           source: string
+          source_ref?: string | null
           user_id: string
         }
         Update: {
@@ -342,6 +383,7 @@ export type Database = {
           reason?: string
           remaining?: number
           source?: string
+          source_ref?: string | null
           user_id?: string
         }
         Relationships: []
@@ -472,9 +514,16 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          failure_reason: string | null
           id: string
+          idempotency_key: string | null
           payment_method: string | null
           product_name: string
+          refund_amount: number | null
+          refund_note: string | null
+          refund_status: string | null
+          refunded_at: string | null
+          source_ref: string | null
           status: string
           updated_at: string
           user_id: string
@@ -482,9 +531,16 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          failure_reason?: string | null
           id?: string
+          idempotency_key?: string | null
           payment_method?: string | null
           product_name: string
+          refund_amount?: number | null
+          refund_note?: string | null
+          refund_status?: string | null
+          refunded_at?: string | null
+          source_ref?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -492,9 +548,16 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          failure_reason?: string | null
           id?: string
+          idempotency_key?: string | null
           payment_method?: string | null
           product_name?: string
+          refund_amount?: number | null
+          refund_note?: string | null
+          refund_status?: string | null
+          refunded_at?: string | null
+          source_ref?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -749,6 +812,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_partial_recover_energy: {
+        Args: {
+          _payment_id: string
+          _reason: string
+          _requested: number
+          _user_id: string
+        }
+        Returns: Json
+      }
+      admin_resolve_anomaly: {
+        Args: { _anomaly_id: string; _note: string }
+        Returns: Json
+      }
       admin_spend_energy: {
         Args: {
           _amount: number
@@ -790,6 +866,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      detect_abnormal_usage: { Args: never; Returns: number }
+      detect_duplicate_payments: { Args: never; Returns: number }
+      detect_missing_credits: { Args: never; Returns: number }
+      detect_refund_failures: { Args: never; Returns: number }
       earn_energy:
         | {
             Args: {
@@ -855,6 +935,7 @@ export type Database = {
         Args: { _amount: number; _description?: string; _reason: string }
         Returns: Json
       }
+      run_admin_anomaly_scan: { Args: never; Returns: Json }
       spend_energy: {
         Args: { _amount: number; _description?: string; _reason: string }
         Returns: Json

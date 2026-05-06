@@ -36,6 +36,8 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentFail = lazy(() => import("./pages/PaymentFail"));
 const Contact = lazy(() => import("./pages/Contact"));
 const AdminInquiries = lazy(() => import("./pages/AdminInquiries"));
+const AdminAnomaliesPage = lazy(() => import("./pages/AdminAnomalies"));
+const AdminAuditPage = lazy(() => import("./pages/AdminAudit"));
 import FloatingContact from "./components/FloatingContact";
 
 const queryClient = new QueryClient();
@@ -89,6 +91,8 @@ const App = () => (
               <Route path="/payment/fail" element={<PaymentFail />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/admin/inquiries" element={<ProtectedRoute><AdminInquiries /></ProtectedRoute>} />
+              <Route path="/admin/anomalies" element={<ProtectedRoute><AdminAnomaliesPage /></ProtectedRoute>} />
+              <Route path="/admin/audit" element={<ProtectedRoute><AdminAuditPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <FloatingContact />

@@ -12,7 +12,22 @@ const STEP_UP_WINDOW_MINUTES = Math.min(
   10,
   Math.max(5, Number(Deno.env.get("ADMIN_STEP_UP_WINDOW_MINUTES") ?? 10))
 );
-const STEP_UP_EXEMPT_ACTIONS = new Set(["step_up_status", "step_up_verify"]);
+// Read-only / 비민감 액션은 step-up 면제
+const STEP_UP_EXEMPT_ACTIONS = new Set([
+  "step_up_status", "step_up_verify",
+  "list_users", "dashboard_stats", "energy_stats", "payment_stats",
+  "ai_usage_stats", "conversion_stats", "alerts",
+  "verify_plan_consistency",
+  "payments_list", "energy_ledger", "ai_usage_log",
+  "refund_failures_list", "anomalies_list", "audit_log_list",
+  "toggle_payment", "force_logout",
+]);
+
+// 사유 필수 민감 액션
+const REASON_REQUIRED_ACTIONS = new Set([
+  "adjust_energy", "change_plan", "toggle_suspend",
+  "mark_refund_issue", "anomaly_resolve",
+]);
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
@@ -107,12 +122,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // [10] 관리자 액션 감사 로그
+    // 사유 필수 검증
+    if (REASON_REQUIRED_ACTIONS.has(action)) {
+      const r = (params as any).reason;
+      if (!r || typeof r !== "string" || r.trim().length < 5 || r.length > 500) {
+        return jsonResponse({ error: "사유를 5자 이상 500자 이하로 입력해주세요.", code: "REASON_REQUIRED" }, corsHeaders, 400);
+      }
+    }
+
+    const _ip = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip");
+
+    // [10] 관리자 액션 감사 로그 (진입 기록 — 결과는 각 액션에서 별도 기록)
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: `admin_${action}`,
-      details: { params: Object.keys(params) },
+      details: { target_user_id: (params as any).user_id ?? null, reason: (params as any).reason ?? null },
       severity: "info",
+      ip_address: _ip,
     });
 
     switch (action) {
@@ -676,6 +702,200 @@ Deno.serve(async (req) => {
         const { error } = await adminClient.auth.admin.signOut(user_id);
         if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
         return jsonResponse({ success: true }, corsHeaders);
+      }
+
+
+      // ========== PAYMENTS LIST (조회) ==========
+      case "payments_list": {
+        const { user_id, status, from, to, limit = 100 } = params as any;
+        let q = adminClient.from("payments")
+          .select("id,user_id,amount,product_name,status,payment_method,created_at,updated_at,failure_reason,refunded_at,refund_amount,refund_status,refund_note,idempotency_key,source_ref")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 100, 500));
+        if (user_id) q = q.eq("user_id", user_id);
+        if (status) q = q.eq("status", status);
+        if (from) q = q.gte("created_at", from);
+        if (to) q = q.lte("created_at", to);
+        const { data: rows, error } = await q;
+        if (error) return jsonResponse({ error: "조회 실패" }, corsHeaders, 500);
+        const { data: profiles } = await adminClient.from("profiles").select("user_id,email");
+        const m = new Map((profiles || []).map((p: any) => [p.user_id, p.email]));
+        return jsonResponse({ payments: (rows || []).map((p: any) => ({ ...p, email: m.get(p.user_id) || "알 수 없음" })) }, corsHeaders);
+      }
+
+      // ========== ENERGY LEDGER (조회) ==========
+      case "energy_ledger": {
+        const { user_id, from, to, limit = 200 } = params as any;
+        let txQ = adminClient.from("energy_transactions")
+          .select("id,user_id,type,amount,reason,description,created_at")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 200, 1000));
+        let grQ = adminClient.from("energy_grants")
+          .select("id,user_id,amount,remaining,source,reason,description,expire_at,source_ref,created_at")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 200, 1000));
+        if (user_id) { txQ = txQ.eq("user_id", user_id); grQ = grQ.eq("user_id", user_id); }
+        if (from) { txQ = txQ.gte("created_at", from); grQ = grQ.gte("created_at", from); }
+        if (to) { txQ = txQ.lte("created_at", to); grQ = grQ.lte("created_at", to); }
+        const [{ data: tx }, { data: gr }] = await Promise.all([txQ, grQ]);
+        const { data: profiles } = await adminClient.from("profiles").select("user_id,email");
+        const m = new Map((profiles || []).map((p: any) => [p.user_id, p.email]));
+        return jsonResponse({
+          transactions: (tx || []).map((t: any) => ({ ...t, email: m.get(t.user_id) || "알 수 없음" })),
+          grants: (gr || []).map((g: any) => ({ ...g, email: m.get(g.user_id) || "알 수 없음" })),
+        }, corsHeaders);
+      }
+
+      // ========== AI USAGE LOG (조회 — generations 드릴다운) ==========
+      case "ai_usage_log": {
+        const { user_id, from, to, limit = 200 } = params as any;
+        let q = adminClient.from("generations")
+          .select("id,user_id,type,product_id,created_at")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 200, 1000));
+        if (user_id) q = q.eq("user_id", user_id);
+        if (from) q = q.gte("created_at", from);
+        if (to) q = q.lte("created_at", to);
+        const { data: rows, error } = await q;
+        if (error) return jsonResponse({ error: "조회 실패" }, corsHeaders, 500);
+        const { data: profiles } = await adminClient.from("profiles").select("user_id,email");
+        const m = new Map((profiles || []).map((p: any) => [p.user_id, p.email]));
+        return jsonResponse({ logs: (rows || []).map((g: any) => ({ ...g, email: m.get(g.user_id) || "알 수 없음" })) }, corsHeaders);
+      }
+
+      // ========== REFUND FAILURES (조회) ==========
+      case "refund_failures_list": {
+        const { data: rows } = await adminClient.from("payments")
+          .select("id,user_id,amount,refund_amount,refund_status,refund_note,failure_reason,created_at,refunded_at")
+          .eq("refund_status", "failed")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        const { data: profiles } = await adminClient.from("profiles").select("user_id,email");
+        const m = new Map((profiles || []).map((p: any) => [p.user_id, p.email]));
+        return jsonResponse({ failures: (rows || []).map((p: any) => ({ ...p, email: m.get(p.user_id) || "알 수 없음" })) }, corsHeaders);
+      }
+
+      // ========== ANOMALIES LIST ==========
+      case "anomalies_list": {
+        const { kind, resolved, limit = 200 } = params as any;
+        let q = adminClient.from("admin_anomalies")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 200, 1000));
+        if (kind) q = q.eq("kind", kind);
+        if (resolved === true) q = q.not("resolved_at", "is", null);
+        else if (resolved === false) q = q.is("resolved_at", null);
+        const { data: rows, error } = await q;
+        if (error) return jsonResponse({ error: "조회 실패" }, corsHeaders, 500);
+        const userIds = Array.from(new Set((rows || []).map((r: any) => r.user_id).filter(Boolean)));
+        const { data: profiles } = userIds.length
+          ? await adminClient.from("profiles").select("user_id,email").in("user_id", userIds)
+          : { data: [] as any[] };
+        const m = new Map((profiles || []).map((p: any) => [p.user_id, p.email]));
+        return jsonResponse({ anomalies: (rows || []).map((r: any) => ({ ...r, email: r.user_id ? (m.get(r.user_id) || "알 수 없음") : null })) }, corsHeaders);
+      }
+
+      // ========== ANOMALIES RESCAN (step-up 필요) ==========
+      case "anomalies_rescan": {
+        try {
+          const { data, error } = await adminClient.rpc("run_admin_anomaly_scan");
+          if (error) {
+            await adminClient.from("audit_logs").insert({
+              user_id: userId, action: "admin_anomalies_rescan_failed",
+              details: { error: error.message }, severity: "error", ip_address: _ip,
+            });
+            return jsonResponse({ error: "스캔에 실패했습니다." }, corsHeaders, 500);
+          }
+          return jsonResponse({ success: true, result: data }, corsHeaders);
+        } catch (e: any) {
+          return jsonResponse({ error: "스캔에 실패했습니다." }, corsHeaders, 500);
+        }
+      }
+
+      // ========== ANOMALY RESOLVE (step-up + 사유) ==========
+      case "anomaly_resolve": {
+        const { anomaly_id, reason } = params as any;
+        if (!anomaly_id) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
+        const { data, error } = await adminClient.rpc("admin_resolve_anomaly", {
+          _anomaly_id: anomaly_id, _note: reason,
+        });
+        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        if ((data as any)?.success === false) return jsonResponse({ error: (data as any).error }, corsHeaders, 400);
+        await adminClient.from("audit_logs").insert({
+          user_id: userId, action: "admin_anomaly_resolved",
+          details: { anomaly_id, reason }, severity: "info", ip_address: _ip,
+        });
+        return jsonResponse({ success: true }, corsHeaders);
+      }
+
+      // ========== MARK REFUND ISSUE (수동 처리; 실제 Toss 환불 X) ==========
+      // 사용 시나리오: 운영자가 수동으로 환불 처리 상태/사유를 기록하고,
+      // 필요시 에너지 부분 회수까지 함께 수행한다.
+      case "mark_refund_issue": {
+        const { payment_id, refund_status, refund_amount, reason, recover_energy } = params as any;
+        if (!payment_id || !refund_status) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
+        if (!["pending", "success", "failed"].includes(refund_status)) {
+          return jsonResponse({ error: "잘못된 상태입니다." }, corsHeaders, 400);
+        }
+        const { data: pay } = await adminClient.from("payments")
+          .select("id,user_id,amount").eq("id", payment_id).maybeSingle();
+        if (!pay) return jsonResponse({ error: "결제를 찾을 수 없습니다." }, corsHeaders, 404);
+
+        const updateData: Record<string, any> = {
+          refund_status, refund_note: reason, updated_at: new Date().toISOString(),
+        };
+        if (refund_status === "success") {
+          updateData.refunded_at = new Date().toISOString();
+          updateData.refund_amount = Number(refund_amount) || pay.amount;
+          updateData.status = "refunded";
+        } else if (refund_status === "failed") {
+          updateData.failure_reason = reason;
+        }
+
+        const { error: upErr } = await adminClient.from("payments").update(updateData).eq("id", payment_id);
+        if (upErr) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+
+        // 부분 에너지 회수 (옵션)
+        let recovery: any = null;
+        if (recover_energy && Number(recover_energy) > 0 && refund_status === "success") {
+          const { data: rec, error: recErr } = await adminClient.rpc("admin_partial_recover_energy", {
+            _user_id: pay.user_id,
+            _requested: Math.floor(Number(recover_energy)),
+            _payment_id: payment_id,
+            _reason: reason,
+          });
+          recovery = recErr ? { error: recErr.message } : rec;
+        }
+
+        await adminClient.from("audit_logs").insert({
+          user_id: userId, action: "admin_mark_refund_issue",
+          details: { target_user_id: pay.user_id, payment_id, refund_status, refund_amount: updateData.refund_amount, reason, recovery },
+          severity: "warning", ip_address: _ip,
+        });
+
+        return jsonResponse({ success: true, recovery }, corsHeaders);
+      }
+
+      // ========== AUDIT LOG LIST ==========
+      case "audit_log_list": {
+        const { from, to, severity, action: actionFilter, user_id, limit = 200 } = params as any;
+        let q = adminClient.from("audit_logs")
+          .select("id,user_id,action,details,severity,ip_address,created_at")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 200, 1000));
+        if (from) q = q.gte("created_at", from);
+        if (to) q = q.lte("created_at", to);
+        if (severity) q = q.eq("severity", severity);
+        if (actionFilter) q = q.ilike("action", `%${String(actionFilter).replace(/[%_]/g, "")}%`);
+        if (user_id) q = q.eq("user_id", user_id);
+        const { data: rows, error } = await q;
+        if (error) return jsonResponse({ error: "조회 실패" }, corsHeaders, 500);
+        const userIds = Array.from(new Set((rows || []).map((r: any) => r.user_id).filter(Boolean)));
+        const { data: profiles } = userIds.length
+          ? await adminClient.from("profiles").select("user_id,email").in("user_id", userIds)
+          : { data: [] as any[] };
+        const m = new Map((profiles || []).map((p: any) => [p.user_id, p.email]));
+        return jsonResponse({ logs: (rows || []).map((r: any) => ({ ...r, actor_email: r.user_id ? (m.get(r.user_id) || null) : null })) }, corsHeaders);
       }
 
       default:

@@ -1,10 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import StepUpDialog from './StepUpDialog';
+import { registerStepUpHandler } from '@/hooks/useAdminAction';
 import {
   LayoutDashboard, Users, CreditCard, Zap, BarChart3,
-  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail
+  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail, Siren, FileText
 } from 'lucide-react';
 
 const adminNav = [
@@ -16,7 +18,9 @@ const adminNav = [
   { to: '/admin/ai-usage', label: 'AI 사용량', icon: BarChart3 },
   { to: '/admin/conversion', label: '전환 분석', icon: TrendingUp },
   { to: '/admin/inquiries', label: '문의 관리', icon: Mail },
-  { to: '/admin/alerts', label: '이상 감지', icon: AlertTriangle },
+  { to: '/admin/anomalies', label: '이상 탐지', icon: Siren },
+  { to: '/admin/audit', label: '감사 로그', icon: FileText },
+  { to: '/admin/alerts', label: '알림', icon: AlertTriangle },
   { to: '/admin/settings', label: '설정', icon: Settings },
 ];
 
@@ -24,6 +28,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const resolveRef = useRef<((ok: boolean) => void) | null>(null);
+
+  useEffect(() => {
+    registerStepUpHandler(() => new Promise<boolean>((resolve) => {
+      resolveRef.current = resolve;
+      setStepUpOpen(true);
+    }));
+    return () => registerStepUpHandler(null);
+  }, []);
 
   const isActive = (path: string, exact?: boolean) => {
     if (exact) return location.pathname === path;
@@ -32,6 +46,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background">
+      <StepUpDialog
+        open={stepUpOpen}
+        onClose={() => { setStepUpOpen(false); resolveRef.current?.(false); resolveRef.current = null; }}
+        onVerified={() => { resolveRef.current?.(true); resolveRef.current = null; }}
+      />
       <aside className="hidden md:flex w-60 flex-col border-r border-border bg-card">
         <div className="p-4 border-b border-border">
           <Link to="/admin" className="flex items-center gap-2">

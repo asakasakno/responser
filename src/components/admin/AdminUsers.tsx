@@ -38,6 +38,14 @@ export default function AdminUsers() {
   const [energyAmount, setEnergyAmount] = useState('');
   const [energyReason, setEnergyReason] = useState('');
 
+  // Generic reason dialog (plan / suspend)
+  const [reasonDialog, setReasonDialog] = useState<null | {
+    title: string;
+    action: string;
+    params: Record<string, any>;
+  }>(null);
+  const [reasonText, setReasonText] = useState('');
+
   const fetchUsers = async () => {
     setLoadingUsers(true);
     const data = await invoke('list_users');
@@ -68,6 +76,12 @@ export default function AdminUsers() {
     setEnergyReason('');
   };
 
+  const submitReason = async () => {
+    if (!reasonDialog || reasonText.trim().length < 5) return;
+    await adminAction(reasonDialog.action, { ...reasonDialog.params, reason: reasonText });
+    setReasonDialog(null);
+    setReasonText('');
+  };
   const filtered = users.filter(u => {
     const q = searchQuery.toLowerCase();
     const matchSearch = !q || u.email.toLowerCase().includes(q) || (u.name && u.name.toLowerCase().includes(q));
@@ -136,11 +150,16 @@ export default function AdminUsers() {
                       <TableCell>
                         <Select
                           value={u.plan}
-                          onValueChange={plan => adminAction('change_plan', { user_id: u.user_id, plan })}
+                          onValueChange={plan => {
+                            if (plan === u.plan) return;
+                            setReasonDialog({
+                              title: `플랜 변경 — ${u.email} (${u.plan} → ${plan})`,
+                              action: 'change_plan',
+                              params: { user_id: u.user_id, plan },
+                            });
+                          }}
                         >
-                          <SelectTrigger className="w-[85px] h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger className="w-[85px] h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="free">Free</SelectItem>
                             <SelectItem value="basic">Basic</SelectItem>
@@ -179,7 +198,11 @@ export default function AdminUsers() {
                             <Minus className="w-3.5 h-3.5 text-red-500" />
                           </Button>
                           <Button size="sm" variant={u.suspended ? 'default' : 'destructive'} className="h-7 text-xs px-2"
-                            onClick={() => adminAction('toggle_suspend', { user_id: u.user_id, suspended: !u.suspended })}>
+                            onClick={() => setReasonDialog({
+                              title: `${u.suspended ? '정지 해제' : '계정 정지'} — ${u.email}`,
+                              action: 'toggle_suspend',
+                              params: { user_id: u.user_id, suspended: !u.suspended },
+                            })}>
                             {u.suspended ? '해제' : '정지'}
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="강제 로그아웃"
@@ -221,6 +244,21 @@ export default function AdminUsers() {
             <Button onClick={handleEnergySubmit} disabled={!energyAmount || !energyReason}>
               {energyDialog?.type === 'earn' ? '지급' : '차감'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reason Dialog (plan change / suspend) */}
+      <Dialog open={!!reasonDialog} onOpenChange={() => { setReasonDialog(null); setReasonText(''); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{reasonDialog?.title}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input placeholder="사유 (5자 이상, 필수)" value={reasonText}
+              onChange={e => setReasonText(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setReasonDialog(null); setReasonText(''); }}>취소</Button>
+            <Button onClick={submitReason} disabled={reasonText.trim().length < 5}>적용</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
