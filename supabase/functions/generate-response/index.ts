@@ -438,7 +438,8 @@ serve(async (req) => {
     const cachePayload = JSON.stringify({
       type,
       text: text.trim(),
-      style: appliedStyle,
+      tone: safeTone,
+      business_category: safeBizCat,
       product_id: product?.id ?? null,
       platform_id: platform?.id ?? null,
     });
