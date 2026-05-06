@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle,
+  ENERGY_COSTS,
   TONES, type Tone,
   BUSINESS_CATEGORIES, type BusinessCategory,
   INQUIRY_CATEGORIES, type InquiryCategory,
@@ -43,7 +43,7 @@ export default function Generate() {
   const [genType, setGenType] = useState<GenType>(initType);
   const [inputText, setInputText] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<string>('none');
-  const [selectedStyle, setSelectedStyle] = useState<ResponseStyle | 'none'>('none');
+  // (deprecated: 답변 스타일 → 답변 톤으로 통합됨)
   const [products, setProducts] = useState<Product[]>([]);
   const [userPlatforms, setUserPlatforms] = useState<string[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('auto');
@@ -160,7 +160,7 @@ export default function Generate() {
     return p ? { id: p.id, name: p.name, category: p.category, note: p.note } : null;
   };
 
-  const getStylePayload = () => (plan !== 'free' && selectedStyle !== 'none' ? selectedStyle : undefined);
+  // style payload는 통합된 tone으로 대체됨
 
   const getPlatformPayload = () => {
     if (selectedPlatform === 'auto' || !selectedPlatform) return undefined;
@@ -205,7 +205,7 @@ export default function Generate() {
       const { data, error } = await supabase.functions.invoke('generate-response', {
         body: {
           type: genType, text: inputText, product: getProductContext(),
-          energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload(),
+          energy_cost: energyCost, platform: getPlatformPayload(),
           ...buildExtraPayload(),
         },
       });
@@ -291,7 +291,7 @@ export default function Generate() {
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
         const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload(), ...buildExtraPayload() },
+          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, platform: getPlatformPayload(), ...buildExtraPayload() },
         });
         if (genError) throw genError;
         const output = data?.response || data?.error || '생성 실패';
@@ -449,45 +449,6 @@ export default function Generate() {
           </div>
         )}
 
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium text-foreground">답변 스타일</label>
-            {plan === 'free' && (
-              <Link to="/pricing" className="text-xs text-primary underline">Basic+에서 사용 가능</Link>
-            )}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedStyle('none')}
-              disabled={plan === 'free'}
-              className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                selectedStyle === 'none'
-                  ? 'border-primary bg-primary/5 text-foreground'
-                  : 'border-border text-muted-foreground hover:border-primary/50'
-              } ${plan === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
-            >
-              기본
-            </button>
-            {RESPONSE_STYLES.map(s => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelectedStyle(s.id)}
-                disabled={plan === 'free'}
-                title={s.description}
-                className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                  selectedStyle === s.id
-                    ? 'border-primary bg-primary/5 text-foreground'
-                    : 'border-border text-muted-foreground hover:border-primary/50'
-                } ${plan === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* 업종 + 톤 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div>
@@ -508,7 +469,7 @@ export default function Generate() {
             <Select value={tone} onValueChange={(v) => setTone(v as any)}>
               <SelectTrigger><SelectValue placeholder="톤 선택" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">자동</SelectItem>
+                <SelectItem value="none">자동 추천</SelectItem>
                 {TONES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
               </SelectContent>
             </Select>
