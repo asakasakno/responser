@@ -247,6 +247,21 @@ export default function AdminUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reason Dialog (plan change / suspend) */}
+      <Dialog open={!!reasonDialog} onOpenChange={() => { setReasonDialog(null); setReasonText(''); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{reasonDialog?.title}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input placeholder="사유 (5자 이상, 필수)" value={reasonText}
+              onChange={e => setReasonText(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setReasonDialog(null); setReasonText(''); }}>취소</Button>
+            <Button onClick={submitReason} disabled={reasonText.trim().length < 5}>적용</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
