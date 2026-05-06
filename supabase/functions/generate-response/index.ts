@@ -567,6 +567,7 @@ serve(async (req) => {
       };
     }
 
+    if (!type || typeof text !== "string") {
       return respond({ error: "Missing required fields.", reservation_id: null }, 400);
     }
     if (!["review", "inquiry", "claim"].includes(type)) {
