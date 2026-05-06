@@ -469,7 +469,7 @@ export default function Generate() {
             <Select value={tone} onValueChange={(v) => setTone(v as any)}>
               <SelectTrigger><SelectValue placeholder="톤 선택" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">자동</SelectItem>
+                <SelectItem value="none">자동 추천</SelectItem>
                 {TONES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
               </SelectContent>
             </Select>
