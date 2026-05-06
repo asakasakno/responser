@@ -45,6 +45,45 @@ const STYLE_GUIDES: Record<string, string> = {
   principle: "정책과 원칙을 분명히 안내하되 차갑지 않게 설명하세요.",
 };
 
+const TONE_GUIDES: Record<string, string> = {
+  friendly: "친근하고 다정한 말투로, 이모지는 1개 이내로 자연스럽게 사용하세요.",
+  polite: "정중하고 공손한 존댓말 톤을 유지하세요.",
+  professional: "전문적이고 신뢰감 있는 비즈니스 톤으로 작성하세요.",
+  apology: "사과와 책임 인정을 우선하는 차분한 톤을 유지하세요.",
+  firm: "정책에 따라 단호하지만 무례하지 않게 명확히 안내하세요.",
+  humor: "가벼운 위트를 살짝 더해 친근하게 작성하세요. 단, 클레임에서는 사용 금지.",
+};
+
+const CATEGORY_GUIDES: Record<string, Record<string, string>> = {
+  fashion: { rule: "사이즈/색상/소재 표현은 제품 라벨 기준으로 안내. 효능 표현 금지." },
+  food: { rule: "효능·효과·치료 표현 금지. 알러지 정보는 신중히 안내." },
+  beauty: { rule: "의약품 오인 표현(치료/완치) 금지. 개인차 안내 권장." },
+  electronics: { rule: "제품 사양은 정확히, 보증/AS 정책을 명확히 안내." },
+  living: { rule: "사용 환경에 따른 차이를 안내. 안전 주의사항 권장." },
+  pet: { rule: "수의학적 진단/치료 표현 금지. 수의사 상담 권유 가능." },
+  baby: { rule: "안전 인증 강조. 의약 효능 표현 금지." },
+  digital: { rule: "환불·교환 정책(콘텐츠 특성)을 명확히 안내." },
+  other: { rule: "" },
+};
+
+const INQUIRY_CATEGORY_HINT: Record<string, string> = {
+  shipping: "배송 일정/방법에 대한 명확한 안내를 우선하세요.",
+  exchange: "교환 절차와 비용 부담 주체를 명확히 안내하세요.",
+  refund: "환불 절차/소요 기간/조건을 명확히 안내하세요.",
+  size: "사이즈 가이드/측정 방법을 친절히 안내하세요.",
+  stock: "재고 상황과 입고 예정을 명확히 안내하세요.",
+  usage: "사용법을 단계별로 알기 쉽게 안내하세요.",
+  other: "문의 핵심을 정확히 파악해 답변하세요.",
+};
+
+const COMPENSATION_LABEL: Record<string, string> = {
+  reship: "재발송",
+  partial_refund: "부분환불",
+  full_refund: "전액환불",
+  coupon: "쿠폰 제공",
+  none: "별도 보상 없음(정중한 사과 중심)",
+};
+
 function jsonResponse(data: Record<string, unknown>, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
