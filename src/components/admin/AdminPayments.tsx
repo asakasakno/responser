@@ -15,6 +15,12 @@ export default function AdminPayments() {
   const { invoke } = useAdminAction();
   const [stats, setStats] = useState<any>(null);
 
+  // refund issue dialog
+  const [refundDlg, setRefundDlg] = useState<any>(null);
+  const [refundStatus, setRefundStatus] = useState<'pending' | 'success' | 'failed'>('success');
+  const [refundReason, setRefundReason] = useState('');
+  const [recoverEnergy, setRecoverEnergy] = useState('');
+
   const fetchData = async () => {
     const data = await invoke('payment_stats');
     if (data) setStats(data);
@@ -26,6 +32,32 @@ export default function AdminPayments() {
     const result = await invoke('update_payment_status', { payment_id: paymentId, status });
     if (result?.success) {
       toast({ title: '완료', description: '결제 상태가 변경되었습니다.' });
+      fetchData();
+    }
+  };
+
+  const submitRefundIssue = async () => {
+    if (!refundDlg || refundReason.trim().length < 5) {
+      toast({ title: '사유는 5자 이상 입력해주세요.', variant: 'destructive' });
+      return;
+    }
+    const result = await invoke('mark_refund_issue', {
+      payment_id: refundDlg.id,
+      refund_status: refundStatus,
+      refund_amount: refundDlg.amount,
+      reason: refundReason,
+      recover_energy: recoverEnergy ? parseInt(recoverEnergy) : 0,
+    });
+    if (result?.success) {
+      toast({
+        title: '처리 완료',
+        description: result.recovery?.shortfall > 0
+          ? `회수 ${result.recovery.recovered}, 부족분 ${result.recovery.shortfall}은 이상 항목으로 기록됨`
+          : '환불 처리 상태가 기록되었습니다.',
+      });
+      setRefundDlg(null);
+      setRefundReason('');
+      setRecoverEnergy('');
       fetchData();
     }
   };
