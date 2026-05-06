@@ -1,16 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle } from '@/types';
+import {
+  ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle,
+  TONES, type Tone,
+  BUSINESS_CATEGORIES, type BusinessCategory,
+  INQUIRY_CATEGORIES, type InquiryCategory,
+  COMPENSATIONS, type Compensation,
+  CLAIM_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+} from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Image, Loader2, ArrowUp, AlertTriangle, Zap } from 'lucide-react';
+import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
@@ -52,18 +59,41 @@ export default function Generate() {
 
   const [energyAnim, setEnergyAnim] = useState<{ amount: number; type: 'earn' | 'spend' } | null>(null);
 
+  // MVP additions
+  const [tone, setTone] = useState<Tone | 'none'>('none');
+  const [businessCategory, setBusinessCategory] = useState<BusinessCategory | 'none'>('none');
+  const [reviewRating, setReviewRating] = useState<number>(0);
+  const [reviewNickname, setReviewNickname] = useState<string>('');
+  const [inquiryCategory, setInquiryCategory] = useState<InquiryCategory | 'none'>('none');
+  const [slots, setSlots] = useState<Record<string, string>>({});
+  const [claimSeverity, setClaimSeverity] = useState<'low' | 'normal' | 'high'>('normal');
+  const [compensations, setCompensations] = useState<Compensation[]>([]);
+  const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
+
   const energyCost = ENERGY_COSTS[genType] || 1;
   const isLimitReached = energyBalance < energyCost;
+
+  // Risk keyword detection (claim only)
+  const detectedRisks = useMemo(
+    () => genType === 'claim' ? CLAIM_RISK_KEYWORDS.filter(k => inputText.includes(k)) : [],
+    [inputText, genType]
+  );
+
+  const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
+
+  useEffect(() => { localStorage.setItem('autoCopy', autoCopy ? '1' : '0'); }, [autoCopy]);
 
   useEffect(() => {
     if (user) {
       supabase.from('products').select('id, name, category, note').eq('user_id', user.id).then(({ data }) => {
         if (data) setProducts(data);
       });
-      supabase.from('profiles').select('platforms').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+      supabase.from('profiles').select('platforms, business_category').eq('user_id', user.id).maybeSingle().then(({ data }) => {
         const list = (data?.platforms as string[]) || [];
         setUserPlatforms(list);
         if (list.length > 0) setSelectedPlatform(list[0]);
+        const bc = (data as any)?.business_category;
+        if (bc) setBusinessCategory(bc);
       });
     }
   }, [user]);
@@ -127,6 +157,28 @@ export default function Generate() {
     return { id: selectedPlatform, label: getPlatformLabel(selectedPlatform) };
   };
 
+  const buildExtraPayload = () => {
+    const extra: Record<string, any> = {};
+    if (tone !== 'none') extra.tone = tone;
+    if (businessCategory !== 'none') extra.business_category = businessCategory;
+    if (genType === 'review') {
+      extra.review = {
+        rating: reviewRating > 0 ? reviewRating : null,
+        nickname: reviewNickname.trim() || null,
+      };
+    }
+    if (genType === 'inquiry') {
+      extra.inquiry = {
+        category: inquiryCategory !== 'none' ? inquiryCategory : null,
+        slots,
+      };
+    }
+    if (genType === 'claim') {
+      extra.claim = { severity: claimSeverity, compensations };
+    }
+    return extra;
+  };
+
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     if (isLimitReached) {
@@ -137,14 +189,27 @@ export default function Generate() {
     setResult('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
+        body: {
+          type: genType, text: inputText, product: getProductContext(),
+          energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload(),
+          ...buildExtraPayload(),
+        },
       });
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
       setResult(data.response);
       setEnergyAnim({ amount: energyCost, type: 'spend' });
       await refreshEnergy();
-      
+
+      // Persist business category to profile (best-effort)
+      if (businessCategory !== 'none') {
+        supabase.from('profiles').update({ business_category: businessCategory }).eq('user_id', user!.id);
+      }
+
+      if (autoCopy) {
+        try { await navigator.clipboard.writeText(data.response); toast({ title: '답변 자동 복사됨' }); } catch {}
+      }
+
       await supabase.from('generations').insert({
         user_id: user!.id,
         type: genType,
@@ -158,6 +223,18 @@ export default function Generate() {
       setLoading(false);
     }
   };
+
+  const saveAsTemplate = async () => {
+    if (!result.trim()) return;
+    const title = window.prompt('템플릿 제목을 입력하세요', `${genType} 템플릿`);
+    if (!title || !title.trim()) return;
+    const { error } = await supabase.from('user_templates').insert({
+      user_id: user!.id, title: title.trim().slice(0, 100), type: genType, content: result,
+    });
+    if (error) toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
+    else toast({ title: '템플릿으로 저장됨' });
+  };
+
 
   const readFileAsBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -200,7 +277,7 @@ export default function Generate() {
       for (let i = 0; i < processItems.length; i++) {
         setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
         const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
+          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload(), ...buildExtraPayload() },
         });
         if (genError) throw genError;
         const output = data?.response || data?.error || '생성 실패';
@@ -397,8 +474,140 @@ export default function Generate() {
           </div>
         </div>
 
-        <div className="mb-4">
-          <label className="text-sm font-medium text-foreground mb-1.5 block">내용 입력</label>
+        {/* 업종 + 톤 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">업종</label>
+            <Select value={businessCategory} onValueChange={(v) => setBusinessCategory(v as any)}>
+              <SelectTrigger><SelectValue placeholder="업종 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">선택 안 함</SelectItem>
+                {BUSINESS_CATEGORIES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">답변 톤</label>
+            <Select value={tone} onValueChange={(v) => setTone(v as any)}>
+              <SelectTrigger><SelectValue placeholder="톤 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">자동</SelectItem>
+                {TONES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* 리뷰 전용 */}
+        {genType === 'review' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">별점</label>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} type="button" onClick={() => setReviewRating(n === reviewRating ? 0 : n)}
+                    className="p-1" aria-label={`${n}점`}>
+                    <Star className={`w-6 h-6 ${n <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">고객 닉네임 (선택)</label>
+              <Input value={reviewNickname} onChange={e => setReviewNickname(e.target.value)}
+                placeholder="예: 김철수" maxLength={30} />
+            </div>
+          </div>
+        )}
+
+        {/* 문의 전용 */}
+        {genType === 'inquiry' && (
+          <div className="mb-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">문의 카테고리</label>
+              <div className="flex flex-wrap gap-2">
+                {INQUIRY_CATEGORIES.map(c => (
+                  <button key={c.id} type="button"
+                    onClick={() => setInquiryCategory(inquiryCategory === c.id ? 'none' : c.id)}
+                    className={`px-3 py-1.5 rounded-full border text-sm ${
+                      inquiryCategory === c.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}>{c.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">변수 (입력하면 답변에 반영)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { key: 'ship_date', ph: '발송일 (예: 11/12)' },
+                  { key: 'restock_date', ph: '재입고 예정일' },
+                  { key: 'tracking_no', ph: '운송장 번호' },
+                  { key: 'cs_phone', ph: 'CS 연락처' },
+                  { key: 'business_hours', ph: '영업시간 (예: 평일 10-18시)' },
+                ].map(s => (
+                  <Input key={s.key} placeholder={s.ph} maxLength={100}
+                    value={slots[s.key] || ''}
+                    onChange={e => setSlots(prev => ({ ...prev, [s.key]: e.target.value }))} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 클레임 전용 */}
+        {genType === 'claim' && (
+          <div className="mb-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">심각도</label>
+              <div className="flex gap-2">
+                {([
+                  { id: 'low', label: '낮음' },
+                  { id: 'normal', label: '보통' },
+                  { id: 'high', label: '높음' },
+                ] as const).map(s => (
+                  <button key={s.id} type="button" onClick={() => setClaimSeverity(s.id)}
+                    className={`flex-1 px-3 py-2 rounded-lg border text-sm ${
+                      claimSeverity === s.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground'
+                    }`}>{s.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">제안할 보상안</label>
+              <div className="flex flex-wrap gap-2">
+                {COMPENSATIONS.map(c => {
+                  const checked = compensations.includes(c.id);
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setCompensations(prev => checked ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{c.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            {detectedRisks.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">⚠️ 사장님 직접 검토 권장</p>
+                  <p className="text-muted-foreground mt-0.5">감지된 위험 키워드: {detectedRisks.join(', ')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-foreground">내용 입력</label>
+            {charLimit && (
+              <span className={`text-xs ${inputText.length > charLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {inputText.length} / {charLimit}자
+              </span>
+            )}
+          </div>
           <Textarea
             value={inputText}
             onChange={e => setInputText(e.target.value)}
@@ -407,7 +616,12 @@ export default function Generate() {
           />
         </div>
 
-        <div className="flex gap-3 mb-6">
+        <label className="flex items-center gap-2 mb-4 text-sm text-muted-foreground cursor-pointer select-none">
+          <input type="checkbox" checked={autoCopy} onChange={e => setAutoCopy(e.target.checked)} />
+          생성 후 자동 복사
+        </label>
+
+        <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
           </Button>
@@ -417,6 +631,11 @@ export default function Generate() {
               <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
             </Button>
           </div>
+          {result && (
+            <Button variant="outline" onClick={saveAsTemplate}>
+              <Save className="w-4 h-4 mr-2" /> 템플릿 저장
+            </Button>
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
@@ -424,6 +643,7 @@ export default function Generate() {
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
         )}
+
 
         {batchLoading && (
           <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">

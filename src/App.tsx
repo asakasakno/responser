@@ -13,6 +13,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Generate = lazy(() => import("./pages/Generate"));
 const Products = lazy(() => import("./pages/Products"));
 const History = lazy(() => import("./pages/History"));
+const Templates = lazy(() => import("./pages/Templates"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/generate" element={<ProtectedRoute><Generate /></ProtectedRoute>} />
               <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+              <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
               {/* Admin routes */}

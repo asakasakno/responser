@@ -507,6 +507,7 @@ export type Database = {
           created_at: string
           id: string
           input_text: string
+          is_favorite: boolean
           output_text: string
           product_id: string | null
           type: Database["public"]["Enums"]["generation_type"]
@@ -516,6 +517,7 @@ export type Database = {
           created_at?: string
           id?: string
           input_text: string
+          is_favorite?: boolean
           output_text: string
           product_id?: string | null
           type: Database["public"]["Enums"]["generation_type"]
@@ -525,6 +527,7 @@ export type Database = {
           created_at?: string
           id?: string
           input_text?: string
+          is_favorite?: boolean
           output_text?: string
           product_id?: string | null
           type?: Database["public"]["Enums"]["generation_type"]
@@ -656,6 +659,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          business_category: string | null
           company_name: string | null
           created_at: string
           email: string
@@ -671,6 +675,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_category?: string | null
           company_name?: string | null
           created_at?: string
           email: string
@@ -686,6 +691,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_category?: string | null
           company_name?: string | null
           created_at?: string
           email?: string
@@ -863,6 +869,36 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          title?: string
+          type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

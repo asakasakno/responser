@@ -20,6 +20,56 @@ export const RESPONSE_STYLES: { id: ResponseStyle; label: string; description: s
   { id: 'principle', label: '원칙형', description: '정책/원칙을 명확히 안내' },
 ];
 
+export type Tone = 'friendly' | 'polite' | 'professional' | 'apology' | 'firm' | 'humor';
+export const TONES: { id: Tone; label: string }[] = [
+  { id: 'friendly', label: '친근' },
+  { id: 'polite', label: '공손' },
+  { id: 'professional', label: '프로페셔널' },
+  { id: 'apology', label: '사과' },
+  { id: 'firm', label: '단호' },
+  { id: 'humor', label: '유머' },
+];
+
+export type BusinessCategory =
+  | 'fashion' | 'food' | 'beauty' | 'electronics'
+  | 'living' | 'pet' | 'baby' | 'digital' | 'other';
+export const BUSINESS_CATEGORIES: { id: BusinessCategory; label: string }[] = [
+  { id: 'fashion', label: '패션' },
+  { id: 'food', label: '식품' },
+  { id: 'beauty', label: '뷰티' },
+  { id: 'electronics', label: '전자제품' },
+  { id: 'living', label: '리빙' },
+  { id: 'pet', label: '펫' },
+  { id: 'baby', label: '유아동' },
+  { id: 'digital', label: '디지털콘텐츠' },
+  { id: 'other', label: '기타' },
+];
+
+export type InquiryCategory = 'shipping' | 'exchange' | 'refund' | 'size' | 'stock' | 'usage' | 'other';
+export const INQUIRY_CATEGORIES: { id: InquiryCategory; label: string }[] = [
+  { id: 'shipping', label: '배송' },
+  { id: 'exchange', label: '교환' },
+  { id: 'refund', label: '환불' },
+  { id: 'size', label: '사이즈' },
+  { id: 'stock', label: '재고' },
+  { id: 'usage', label: '사용법' },
+  { id: 'other', label: '기타' },
+];
+
+export type Compensation = 'reship' | 'partial_refund' | 'full_refund' | 'coupon' | 'none';
+export const COMPENSATIONS: { id: Compensation; label: string }[] = [
+  { id: 'reship', label: '재발송' },
+  { id: 'partial_refund', label: '부분환불' },
+  { id: 'full_refund', label: '전액환불' },
+  { id: 'coupon', label: '쿠폰' },
+  { id: 'none', label: '보상 없음' },
+];
+
+export const CLAIM_RISK_KEYWORDS = ['신고', '고소', '공정위', '소비자원', '별점테러', '환불 안 하면', '환불안하면'];
+export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
+  smartstore: 1000, coupang: 500, '11st': 500, gmarket: 500, auction: 500, wemakeprice: 500, tmon: 500,
+};
+
 export interface Subscription {
   id: string;
   user_id: string;

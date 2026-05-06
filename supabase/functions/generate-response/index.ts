@@ -45,6 +45,45 @@ const STYLE_GUIDES: Record<string, string> = {
   principle: "정책과 원칙을 분명히 안내하되 차갑지 않게 설명하세요.",
 };
 
+const TONE_GUIDES: Record<string, string> = {
+  friendly: "친근하고 다정한 말투로, 이모지는 1개 이내로 자연스럽게 사용하세요.",
+  polite: "정중하고 공손한 존댓말 톤을 유지하세요.",
+  professional: "전문적이고 신뢰감 있는 비즈니스 톤으로 작성하세요.",
+  apology: "사과와 책임 인정을 우선하는 차분한 톤을 유지하세요.",
+  firm: "정책에 따라 단호하지만 무례하지 않게 명확히 안내하세요.",
+  humor: "가벼운 위트를 살짝 더해 친근하게 작성하세요. 단, 클레임에서는 사용 금지.",
+};
+
+const CATEGORY_GUIDES: Record<string, Record<string, string>> = {
+  fashion: { rule: "사이즈/색상/소재 표현은 제품 라벨 기준으로 안내. 효능 표현 금지." },
+  food: { rule: "효능·효과·치료 표현 금지. 알러지 정보는 신중히 안내." },
+  beauty: { rule: "의약품 오인 표현(치료/완치) 금지. 개인차 안내 권장." },
+  electronics: { rule: "제품 사양은 정확히, 보증/AS 정책을 명확히 안내." },
+  living: { rule: "사용 환경에 따른 차이를 안내. 안전 주의사항 권장." },
+  pet: { rule: "수의학적 진단/치료 표현 금지. 수의사 상담 권유 가능." },
+  baby: { rule: "안전 인증 강조. 의약 효능 표현 금지." },
+  digital: { rule: "환불·교환 정책(콘텐츠 특성)을 명확히 안내." },
+  other: { rule: "" },
+};
+
+const INQUIRY_CATEGORY_HINT: Record<string, string> = {
+  shipping: "배송 일정/방법에 대한 명확한 안내를 우선하세요.",
+  exchange: "교환 절차와 비용 부담 주체를 명확히 안내하세요.",
+  refund: "환불 절차/소요 기간/조건을 명확히 안내하세요.",
+  size: "사이즈 가이드/측정 방법을 친절히 안내하세요.",
+  stock: "재고 상황과 입고 예정을 명확히 안내하세요.",
+  usage: "사용법을 단계별로 알기 쉽게 안내하세요.",
+  other: "문의 핵심을 정확히 파악해 답변하세요.",
+};
+
+const COMPENSATION_LABEL: Record<string, string> = {
+  reship: "재발송",
+  partial_refund: "부분환불",
+  full_refund: "전액환불",
+  coupon: "쿠폰 제공",
+  none: "별도 보상 없음(정중한 사과 중심)",
+};
+
 function jsonResponse(data: Record<string, unknown>, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -58,6 +97,11 @@ function buildPrompt(input: {
   style: string | null;
   product: any;
   platform: any;
+  tone?: string | null;
+  business_category?: string | null;
+  review?: { rating?: number | null; nickname?: string | null } | null;
+  inquiry?: { category?: string | null; slots?: Record<string, string> | null } | null;
+  claim?: { severity?: string | null; compensations?: string[] | null } | null;
 }) {
   const sections = [TYPE_INSTRUCTIONS[input.type] || TYPE_INSTRUCTIONS.review];
 
@@ -72,19 +116,81 @@ function buildPrompt(input: {
     );
   }
 
+  if (input.business_category && CATEGORY_GUIDES[input.business_category]?.rule) {
+    sections.push(`[업종 가이드: ${input.business_category}]\n${CATEGORY_GUIDES[input.business_category].rule}`);
+  }
+
   if (input.platform?.label || input.platform?.id) {
     sections.push(
       `[판매 플랫폼]\n${input.platform.label || input.platform.id} 플랫폼의 톤과 고객 기대에 맞춰 답변하세요.`,
     );
   }
 
+  if (input.tone && TONE_GUIDES[input.tone]) {
+    sections.push(`[답변 톤]\n${TONE_GUIDES[input.tone]}`);
+  }
+
   if (input.style && STYLE_GUIDES[input.style]) {
     sections.push(`[답변 스타일]\n${STYLE_GUIDES[input.style]}`);
   }
 
-  sections.push("출력은 답변 본문만 반환하세요.");
+  if (input.type === "review" && input.review) {
+    const lines: string[] = [];
+    if (input.review.rating) {
+      const r = Math.max(1, Math.min(5, Number(input.review.rating)));
+      lines.push(`별점: ${r}/5 (${r <= 2 ? "부정 → 사과 우선" : r === 3 ? "중립 → 개선 의지" : "긍정 → 감사 강화"})`);
+    }
+    if (input.review.nickname) {
+      lines.push(`고객 호칭: ${input.review.nickname.trim()}님 (답변 첫머리에 자연스럽게 사용)`);
+    }
+    if (lines.length) sections.push(`[리뷰 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  if (input.type === "inquiry" && input.inquiry) {
+    const lines: string[] = [];
+    if (input.inquiry.category && INQUIRY_CATEGORY_HINT[input.inquiry.category]) {
+      lines.push(`문의 유형: ${input.inquiry.category} — ${INQUIRY_CATEGORY_HINT[input.inquiry.category]}`);
+    }
+    const slots = input.inquiry.slots || {};
+    const slotLabels: Record<string, string> = {
+      ship_date: "발송일",
+      restock_date: "재입고 예정일",
+      tracking_no: "운송장 번호",
+      cs_phone: "CS 연락처",
+      business_hours: "영업시간",
+    };
+    const filledSlots = Object.entries(slots)
+      .filter(([_, v]) => typeof v === "string" && v.trim().length > 0)
+      .map(([k, v]) => `- ${slotLabels[k] || k}: ${String(v).trim()}`);
+    if (filledSlots.length) {
+      lines.push("아래 정보를 답변에 자연스럽게 포함하세요:");
+      lines.push(...filledSlots);
+    }
+    if (lines.length) sections.push(`[문의 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  if (input.type === "claim" && input.claim) {
+    const lines: string[] = [];
+    const sev = input.claim.severity;
+    if (sev === "high") {
+      lines.push("심각도: 높음 — 강한 사과와 책임자 직접 연결 안내를 포함하세요.");
+    } else if (sev === "low") {
+      lines.push("심각도: 낮음 — 가벼운 사과와 빠른 해결 안내 중심으로 작성하세요.");
+    } else if (sev === "normal") {
+      lines.push("심각도: 보통 — 정중한 사과와 명확한 해결 절차를 안내하세요.");
+    }
+    const comps = (input.claim.compensations || []).filter((c) => COMPENSATION_LABEL[c]);
+    if (comps.length) {
+      lines.push(`제안할 보상안: ${comps.map((c) => COMPENSATION_LABEL[c]).join(", ")}`);
+      lines.push("위 보상안을 답변에 자연스럽게 제시하세요.");
+    }
+    if (lines.length) sections.push(`[클레임 컨텍스트]\n${lines.join("\n")}`);
+  }
+
+  sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
   return sections.join("\n\n");
 }
+
 
 async function grantMilestoneRewards(adminClient: ReturnType<typeof createClient>, userId: string) {
   try {
@@ -192,7 +298,54 @@ serve(async (req) => {
     }
 
     const requestBody = await req.json().catch(() => null);
-    const { type, text, product, energy_cost, style, platform } = requestBody ?? {};
+    const {
+      type, text, product, energy_cost, style, platform,
+      tone, business_category, review, inquiry, claim,
+    } = requestBody ?? {};
+
+    const VALID_TONES = new Set(["friendly", "polite", "professional", "apology", "firm", "humor"]);
+    const VALID_CATEGORIES = new Set(["fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital", "other"]);
+    const VALID_INQUIRY_CATS = new Set(["shipping", "exchange", "refund", "size", "stock", "usage", "other"]);
+    const VALID_COMPENSATIONS = new Set(["reship", "partial_refund", "full_refund", "coupon", "none"]);
+
+    const safeTone = typeof tone === "string" && VALID_TONES.has(tone) ? tone : null;
+    const safeBizCat = typeof business_category === "string" && VALID_CATEGORIES.has(business_category) ? business_category : null;
+
+    let safeReview: { rating?: number | null; nickname?: string | null } | null = null;
+    if (type === "review" && review && typeof review === "object") {
+      const rating = Number((review as any).rating);
+      const nickname = typeof (review as any).nickname === "string" ? String((review as any).nickname).slice(0, 30) : null;
+      safeReview = {
+        rating: Number.isFinite(rating) && rating >= 1 && rating <= 5 ? rating : null,
+        nickname: nickname && nickname.trim().length > 0 ? nickname : null,
+      };
+    }
+
+    let safeInquiry: { category?: string | null; slots?: Record<string, string> | null } | null = null;
+    if (type === "inquiry" && inquiry && typeof inquiry === "object") {
+      const cat = (inquiry as any).category;
+      const rawSlots = (inquiry as any).slots && typeof (inquiry as any).slots === "object" ? (inquiry as any).slots : {};
+      const allowedSlotKeys = ["ship_date", "restock_date", "tracking_no", "cs_phone", "business_hours"];
+      const cleanSlots: Record<string, string> = {};
+      for (const k of allowedSlotKeys) {
+        const v = rawSlots[k];
+        if (typeof v === "string" && v.trim().length > 0) cleanSlots[k] = v.slice(0, 100);
+      }
+      safeInquiry = {
+        category: typeof cat === "string" && VALID_INQUIRY_CATS.has(cat) ? cat : null,
+        slots: Object.keys(cleanSlots).length ? cleanSlots : null,
+      };
+    }
+
+    let safeClaim: { severity?: string | null; compensations?: string[] | null } | null = null;
+    if (type === "claim" && claim && typeof claim === "object") {
+      const sev = (claim as any).severity;
+      const comps = Array.isArray((claim as any).compensations) ? (claim as any).compensations : [];
+      safeClaim = {
+        severity: ["low", "normal", "high"].includes(sev) ? sev : null,
+        compensations: comps.filter((c: any) => typeof c === "string" && VALID_COMPENSATIONS.has(c)).slice(0, 5),
+      };
+    }
 
     if (!type || typeof text !== "string") {
       return respond({ error: "Missing required fields.", reservation_id: null }, 400);
@@ -434,6 +587,11 @@ serve(async (req) => {
       style: appliedStyle,
       product,
       platform,
+      tone: safeTone,
+      business_category: safeBizCat,
+      review: safeReview,
+      inquiry: safeInquiry,
+      claim: safeClaim,
     });
 
     let aiResponse: Response;
