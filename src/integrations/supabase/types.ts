@@ -442,6 +442,66 @@ export type Database = {
         }
         Relationships: []
       }
+      generate_refund_attempts: {
+        Row: {
+          claimed_at: string
+          completed_at: string | null
+          id: string
+          refund_error: string | null
+          refunded: boolean
+          reservation_id: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          completed_at?: string | null
+          id?: string
+          refund_error?: string | null
+          refunded?: boolean
+          reservation_id: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          completed_at?: string | null
+          id?: string
+          refund_error?: string | null
+          refunded?: boolean
+          reservation_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generate_request_reservations: {
+        Row: {
+          action: string
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generations: {
         Row: {
           created_at: string
@@ -846,6 +906,18 @@ export type Database = {
       cleanup_ai_response_cache: { Args: never; Returns: number }
       cleanup_old_audit_logs: { Args: never; Returns: number }
       cleanup_old_energy_transactions_global: { Args: never; Returns: number }
+      complete_generate_refund: {
+        Args: {
+          _refund_error?: string
+          _refunded: boolean
+          _reservation_id: string
+        }
+        Returns: Json
+      }
+      complete_generate_request: {
+        Args: { _error_code?: string; _reservation_id: string; _status: string }
+        Returns: Json
+      }
       consume_coupon: {
         Args: {
           _billing_order_id: string
@@ -935,9 +1007,17 @@ export type Database = {
         Args: { _amount: number; _description?: string; _reason: string }
         Returns: Json
       }
+      reserve_generate_request: {
+        Args: { _max_per_second?: number; _per_day?: number; _per_min?: number }
+        Returns: Json
+      }
       run_admin_anomaly_scan: { Args: never; Returns: Json }
       spend_energy: {
         Args: { _amount: number; _description?: string; _reason: string }
+        Returns: Json
+      }
+      try_claim_generate_refund: {
+        Args: { _reservation_id: string }
         Returns: Json
       }
       validate_coupon: {
