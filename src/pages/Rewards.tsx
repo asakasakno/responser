@@ -285,9 +285,24 @@ export default function Rewards() {
                     </p>
                     <p className="text-sm text-muted-foreground">{mission.description}</p>
                   </div>
-                  <div className="flex items-center gap-1 text-sm font-bold">
-                    <Zap className="w-4 h-4 text-primary" />
-                    <span className="text-primary">+{mission.reward}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1 text-sm font-bold">
+                      <Zap className="w-4 h-4 text-primary" />
+                      <span className="text-primary">+{mission.reward}</span>
+                    </div>
+                    {mission.id !== 'signup' && mission.id !== 'referral' && !mission.completed && (
+                      <Button
+                        size="sm"
+                        disabled={!mission.claimable || claiming === mission.id}
+                        onClick={() => handleClaim(mission.id)}
+                        className="h-8"
+                      >
+                        {claiming === mission.id ? '받는 중…' : mission.claimable ? '보상 받기' : '조건 미충족'}
+                      </Button>
+                    )}
+                    {mission.completed && (
+                      <span className="text-xs text-muted-foreground">받음</span>
+                    )}
                   </div>
                 </div>
               ))}
