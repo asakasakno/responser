@@ -115,7 +115,6 @@ function jsonResponse(data: Record<string, unknown>, corsHeaders: Record<string,
 function buildPrompt(input: {
   type: string;
   text: string;
-  style: string | null;
   product: any;
   platform: any;
   tone?: string | null;
@@ -147,12 +146,13 @@ function buildPrompt(input: {
     );
   }
 
-  if (input.tone && TONE_GUIDES[input.tone]) {
-    sections.push(`[답변 톤]\n${TONE_GUIDES[input.tone]}`);
-  }
-
-  if (input.style && STYLE_GUIDES[input.style]) {
-    sections.push(`[답변 스타일]\n${STYLE_GUIDES[input.style]}`);
+  // 톤이 명시되지 않으면 컨텍스트(별점/심각도/문의카테고리) 기반 자동 추천
+  const effectiveTone = input.tone && TONE_GUIDES[input.tone]
+    ? input.tone
+    : autoPickTone(input);
+  if (TONE_GUIDES[effectiveTone]) {
+    const label = input.tone ? "답변 톤" : "답변 톤(자동 추천)";
+    sections.push(`[${label}]\n${TONE_GUIDES[effectiveTone]}`);
   }
 
   if (input.type === "review" && input.review) {
