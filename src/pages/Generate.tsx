@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ENERGY_COSTS, RESPONSE_STYLES, type ResponseStyle,
+  ENERGY_COSTS,
   TONES, type Tone,
   BUSINESS_CATEGORIES, type BusinessCategory,
   INQUIRY_CATEGORIES, type InquiryCategory,
