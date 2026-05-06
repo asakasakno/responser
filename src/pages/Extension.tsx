@@ -162,6 +162,9 @@ export default function ExtensionPage() {
           <p className="text-muted-foreground max-w-lg mx-auto mb-8">
             스마트스토어, 쿠팡 등 리뷰 페이지에서 바로 AI 답변을 생성할 수 있는 Chrome 확장 프로그램입니다.
           </p>
+          <div className="text-xs text-muted-foreground mb-4">
+            현재 버전 <span className="font-mono font-semibold text-foreground">v1.1.0</span> · 업데이트 2026-05-06
+          </div>
           {isAllowed ? (
             <Button size="lg" onClick={handleDownload} disabled={downloading} className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
               <Download className="w-5 h-5 mr-2" />
