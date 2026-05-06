@@ -456,7 +456,7 @@ serve(async (req) => {
     const requestBody = await req.json().catch(() => null);
     const {
       type, text, product, energy_cost, style, platform,
-      tone, business_category, review, inquiry, claim, lodging,
+      tone, business_category, review, inquiry, claim, lodging, service,
     } = requestBody ?? {};
 
     // 통합된 톤 (구 RESPONSE_STYLES + TONES 통합)
@@ -464,6 +464,7 @@ serve(async (req) => {
     const VALID_CATEGORIES = new Set([
       "fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital",
       "hotel", "motel", "pension", "poolvilla", "guesthouse", "glamping", "camping", "lodging_other",
+      "hair", "nail", "skin", "waxing", "massage", "pilates", "pt_gym", "academy", "carwash", "service_other",
       "other",
     ]);
     const VALID_INQUIRY_CATS = new Set(["shipping", "exchange", "refund", "size", "stock", "usage", "other"]);
@@ -474,6 +475,14 @@ serve(async (req) => {
     ]);
     const VALID_LODGING_COMPS = new Set([
       "revisit_discount", "room_inspection", "staff_training", "refund_guide", "none",
+    ]);
+    const VALID_SERVICE_ISSUES = new Set([
+      "reservation_delay", "wait_time", "staff", "result_unsatisfied", "style_mismatch",
+      "price_info", "extra_charge", "hygiene", "noise_atmosphere", "parking",
+      "refund_request", "redo_request", "other",
+    ]);
+    const VALID_SERVICE_COMPS = new Set([
+      "redo_guide", "staff_check", "refund_consult", "next_visit_benefit", "none",
     ]);
 
     // 하위 호환: 구 클라이언트가 보낸 style 값도 tone으로 흡수
