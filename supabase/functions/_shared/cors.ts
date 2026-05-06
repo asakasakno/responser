@@ -1,5 +1,7 @@
 const PROD_ORIGINS = [
   "https://responser.lovable.app",
+  "https://xn--vk1booh7ruql6wa.com",
+  "https://www.xn--vk1booh7ruql6wa.com",
 ];
 
 const DEV_ORIGINS = [
@@ -9,6 +11,7 @@ const DEV_ORIGINS = [
   "http://127.0.0.1:5173",
 ];
 
+// 정확 매칭용 허용 목록
 const allowedOrigins = new Set([
   ...PROD_ORIGINS,
   ...DEV_ORIGINS,
@@ -17,6 +20,15 @@ const allowedOrigins = new Set([
     .map((value) => value.trim())
     .filter(Boolean)),
 ]);
+
+// Lovable 프리뷰/샌드박스 도메인 패턴 허용
+// 예: https://id-preview--<uuid>.lovable.app, https://<id>.sandbox.lovable.dev, https://<sub>.lovableproject.com
+const ORIGIN_PATTERNS: RegExp[] = [
+  /^https:\/\/[a-z0-9-]+\.lovable\.app$/i,
+  /^https:\/\/[a-z0-9-]+\.lovable\.dev$/i,
+  /^https:\/\/[a-z0-9-]+\.sandbox\.lovable\.dev$/i,
+  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/i,
+];
 
 type CorsOptions = {
   allowHeaders?: string;
