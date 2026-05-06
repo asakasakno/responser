@@ -511,10 +511,20 @@ export default function Generate() {
           </div>
         )}
 
-        {/* 업종 + 톤 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        {/* 업종군 + 업종 + 톤 */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">업종</label>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">업종군</label>
+            <Select value={businessGroup} onValueChange={(v) => setBusinessGroup(v as any)}>
+              <SelectTrigger><SelectValue placeholder="업종군 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">전체</SelectItem>
+                {BUSINESS_GROUPS.map(g => <SelectItem key={g.id} value={g.id}>{g.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">세부 업종</label>
             <Select value={businessCategory} onValueChange={(v) => setBusinessCategory(v as any)}>
               <SelectTrigger><SelectValue placeholder="업종 선택" /></SelectTrigger>
               <SelectContent>
@@ -522,8 +532,8 @@ export default function Generate() {
                 {filteredBusinessCategories.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            {allowedCategoryIds && (
-              <p className="text-[11px] text-muted-foreground mt-1">선택한 플랫폼에 맞는 업종만 표시됩니다.</p>
+            {(allowedCategoryIds || groupCategoryIds) && (
+              <p className="text-[11px] text-muted-foreground mt-1">선택한 업종군/플랫폼에 맞는 항목만 표시됩니다.</p>
             )}
           </div>
           <div>
