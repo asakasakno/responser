@@ -706,6 +706,7 @@ serve(async (req) => {
       review: safeReview,
       inquiry: safeInquiry,
       claim: safeClaim,
+      lodging: safeLodging,
     });
 
     let aiResponse: Response;
