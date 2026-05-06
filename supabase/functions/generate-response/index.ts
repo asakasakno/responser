@@ -298,7 +298,54 @@ serve(async (req) => {
     }
 
     const requestBody = await req.json().catch(() => null);
-    const { type, text, product, energy_cost, style, platform } = requestBody ?? {};
+    const {
+      type, text, product, energy_cost, style, platform,
+      tone, business_category, review, inquiry, claim,
+    } = requestBody ?? {};
+
+    const VALID_TONES = new Set(["friendly", "polite", "professional", "apology", "firm", "humor"]);
+    const VALID_CATEGORIES = new Set(["fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital", "other"]);
+    const VALID_INQUIRY_CATS = new Set(["shipping", "exchange", "refund", "size", "stock", "usage", "other"]);
+    const VALID_COMPENSATIONS = new Set(["reship", "partial_refund", "full_refund", "coupon", "none"]);
+
+    const safeTone = typeof tone === "string" && VALID_TONES.has(tone) ? tone : null;
+    const safeBizCat = typeof business_category === "string" && VALID_CATEGORIES.has(business_category) ? business_category : null;
+
+    let safeReview: { rating?: number | null; nickname?: string | null } | null = null;
+    if (type === "review" && review && typeof review === "object") {
+      const rating = Number((review as any).rating);
+      const nickname = typeof (review as any).nickname === "string" ? String((review as any).nickname).slice(0, 30) : null;
+      safeReview = {
+        rating: Number.isFinite(rating) && rating >= 1 && rating <= 5 ? rating : null,
+        nickname: nickname && nickname.trim().length > 0 ? nickname : null,
+      };
+    }
+
+    let safeInquiry: { category?: string | null; slots?: Record<string, string> | null } | null = null;
+    if (type === "inquiry" && inquiry && typeof inquiry === "object") {
+      const cat = (inquiry as any).category;
+      const rawSlots = (inquiry as any).slots && typeof (inquiry as any).slots === "object" ? (inquiry as any).slots : {};
+      const allowedSlotKeys = ["ship_date", "restock_date", "tracking_no", "cs_phone", "business_hours"];
+      const cleanSlots: Record<string, string> = {};
+      for (const k of allowedSlotKeys) {
+        const v = rawSlots[k];
+        if (typeof v === "string" && v.trim().length > 0) cleanSlots[k] = v.slice(0, 100);
+      }
+      safeInquiry = {
+        category: typeof cat === "string" && VALID_INQUIRY_CATS.has(cat) ? cat : null,
+        slots: Object.keys(cleanSlots).length ? cleanSlots : null,
+      };
+    }
+
+    let safeClaim: { severity?: string | null; compensations?: string[] | null } | null = null;
+    if (type === "claim" && claim && typeof claim === "object") {
+      const sev = (claim as any).severity;
+      const comps = Array.isArray((claim as any).compensations) ? (claim as any).compensations : [];
+      safeClaim = {
+        severity: ["low", "normal", "high"].includes(sev) ? sev : null,
+        compensations: comps.filter((c: any) => typeof c === "string" && VALID_COMPENSATIONS.has(c)).slice(0, 5),
+      };
+    }
 
     if (!type || typeof text !== "string") {
       return respond({ error: "Missing required fields.", reservation_id: null }, 400);
