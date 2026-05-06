@@ -119,9 +119,17 @@ export const LODGING_CATEGORY_IDS = new Set([
   'hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other',
 ]);
 
+export const SERVICE_CATEGORY_IDS = new Set([
+  'hair', 'nail', 'skin', 'waxing', 'massage', 'pilates', 'pt_gym', 'academy', 'carwash', 'service_other',
+]);
+
 export function isLodgingContext(platformId?: string | null, categoryId?: string | null): boolean {
   return !!(platformId && LODGING_PLATFORM_IDS.has(platformId)) ||
     !!(categoryId && LODGING_CATEGORY_IDS.has(categoryId));
+}
+
+export function isServiceContext(categoryId?: string | null): boolean {
+  return !!(categoryId && SERVICE_CATEGORY_IDS.has(categoryId));
 }
 
 export function getAllowedBusinessCategories(platformId?: string | null): string[] | null {
