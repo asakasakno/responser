@@ -23,7 +23,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
-import { ALL_PLATFORMS, getPlatformLabel } from '@/lib/platforms';
+import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
@@ -80,6 +80,20 @@ export default function Generate() {
   );
 
   const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
+
+  // 플랫폼별 허용 업종 필터
+  const allowedCategoryIds = useMemo(() => getAllowedBusinessCategories(selectedPlatform), [selectedPlatform]);
+  const filteredBusinessCategories = useMemo(
+    () => allowedCategoryIds ? BUSINESS_CATEGORIES.filter(b => allowedCategoryIds.includes(b.id)) : BUSINESS_CATEGORIES,
+    [allowedCategoryIds]
+  );
+
+  // 플랫폼 변경 시 비호환 업종이면 자동 리셋
+  useEffect(() => {
+    if (allowedCategoryIds && businessCategory !== 'none' && !allowedCategoryIds.includes(businessCategory)) {
+      setBusinessCategory('none');
+    }
+  }, [allowedCategoryIds, businessCategory]);
 
   useEffect(() => { localStorage.setItem('autoCopy', autoCopy ? '1' : '0'); }, [autoCopy]);
 
@@ -482,9 +496,12 @@ export default function Generate() {
               <SelectTrigger><SelectValue placeholder="업종 선택" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">선택 안 함</SelectItem>
-                {BUSINESS_CATEGORIES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+                {filteredBusinessCategories.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            {allowedCategoryIds && (
+              <p className="text-[11px] text-muted-foreground mt-1">선택한 플랫폼에 맞는 업종만 표시됩니다.</p>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-1.5 block">답변 톤</label>

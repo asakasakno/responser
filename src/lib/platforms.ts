@@ -75,3 +75,23 @@ export const ALL_PLATFORMS: PlatformItem[] = PLATFORM_GROUPS.flatMap(g => g.item
 export function getPlatformLabel(id: string): string {
   return ALL_PLATFORMS.find(p => p.id === id)?.label ?? id;
 }
+
+// 플랫폼별 업종 화이트리스트 (지정 안 된 플랫폼은 모든 업종 허용)
+// 배달앱은 식품만, 패션 플랫폼은 패션만, 오늘의집은 리빙 중심 등
+export const PLATFORM_BUSINESS_CATEGORIES: Record<string, string[]> = {
+  // 배달앱 → 식품
+  baemin: ['food'],
+  yogiyo: ['food'],
+  coupangeats: ['food'],
+  // 패션 전문몰
+  musinsa: ['fashion', 'beauty'],
+  ably: ['fashion', 'beauty', 'living'],
+  zigzag: ['fashion', 'beauty'],
+  // 리빙 전문몰
+  ohouse: ['living', 'pet', 'baby'],
+};
+
+export function getAllowedBusinessCategories(platformId?: string | null): string[] | null {
+  if (!platformId || platformId === 'auto' || platformId === 'other') return null;
+  return PLATFORM_BUSINESS_CATEGORIES[platformId] ?? null;
+}
