@@ -474,8 +474,140 @@ export default function Generate() {
           </div>
         </div>
 
-        <div className="mb-4">
-          <label className="text-sm font-medium text-foreground mb-1.5 block">내용 입력</label>
+        {/* 업종 + 톤 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">업종</label>
+            <Select value={businessCategory} onValueChange={(v) => setBusinessCategory(v as any)}>
+              <SelectTrigger><SelectValue placeholder="업종 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">선택 안 함</SelectItem>
+                {BUSINESS_CATEGORIES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">답변 톤</label>
+            <Select value={tone} onValueChange={(v) => setTone(v as any)}>
+              <SelectTrigger><SelectValue placeholder="톤 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">자동</SelectItem>
+                {TONES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* 리뷰 전용 */}
+        {genType === 'review' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">별점</label>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} type="button" onClick={() => setReviewRating(n === reviewRating ? 0 : n)}
+                    className="p-1" aria-label={`${n}점`}>
+                    <Star className={`w-6 h-6 ${n <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">고객 닉네임 (선택)</label>
+              <Input value={reviewNickname} onChange={e => setReviewNickname(e.target.value)}
+                placeholder="예: 김철수" maxLength={30} />
+            </div>
+          </div>
+        )}
+
+        {/* 문의 전용 */}
+        {genType === 'inquiry' && (
+          <div className="mb-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">문의 카테고리</label>
+              <div className="flex flex-wrap gap-2">
+                {INQUIRY_CATEGORIES.map(c => (
+                  <button key={c.id} type="button"
+                    onClick={() => setInquiryCategory(inquiryCategory === c.id ? 'none' : c.id)}
+                    className={`px-3 py-1.5 rounded-full border text-sm ${
+                      inquiryCategory === c.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}>{c.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">변수 (입력하면 답변에 반영)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { key: 'ship_date', ph: '발송일 (예: 11/12)' },
+                  { key: 'restock_date', ph: '재입고 예정일' },
+                  { key: 'tracking_no', ph: '운송장 번호' },
+                  { key: 'cs_phone', ph: 'CS 연락처' },
+                  { key: 'business_hours', ph: '영업시간 (예: 평일 10-18시)' },
+                ].map(s => (
+                  <Input key={s.key} placeholder={s.ph} maxLength={100}
+                    value={slots[s.key] || ''}
+                    onChange={e => setSlots(prev => ({ ...prev, [s.key]: e.target.value }))} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 클레임 전용 */}
+        {genType === 'claim' && (
+          <div className="mb-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">심각도</label>
+              <div className="flex gap-2">
+                {([
+                  { id: 'low', label: '낮음' },
+                  { id: 'normal', label: '보통' },
+                  { id: 'high', label: '높음' },
+                ] as const).map(s => (
+                  <button key={s.id} type="button" onClick={() => setClaimSeverity(s.id)}
+                    className={`flex-1 px-3 py-2 rounded-lg border text-sm ${
+                      claimSeverity === s.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground'
+                    }`}>{s.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">제안할 보상안</label>
+              <div className="flex flex-wrap gap-2">
+                {COMPENSATIONS.map(c => {
+                  const checked = compensations.includes(c.id);
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setCompensations(prev => checked ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{c.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            {detectedRisks.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">⚠️ 사장님 직접 검토 권장</p>
+                  <p className="text-muted-foreground mt-0.5">감지된 위험 키워드: {detectedRisks.join(', ')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-foreground">내용 입력</label>
+            {charLimit && (
+              <span className={`text-xs ${inputText.length > charLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {inputText.length} / {charLimit}자
+              </span>
+            )}
+          </div>
           <Textarea
             value={inputText}
             onChange={e => setInputText(e.target.value)}
@@ -484,7 +616,12 @@ export default function Generate() {
           />
         </div>
 
-        <div className="flex gap-3 mb-6">
+        <label className="flex items-center gap-2 mb-4 text-sm text-muted-foreground cursor-pointer select-none">
+          <input type="checkbox" checked={autoCopy} onChange={e => setAutoCopy(e.target.checked)} />
+          생성 후 자동 복사
+        </label>
+
+        <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
           </Button>
@@ -494,6 +631,11 @@ export default function Generate() {
               <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
             </Button>
           </div>
+          {result && (
+            <Button variant="outline" onClick={saveAsTemplate}>
+              <Save className="w-4 h-4 mr-2" /> 템플릿 저장
+            </Button>
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
@@ -501,6 +643,7 @@ export default function Generate() {
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
         )}
+
 
         {batchLoading && (
           <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
