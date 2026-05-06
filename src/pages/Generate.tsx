@@ -157,6 +157,28 @@ export default function Generate() {
     return { id: selectedPlatform, label: getPlatformLabel(selectedPlatform) };
   };
 
+  const buildExtraPayload = () => {
+    const extra: Record<string, any> = {};
+    if (tone !== 'none') extra.tone = tone;
+    if (businessCategory !== 'none') extra.business_category = businessCategory;
+    if (genType === 'review') {
+      extra.review = {
+        rating: reviewRating > 0 ? reviewRating : null,
+        nickname: reviewNickname.trim() || null,
+      };
+    }
+    if (genType === 'inquiry') {
+      extra.inquiry = {
+        category: inquiryCategory !== 'none' ? inquiryCategory : null,
+        slots,
+      };
+    }
+    if (genType === 'claim') {
+      extra.claim = { severity: claimSeverity, compensations };
+    }
+    return extra;
+  };
+
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     if (isLimitReached) {
@@ -167,14 +189,27 @@ export default function Generate() {
     setResult('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { type: genType, text: inputText, product: getProductContext(), energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload() },
+        body: {
+          type: genType, text: inputText, product: getProductContext(),
+          energy_cost: energyCost, style: getStylePayload(), platform: getPlatformPayload(),
+          ...buildExtraPayload(),
+        },
       });
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
       setResult(data.response);
       setEnergyAnim({ amount: energyCost, type: 'spend' });
       await refreshEnergy();
-      
+
+      // Persist business category to profile (best-effort)
+      if (businessCategory !== 'none') {
+        supabase.from('profiles').update({ business_category: businessCategory }).eq('user_id', user!.id);
+      }
+
+      if (autoCopy) {
+        try { await navigator.clipboard.writeText(data.response); toast({ title: '답변 자동 복사됨' }); } catch {}
+      }
+
       await supabase.from('generations').insert({
         user_id: user!.id,
         type: genType,
@@ -188,6 +223,18 @@ export default function Generate() {
       setLoading(false);
     }
   };
+
+  const saveAsTemplate = async () => {
+    if (!result.trim()) return;
+    const title = window.prompt('템플릿 제목을 입력하세요', `${genType} 템플릿`);
+    if (!title || !title.trim()) return;
+    const { error } = await supabase.from('user_templates').insert({
+      user_id: user!.id, title: title.trim().slice(0, 100), type: genType, content: result,
+    });
+    if (error) toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
+    else toast({ title: '템플릿으로 저장됨' });
+  };
+
 
   const readFileAsBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
