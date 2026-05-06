@@ -60,6 +60,18 @@ export const PLATFORM_GROUPS: PlatformGroup[] = [
     ],
   },
   {
+    id: 'lodging',
+    label: '숙박/예약/지도',
+    items: [
+      { id: 'yanolja', label: '야놀자' },
+      { id: 'yeogieotte', label: '여기어때' },
+      { id: 'naverbooking', label: '네이버예약' },
+      { id: 'kakaomap', label: '카카오맵' },
+      { id: 'googlemaps', label: '구글지도' },
+      { id: 'tripadvisor', label: '트립어드바이저' },
+    ],
+  },
+  {
     id: 'etc',
     label: '기타',
     items: [
@@ -88,9 +100,29 @@ export const PLATFORM_BUSINESS_CATEGORIES: Record<string, string[]> = {
   zigzag: ['fashion', 'beauty'],
   // 리빙 전문몰
   ohouse: ['living', 'pet', 'baby'],
-  // NOL 인터파크 → 티켓/숙박/항공권 위주 (별도 업종 없으므로 기타)
-  interpark: ['other'],
+  // NOL 인터파크 → 티켓/숙박/항공권 위주
+  interpark: ['other', 'hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other'],
+  // 숙박/예약/지도 플랫폼 → 숙박 업종
+  yanolja: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other'],
+  yeogieotte: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other'],
+  naverbooking: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other', 'food', 'beauty', 'other'],
+  kakaomap: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other', 'food', 'beauty', 'other'],
+  googlemaps: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other', 'food', 'beauty', 'other'],
+  tripadvisor: ['hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other', 'food', 'other'],
 };
+
+export const LODGING_PLATFORM_IDS = new Set([
+  'yanolja', 'yeogieotte', 'naverbooking', 'kakaomap', 'googlemaps', 'tripadvisor',
+]);
+
+export const LODGING_CATEGORY_IDS = new Set([
+  'hotel', 'motel', 'pension', 'poolvilla', 'guesthouse', 'glamping', 'camping', 'lodging_other',
+]);
+
+export function isLodgingContext(platformId?: string | null, categoryId?: string | null): boolean {
+  return !!(platformId && LODGING_PLATFORM_IDS.has(platformId)) ||
+    !!(categoryId && LODGING_CATEGORY_IDS.has(categoryId));
+}
 
 export function getAllowedBusinessCategories(platformId?: string | null): string[] | null {
   if (!platformId || platformId === 'auto' || platformId === 'other') return null;

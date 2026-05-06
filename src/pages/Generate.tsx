@@ -9,7 +9,9 @@ import {
   BUSINESS_CATEGORIES, type BusinessCategory,
   INQUIRY_CATEGORIES, type InquiryCategory,
   COMPENSATIONS, type Compensation,
-  CLAIM_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+  LODGING_ISSUES, type LodgingIssue,
+  LODGING_COMPENSATIONS, type LodgingCompensation,
+  CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +25,7 @@ import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
-import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories } from '@/lib/platforms';
+import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext } from '@/lib/platforms';
 
 type GenType = 'review' | 'inquiry' | 'claim';
 
@@ -68,16 +70,29 @@ export default function Generate() {
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [claimSeverity, setClaimSeverity] = useState<'low' | 'normal' | 'high'>('normal');
   const [compensations, setCompensations] = useState<Compensation[]>([]);
+  // 숙박 전용 입력
+  const [lodgingRoom, setLodgingRoom] = useState('');
+  const [lodgingVisitDate, setLodgingVisitDate] = useState('');
+  const [lodgingIssues, setLodgingIssues] = useState<LodgingIssue[]>([]);
+  const [lodgingRevisit, setLodgingRevisit] = useState(false);
+  const [lodgingComps, setLodgingComps] = useState<LodgingCompensation[]>([]);
   const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
 
   const energyCost = ENERGY_COSTS[genType] || 1;
   const isLimitReached = energyBalance < energyCost;
 
-  // Risk keyword detection (claim only)
-  const detectedRisks = useMemo(
-    () => genType === 'claim' ? CLAIM_RISK_KEYWORDS.filter(k => inputText.includes(k)) : [],
-    [inputText, genType]
+  // Risk keyword detection
+  const isLodging = useMemo(
+    () => isLodgingContext(selectedPlatform, businessCategory === 'none' ? null : businessCategory),
+    [selectedPlatform, businessCategory]
   );
+  const detectedRisks = useMemo(() => {
+    const pool = isLodging
+      ? Array.from(new Set([...CLAIM_RISK_KEYWORDS, ...LODGING_RISK_KEYWORDS]))
+      : CLAIM_RISK_KEYWORDS;
+    if (!isLodging && genType !== 'claim') return [];
+    return pool.filter(k => inputText.includes(k));
+  }, [inputText, genType, isLodging]);
 
   const charLimit = selectedPlatform && PLATFORM_CHAR_LIMITS[selectedPlatform];
 
@@ -189,6 +204,15 @@ export default function Generate() {
     }
     if (genType === 'claim') {
       extra.claim = { severity: claimSeverity, compensations };
+    }
+    if (isLodging) {
+      extra.lodging = {
+        room: lodgingRoom.trim() || null,
+        visit_date: lodgingVisitDate.trim() || null,
+        issues: lodgingIssues,
+        revisit: lodgingRevisit,
+        compensations: lodgingComps,
+      };
     }
     return extra;
   };
@@ -599,6 +623,76 @@ export default function Generate() {
           </div>
         )}
 
+        {/* 숙박 전용 입력 */}
+        {isLodging && (
+          <div className="mb-4 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <p className="text-xs font-semibold text-primary">숙박/예약 전용 옵션</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">객실명/객실 유형 (선택)</label>
+                <Input
+                  value={lodgingRoom}
+                  onChange={e => setLodgingRoom(e.target.value)}
+                  placeholder="예: 디럭스 더블, 오션뷰"
+                  maxLength={60}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">숙박일/방문일 (선택)</label>
+                <Input
+                  value={lodgingVisitDate}
+                  onChange={e => setLodgingVisitDate(e.target.value)}
+                  placeholder="예: 2026-04-12"
+                  maxLength={30}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">문제 유형 (복수 선택)</label>
+              <div className="flex flex-wrap gap-2">
+                {LODGING_ISSUES.map(i => {
+                  const checked = lodgingIssues.includes(i.id);
+                  return (
+                    <button key={i.id} type="button"
+                      onClick={() => setLodgingIssues(prev => checked ? prev.filter(x => x !== i.id) : [...prev, i.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{i.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">보상/안내 (복수 선택)</label>
+              <div className="flex flex-wrap gap-2">
+                {LODGING_COMPENSATIONS.map(c => {
+                  const checked = lodgingComps.includes(c.id);
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setLodgingComps(prev => checked ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${
+                        checked ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}>{c.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
+              <input type="checkbox" checked={lodgingRevisit} onChange={e => setLodgingRevisit(e.target.checked)} />
+              재방문 유도 문구 포함
+            </label>
+            {genType !== 'claim' && detectedRisks.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">⚠️ 사장님 직접 검토 권장</p>
+                  <p className="text-muted-foreground mt-0.5">감지된 위험 키워드: {detectedRisks.join(', ')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-2">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-foreground">내용 입력</label>
@@ -643,8 +737,6 @@ export default function Generate() {
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
         )}
-
-
         {batchLoading && (
           <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
             <div className="flex items-center gap-3 mb-3">

@@ -29,7 +29,10 @@ export const RESPONSE_STYLES = TONES;
 
 export type BusinessCategory =
   | 'fashion' | 'food' | 'beauty' | 'electronics'
-  | 'living' | 'pet' | 'baby' | 'digital' | 'other';
+  | 'living' | 'pet' | 'baby' | 'digital'
+  | 'hotel' | 'motel' | 'pension' | 'poolvilla'
+  | 'guesthouse' | 'glamping' | 'camping' | 'lodging_other'
+  | 'other';
 export const BUSINESS_CATEGORIES: { id: BusinessCategory; label: string }[] = [
   { id: 'fashion', label: '패션' },
   { id: 'food', label: '식품' },
@@ -39,6 +42,14 @@ export const BUSINESS_CATEGORIES: { id: BusinessCategory; label: string }[] = [
   { id: 'pet', label: '펫' },
   { id: 'baby', label: '유아동' },
   { id: 'digital', label: '디지털콘텐츠' },
+  { id: 'hotel', label: '호텔' },
+  { id: 'motel', label: '모텔' },
+  { id: 'pension', label: '펜션' },
+  { id: 'poolvilla', label: '풀빌라' },
+  { id: 'guesthouse', label: '게스트하우스' },
+  { id: 'glamping', label: '글램핑' },
+  { id: 'camping', label: '캠핑장' },
+  { id: 'lodging_other', label: '숙박 기타' },
   { id: 'other', label: '기타' },
 ];
 
@@ -62,7 +73,42 @@ export const COMPENSATIONS: { id: Compensation; label: string }[] = [
   { id: 'none', label: '보상 없음' },
 ];
 
+// 숙박 리뷰 전용 문제 유형
+export type LodgingIssue =
+  | 'cleanliness' | 'noise' | 'smell' | 'bedding' | 'parking'
+  | 'staff' | 'reservation' | 'refund' | 'facility_old'
+  | 'hvac' | 'pest_mold' | 'photo_mismatch' | 'other';
+export const LODGING_ISSUES: { id: LodgingIssue; label: string }[] = [
+  { id: 'cleanliness', label: '청결' },
+  { id: 'noise', label: '소음' },
+  { id: 'smell', label: '냄새' },
+  { id: 'bedding', label: '침구' },
+  { id: 'parking', label: '주차' },
+  { id: 'staff', label: '직원 응대' },
+  { id: 'reservation', label: '예약 착오' },
+  { id: 'refund', label: '환불' },
+  { id: 'facility_old', label: '시설 노후' },
+  { id: 'hvac', label: '온수/난방/에어컨' },
+  { id: 'pest_mold', label: '벌레/곰팡이' },
+  { id: 'photo_mismatch', label: '사진과 다름' },
+  { id: 'other', label: '기타' },
+];
+
+// 숙박 보상/안내 옵션
+export type LodgingCompensation = 'revisit_discount' | 'room_inspection' | 'staff_training' | 'refund_guide' | 'none';
+export const LODGING_COMPENSATIONS: { id: LodgingCompensation; label: string }[] = [
+  { id: 'revisit_discount', label: '재방문 할인' },
+  { id: 'room_inspection', label: '객실 점검' },
+  { id: 'staff_training', label: '직원 교육' },
+  { id: 'refund_guide', label: '환불 안내' },
+  { id: 'none', label: '별도 보상 없음' },
+];
+
 export const CLAIM_RISK_KEYWORDS = ['신고', '고소', '공정위', '소비자원', '별점테러', '환불 안 하면', '환불안하면'];
+export const LODGING_RISK_KEYWORDS = [
+  '환불', '신고', '소비자원', '공정위', '고소', '사진 올리겠다', '위생', '벌레', '곰팡이',
+  '악취', '도난', '몰카', '성추행', '경찰', '보건소', '최악', '사기',
+];
 export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
   smartstore: 1000, coupang: 500, '11st': 500, gmarket: 500, auction: 500, interpark: 500,
 };
