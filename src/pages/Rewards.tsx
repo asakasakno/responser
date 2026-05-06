@@ -192,7 +192,7 @@ export default function Rewards() {
       setClaiming(null);
     }
   };
-
+  const copyReferralLink = () => {
     const link = `${window.location.origin}/auth?mode=signup&ref=${referralCode}`;
     navigator.clipboard.writeText(link);
     toast({ title: '추천 링크가 복사되었습니다!' });
