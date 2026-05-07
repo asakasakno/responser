@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, MessageCircle, ArrowLeft, Mail, Phone } from 'lucide-react';
 import SiteFooter from '@/components/SiteFooter';
 
-const KAKAO_URL = 'http://pf.kakao.com/_vXYTX/chat';
+const KAKAO_URL = 'http://pf.kakao.com/_vXYTX';
 
 const inquirySchema = z.object({
   name: z.string().trim().min(1, '이름을 입력해주세요').max(100),

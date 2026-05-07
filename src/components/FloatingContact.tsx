@@ -1,6 +1,6 @@
 import { MessageCircle } from 'lucide-react';
 
-const KAKAO_WEB_URL = 'http://pf.kakao.com/_vXYTX/chat';
+const KAKAO_WEB_URL = 'http://pf.kakao.com/_vXYTX';
 // 카카오톡 채널 홈 ID (URL의 _vXYTX 부분)
 const KAKAO_CHANNEL_ID = '_vXYTX';
 
