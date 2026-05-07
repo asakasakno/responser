@@ -12,15 +12,65 @@ export interface Profile {
 }
 
 // 통합된 답변 톤 (기존 RESPONSE_STYLES와 TONE을 하나로 병합)
-export type Tone = 'thanks' | 'apology' | 'simple' | 'principle' | 'friendly' | 'firm';
+export type Tone =
+  | 'thanks' | 'apology' | 'simple' | 'principle' | 'friendly' | 'firm'
+  // 시그니처 5종 (업종 운영 톤 차별화)
+  | 'sig_kind' | 'sig_premium' | 'sig_mz' | 'sig_pro' | 'sig_loyalty';
 
 export const TONES: { id: Tone; label: string; description: string }[] = [
-  { id: 'thanks', label: '감사형', description: '진심 어린 감사와 따뜻한 톤' },
-  { id: 'apology', label: '사과형', description: '정중한 사과와 책임 있는 톤' },
-  { id: 'simple', label: '간단형', description: '짧고 명료한 핵심 답변' },
-  { id: 'principle', label: '원칙형', description: '정책/원칙을 분명히 안내' },
-  { id: 'friendly', label: '친근형', description: '친근하고 다정한 말투' },
-  { id: 'firm', label: '단호형', description: '단호하지만 무례하지 않게' },
+  { id: 'sig_kind',    label: '친절형 ✨',     description: '따뜻하고 정중한 사장님 말투' },
+  { id: 'sig_premium', label: '고급형 ✨',     description: '품격 있고 격조 높은 응대' },
+  { id: 'sig_mz',      label: 'MZ형 ✨',       description: '캐주얼하고 친구 같은 말투' },
+  { id: 'sig_pro',     label: '전문형 ✨',     description: '신뢰감 있는 전문가 톤' },
+  { id: 'sig_loyalty', label: '단골유도형 ✨', description: '재방문/단골을 자연스럽게 유도' },
+  { id: 'thanks',    label: '감사형',  description: '진심 어린 감사와 따뜻한 톤' },
+  { id: 'apology',   label: '사과형',  description: '정중한 사과와 책임 있는 톤' },
+  { id: 'simple',    label: '간단형',  description: '짧고 명료한 핵심 답변' },
+  { id: 'principle', label: '원칙형',  description: '정책/원칙을 분명히 안내' },
+  { id: 'friendly',  label: '친근형',  description: '친근하고 다정한 말투' },
+  { id: 'firm',      label: '단호형',  description: '단호하지만 무례하지 않게' },
+];
+
+// 응대 모드: 일반 vs 악성리뷰 전용
+export type ResponseMode = 'normal' | 'aggressive_review';
+export const RESPONSE_MODES: { id: ResponseMode; label: string; description: string }[] = [
+  { id: 'normal', label: '일반 응대', description: '리뷰/문의/클레임 표준 응대' },
+  { id: 'aggressive_review', label: '악성 리뷰 대응', description: '감정 분리, 사실 중심, 단호하지만 차분' },
+];
+
+// CTA 종류 (사장님이 등록한 예약/문의/쿠폰 등 링크)
+export type CtaKind = 'reserve' | 'chat' | 'coupon' | 'call' | 'custom';
+export const CTA_KINDS: { id: CtaKind; label: string }[] = [
+  { id: 'reserve', label: '예약하기' },
+  { id: 'chat',    label: '문의하기' },
+  { id: 'coupon',  label: '쿠폰/이벤트' },
+  { id: 'call',    label: '전화 연결' },
+  { id: 'custom',  label: '기타' },
+];
+
+export interface CtaLink {
+  id: string;
+  user_id: string;
+  kind: CtaKind;
+  label: string;
+  url: string;
+  is_default: boolean;
+}
+
+export interface VoiceSample {
+  id: string;
+  user_id: string;
+  content: string;
+  category: string | null;
+}
+
+// 클레임 가드레일: 답변에 절대 들어가면 안 되는 표현 (정규식 소스)
+export const CLAIM_GUARDRAIL_PATTERNS: { id: string; label: string; pattern: string }[] = [
+  { id: 'full_blame',   label: '전적 책임 인정',   pattern: '100\\s*%\\s*(?:저희|저희가|당사|저)\\s*잘못' },
+  { id: 'refund_promise', label: '확정적 환불 약속', pattern: '(?:전액|즉시)\\s*환불\\s*(?:해\\s*드리겠|약속|보장|확정)' },
+  { id: 'cure_claim',   label: '의료/완치 표현',   pattern: '(?:완치|치료\\s*효과|의학적\\s*효능)\\s*(?:보장|약속|확실)' },
+  { id: 'legal_admit',  label: '법적 책임 인정',   pattern: '(?:법적\\s*책임|불법|형사\\s*책임)\\s*(?:인정|있습니다)' },
+  { id: 'absolute',     label: '절대 표현',       pattern: '절대\\s*(?:없습니다|없을\\s*것|불가능)' },
 ];
 
 // 하위 호환을 위해 ResponseStyle/RESPONSE_STYLES alias 유지 (사용처 제거됨)
