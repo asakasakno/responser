@@ -262,6 +262,69 @@ export type Database = {
         }
         Relationships: []
       }
+      cs_faq_entries: {
+        Row: {
+          answer: string
+          category: string | null
+          created_at: string
+          id: string
+          keywords: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          keywords?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          keywords?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cta_links: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          kind: string
+          label: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          kind: string
+          label: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          kind?: string
+          label?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -899,6 +962,30 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_voice_samples: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
           user_id?: string
         }
         Relationships: []
