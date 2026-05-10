@@ -1000,6 +1000,53 @@ Deno.serve(async (req) => {
         return jsonResponse({ logs: (rows || []).map((r: any) => ({ ...r, actor_email: r.user_id ? (m.get(r.user_id) || null) : null })) }, corsHeaders);
       }
 
+      // ========== BULK AUDIT (start / complete summary) ==========
+      case "bulk_audit": {
+        const {
+          phase, bulk_id, bulk_action, target_user_ids,
+          reason, success_count, fail_count, total,
+        } = params as {
+          phase?: 'start' | 'complete';
+          bulk_id?: string;
+          bulk_action?: string;
+          target_user_ids?: string[];
+          reason?: string | null;
+          success_count?: number;
+          fail_count?: number;
+          total?: number;
+        };
+        if (!phase || (phase !== 'start' && phase !== 'complete')) {
+          return jsonResponse({ error: "phase 누락" }, corsHeaders, 400);
+        }
+        if (!bulk_id || typeof bulk_id !== 'string' || bulk_id.length > 64) {
+          return jsonResponse({ error: "bulk_id 누락" }, corsHeaders, 400);
+        }
+        if (!bulk_action || typeof bulk_action !== 'string' || bulk_action.length > 64) {
+          return jsonResponse({ error: "bulk_action 누락" }, corsHeaders, 400);
+        }
+        const ids = Array.isArray(target_user_ids) ? target_user_ids.slice(0, 500).filter(x => typeof x === 'string') : [];
+        const sev = phase === 'complete' && (fail_count ?? 0) > 0 ? 'warning' : 'info';
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: phase === 'start' ? `bulk_${bulk_action}_start` : `bulk_${bulk_action}_complete`,
+          severity: sev,
+          ip_address: _ip,
+          details: {
+            bulk_id,
+            bulk_action,
+            target_count: ids.length || total || 0,
+            target_user_ids: ids,
+            reason: reason ?? null,
+            ...(phase === 'complete' ? {
+              success_count: success_count ?? 0,
+              fail_count: fail_count ?? 0,
+              total: total ?? ids.length,
+            } : {}),
+          },
+        });
+        return jsonResponse({ success: true }, corsHeaders);
+      }
+
       default:
         return jsonResponse({ error: "잘못된 요청입니다." }, corsHeaders, 400);
     }
