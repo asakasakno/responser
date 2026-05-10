@@ -181,13 +181,15 @@ Deno.serve(async (req) => {
 
       const kakaoId = String(me.id);
       const acc = me.kakao_account;
-      // Only treat as a real email when user actually agreed and Kakao verified it.
+      // STRICT: only treat as a real email when Kakao explicitly confirms BOTH
+      // is_email_verified === true AND is_email_valid === true. This prevents
+      // unverified emails from auto-linking to existing accounts (esp. admins).
       const kakaoEmail = (
         acc?.email &&
         acc.email_needs_agreement !== true &&
-        acc.has_email !== false &&
-        acc.is_email_valid !== false &&
-        acc.is_email_verified !== false
+        acc.has_email === true &&
+        acc.is_email_valid === true &&
+        acc.is_email_verified === true
       ) ? acc.email.toLowerCase() : null;
       const nickname = acc?.profile?.nickname || me.properties?.nickname || '';
 
