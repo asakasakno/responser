@@ -22,6 +22,7 @@ const STEP_UP_EXEMPT_ACTIONS = new Set([
   "refund_failures_list", "anomalies_list", "audit_log_list",
   "toggle_payment", "force_logout",
   "bulk_audit",
+  "beta_applications_list",
 ]);
 
 // 사유 필수 민감 액션
@@ -1045,6 +1046,54 @@ Deno.serve(async (req) => {
           },
         });
         return jsonResponse({ success: true }, corsHeaders);
+      }
+
+      // ========== BETA APPLICATIONS LIST ==========
+      case "beta_applications_list": {
+        const { status, limit = 200 } = params as any;
+        let q = adminClient.from("beta_applications")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(Math.min(Number(limit) || 200, 1000));
+        if (status && status !== "all") q = q.eq("status", status);
+        const { data, error } = await q;
+        if (error) return jsonResponse({ error: "조회 실패" }, corsHeaders, 500);
+        return jsonResponse({ applications: data ?? [] }, corsHeaders);
+      }
+
+      // ========== BETA APPLICATION REPROCESS ==========
+      case "beta_application_reprocess": {
+        const { application_id } = params as { application_id?: string };
+        if (!application_id) return jsonResponse({ error: "application_id 누락" }, corsHeaders, 400);
+        const { data: app, error: fetchErr } = await adminClient
+          .from("beta_applications").select("*").eq("id", application_id).maybeSingle();
+        if (fetchErr || !app) return jsonResponse({ error: "신청 정보를 찾을 수 없습니다." }, corsHeaders, 404);
+
+        // Mark old row reprocessed
+        await adminClient.from("beta_applications").update({
+          status: "reprocessed", error_message: "reprocess_initiated", updated_at: new Date().toISOString(),
+        }).eq("id", application_id);
+
+        // Call import function locally with same payload
+        const SECRET = Deno.env.get("BETA_IMPORT_SECRET");
+        const url = `${supabaseUrl}/functions/v1/import-beta-application`;
+        const payload = {
+          email: app.email, business_name: app.business_name, industry: app.industry,
+          platforms: app.platforms, needed_features: app.needed_features,
+          pain_point: app.pain_point, consent: app.consent,
+          ...(app.raw_payload ?? {}),
+        };
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-beta-import-secret": SECRET ?? "" },
+          body: JSON.stringify(payload),
+        });
+        const out = await resp.json().catch(() => ({}));
+        await adminClient.from("audit_logs").insert({
+          user_id: userId, action: "beta_pro_reprocess", severity: "info",
+          details: { application_id, email: app.email, result: out },
+        });
+        return jsonResponse({ success: true, result: out }, corsHeaders);
       }
 
       default:

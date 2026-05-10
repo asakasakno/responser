@@ -40,6 +40,7 @@ const Contact = lazy(() => import("./pages/Contact"));
 const AdminInquiries = lazy(() => import("./pages/AdminInquiries"));
 const AdminAnomaliesPage = lazy(() => import("./pages/AdminAnomalies"));
 const AdminAuditPage = lazy(() => import("./pages/AdminAudit"));
+const AdminBetaApplicationsPage = lazy(() => import("./pages/AdminBetaApplications"));
 import FloatingContact from "./components/FloatingContact";
 
 const queryClient = new QueryClient();
@@ -97,6 +98,7 @@ const App = () => (
               <Route path="/admin/inquiries" element={<ProtectedRoute><AdminInquiries /></ProtectedRoute>} />
               <Route path="/admin/anomalies" element={<ProtectedRoute><AdminAnomaliesPage /></ProtectedRoute>} />
               <Route path="/admin/audit" element={<ProtectedRoute><AdminAuditPage /></ProtectedRoute>} />
+              <Route path="/admin/beta-applications" element={<ProtectedRoute><AdminBetaApplicationsPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <FloatingContact />

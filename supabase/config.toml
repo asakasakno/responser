@@ -13,3 +13,5 @@ project_id = "qbvlgzmivdycuocvcoxy"
     verify_jwt = false
   [functions.identity-links]
     verify_jwt = false
+  [functions.import-beta-application]
+    verify_jwt = false
