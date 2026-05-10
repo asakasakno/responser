@@ -21,6 +21,7 @@ const STEP_UP_EXEMPT_ACTIONS = new Set([
   "payments_list", "energy_ledger", "ai_usage_log",
   "refund_failures_list", "anomalies_list", "audit_log_list",
   "toggle_payment", "force_logout",
+  "bulk_audit",
 ]);
 
 // 사유 필수 민감 액션
