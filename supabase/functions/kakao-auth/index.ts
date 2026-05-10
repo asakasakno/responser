@@ -48,17 +48,21 @@ function pickSiteOrigin(req: Request, hint?: string | null): string {
   return 'https://responser.lovable.app';
 }
 
-function htmlRedirect(url: string, message = '이동 중...'): Response {
-  const safe = url.replace(/"/g, '&quot;');
-  const body = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${message}</title>
-<meta http-equiv="refresh" content="0;url=${safe}"></head>
-<body><script>location.replace("${safe}");</script><p>${message}</p></body></html>`;
-  return new Response(body, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+function safeRedirect(url: string): Response {
+  // Use 302 redirect with Location header. Avoid Response.redirect because some
+  // gateways/proxies may strip or not honor it the same way as a manual response.
+  return new Response(null, {
+    status: 302,
+    headers: {
+      'Location': url,
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/html; charset=utf-8',
+    },
+  });
 }
 
 function errorRedirect(siteOrigin: string, msg: string): Response {
-  const url = `${siteOrigin}/auth?kakao_error=${encodeURIComponent(msg)}`;
-  return htmlRedirect(url, '오류가 발생했어요. 로그인 화면으로 돌아갑니다.');
+  return safeRedirect(`${siteOrigin}/auth?kakao_error=${encodeURIComponent(msg)}`);
 }
 
 Deno.serve(async (req) => {
