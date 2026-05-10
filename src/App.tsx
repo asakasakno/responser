@@ -74,6 +74,7 @@ const App = () => (
               <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
               <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/response-settings" element={<ProtectedRoute><ResponseSettings /></ProtectedRoute>} />
               <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
               {/* Admin routes */}
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
