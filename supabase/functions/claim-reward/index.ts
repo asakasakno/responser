@@ -75,7 +75,7 @@ serve(async (req) => {
     const ok = await def.check({ admin, userId });
     if (!ok) return jsonRes({ error: "조건을 충족하지 않습니다." }, 400);
 
-    const { data: result } = await admin.rpc('claim_reward', {
+    const { data: result } = await userClient.rpc('claim_reward', {
       _reward_key: reward_key,
       _amount: def.amount,
       _description: def.description,
