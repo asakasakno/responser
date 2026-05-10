@@ -921,6 +921,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_identity_links: {
+        Row: {
+          email_verified: boolean
+          id: string
+          is_active: boolean
+          linked_at: string
+          provider: string
+          provider_email: string | null
+          provider_user_id: string | null
+          unlinked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          email_verified?: boolean
+          id?: string
+          is_active?: boolean
+          linked_at?: string
+          provider: string
+          provider_email?: string | null
+          provider_user_id?: string | null
+          unlinked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          email_verified?: boolean
+          id?: string
+          is_active?: boolean
+          linked_at?: string
+          provider?: string
+          provider_email?: string | null
+          provider_user_id?: string | null
+          unlinked_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
