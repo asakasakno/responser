@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   ENERGY_COSTS,
   TONES, type Tone,
+  RESPONSE_MODES, type ResponseMode,
   BUSINESS_CATEGORIES, type BusinessCategory,
   BUSINESS_GROUPS, type BusinessGroup,
   INQUIRY_CATEGORIES, type InquiryCategory,
@@ -15,6 +16,7 @@ import {
   SERVICE_ISSUES, type ServiceIssue,
   SERVICE_COMPENSATIONS, type ServiceCompensation,
   CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, SERVICE_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+  type CtaLink,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star } from 'lucide-react';
+import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star, ShieldCheck, Sparkles, Link2 } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
@@ -91,6 +93,14 @@ export default function Generate() {
   const [serviceComps, setServiceComps] = useState<ServiceCompensation[]>([]);
   const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
 
+  // 운영 시스템: 응대 모드, 사장님 말투, CTA
+  const [mode, setMode] = useState<ResponseMode>('normal');
+  const [useVoice, setUseVoice] = useState(false);
+  const [voiceCount, setVoiceCount] = useState(0);
+  const [ctaLinks, setCtaLinks] = useState<CtaLink[]>([]);
+  const [selectedCta, setSelectedCta] = useState<string>('none');
+  const [guardrail, setGuardrail] = useState<{ ok: boolean; retried: boolean; violations: string[] } | null>(null);
+
   const energyCost = ENERGY_COSTS[genType] || 1;
   const isLimitReached = energyBalance < energyCost;
 
@@ -150,6 +160,16 @@ export default function Generate() {
         if (list.length > 0) setSelectedPlatform(list[0]);
         const bc = (data as any)?.business_category;
         if (bc) setBusinessCategory(bc);
+      });
+      supabase.from('user_voice_samples').select('id', { count: 'exact', head: true }).eq('user_id', user.id).then(({ count }) => {
+        setVoiceCount(count || 0);
+      });
+      supabase.from('cta_links').select('id, user_id, kind, label, url, is_default').eq('user_id', user.id).then(({ data }) => {
+        if (data) {
+          setCtaLinks(data as any);
+          const def = (data as any[]).find((d) => d.is_default);
+          if (def) setSelectedCta(def.id);
+        }
       });
     }
   }, [user]);
@@ -252,6 +272,9 @@ export default function Generate() {
         compensations: serviceComps,
       };
     }
+    if (mode !== 'normal') extra.mode = mode;
+    if (useVoice && plan !== 'free' && voiceCount > 0) extra.use_voice = true;
+    if (selectedCta !== 'none' && plan !== 'free') extra.cta_id = selectedCta;
     return extra;
   };
 
@@ -274,6 +297,7 @@ export default function Generate() {
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
       setResult(data.response);
+      setGuardrail(data.guardrail || null);
       setEnergyAnim({ amount: energyCost, type: 'spend' });
       await refreshEnergy();
 
@@ -570,6 +594,50 @@ export default function Generate() {
           </div>
         </div>
 
+        {/* 운영 옵션: 응대 모드 / 사장님 말투 / CTA */}
+        <div className="mb-4 rounded-xl border border-border p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">운영 옵션</span>
+            {plan === 'free' && <span className="text-[11px] text-muted-foreground">(말투/CTA는 유료 플랜)</span>}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">응대 모드</label>
+              <Select value={mode} onValueChange={(v) => setMode(v as ResponseMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RESPONSE_MODES.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">CTA 링크</label>
+              <Select value={selectedCta} onValueChange={setSelectedCta} disabled={plan === 'free'}>
+                <SelectTrigger><SelectValue placeholder="없음" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">사용 안 함</SelectItem>
+                  {ctaLinks.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {ctaLinks.length === 0 && plan !== 'free' && (
+                <Link to="/response-settings" className="text-[11px] text-primary hover:underline mt-1 inline-block">CTA 등록 →</Link>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">사장님 말투</label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer h-10">
+                <input type="checkbox" checked={useVoice} disabled={plan === 'free' || voiceCount === 0}
+                  onChange={e => setUseVoice(e.target.checked)} />
+                <span className="text-foreground">샘플 적용 ({voiceCount}/5)</span>
+              </label>
+              {voiceCount === 0 && plan !== 'free' && (
+                <Link to="/response-settings" className="text-[11px] text-primary hover:underline">샘플 등록 →</Link>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* 리뷰 전용 */}
         {genType === 'review' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -857,6 +925,18 @@ export default function Generate() {
 
         <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
 
+        {result && guardrail && (
+          <div className={`mb-3 rounded-lg border p-3 flex items-start gap-2 text-sm ${guardrail.ok ? 'border-green-500/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/10'}`}>
+            {guardrail.ok ? <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5" /> : <ShieldAlert className="w-4 h-4 text-destructive mt-0.5" />}
+            <div className="flex-1">
+              {guardrail.ok ? (
+                <span className="text-foreground">위험 표현 없음 {guardrail.retried && <span className="text-muted-foreground text-xs">(자동 재생성 1회)</span>}</span>
+              ) : (
+                <span className="text-foreground font-medium">⚠️ 검토 필요: {guardrail.violations.join(', ')} 표현이 포함되어 있어요. 직접 확인 후 사용해 주세요.</span>
+              )}
+            </div>
+          </div>
+        )}
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
         )}

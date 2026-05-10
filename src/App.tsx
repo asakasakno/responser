@@ -16,6 +16,7 @@ const History = lazy(() => import("./pages/History"));
 const Templates = lazy(() => import("./pages/Templates"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const ResponseSettings = lazy(() => import("./pages/ResponseSettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsers"));

@@ -38,7 +38,7 @@ const TYPE_INSTRUCTIONS: Record<string, string> = {
   ].join("\n"),
 };
 
-// 통합된 답변 톤 가이드 (구 STYLE_GUIDES + TONE_GUIDES 병합)
+// 통합된 답변 톤 가이드 (구 STYLE_GUIDES + TONE_GUIDES 병합 + 시그니처 5종)
 const TONE_GUIDES: Record<string, string> = {
   thanks: "감사 표현을 따뜻하고 적극적으로 강화하세요. 긍정적이고 따뜻한 말투를 유지하세요.",
   apology: "사과와 책임 인정을 우선하고 차분하고 정중한 톤을 유지하세요.",
@@ -46,7 +46,45 @@ const TONE_GUIDES: Record<string, string> = {
   principle: "정책과 원칙을 분명하고 명확히 안내하되 차갑지 않게 설명하세요.",
   friendly: "친근하고 다정한 말투로, 이모지는 1개 이내로 자연스럽게 사용하세요.",
   firm: "정책에 따라 단호하지만 무례하지 않게 명확히 안내하세요.",
+  // 시그니처 5종
+  sig_kind:    "따뜻하고 정중한 사장님 말투. '~드립니다', '~주셔서 감사합니다' 같은 격식 표현을 사용하되 딱딱하지 않게.",
+  sig_premium: "품격 있고 격조 높은 응대. 과한 이모지/감탄사 금지. 간결하고 우아한 문장과 정중한 경어 사용.",
+  sig_mz:      "캐주얼하고 친구 같은 말투. 자연스러운 구어체, 가벼운 이모지 1~2개 허용. 단, 비속어/반말은 금지.",
+  sig_pro:     "신뢰감 있는 전문가 톤. 사실 중심, 절차/근거를 명확히 제시. 감정 표현은 절제.",
+  sig_loyalty: "재방문/단골을 자연스럽게 유도. 답변 마지막에 다음 방문에 대한 가벼운 약속/혜택을 1줄 포함.",
 };
+
+// 응대 모드 가이드
+const MODE_GUIDES: Record<string, string> = {
+  aggressive_review: [
+    "[악성 리뷰 대응 모드]",
+    "- 감정에 휘둘리지 말고 사실 중심으로 차분히 응대합니다.",
+    "- 불필요한 사과를 반복하지 말고, 인정할 부분만 짧게 인정합니다.",
+    "- 사실관계가 다르면 정중하게 '확인된 바와 다르다'는 점을 분명히 표현합니다.",
+    "- 고객을 비난하거나 자극하는 표현은 절대 사용하지 않습니다.",
+    "- 보상/환불을 단정적으로 약속하지 않습니다. '확인 후 안내' 형태로 표현합니다.",
+    "- 답변은 4~6문장 이내로 간결하게.",
+  ].join("\n"),
+};
+
+// 클레임 가드레일: 답변에 절대 들어가면 안 되는 표현
+const GUARDRAIL_PATTERNS: { id: string; label: string; regex: RegExp }[] = [
+  { id: "full_blame",     label: "전적 책임 인정",   regex: /100\s*%\s*(?:저희|저희가|당사|저)\s*잘못/ },
+  { id: "refund_promise", label: "확정적 환불 약속", regex: /(?:전액|즉시)\s*환불\s*(?:해\s*드리겠|약속|보장|확정)/ },
+  { id: "cure_claim",     label: "의료/완치 표현",   regex: /(?:완치|치료\s*효과|의학적\s*효능)\s*(?:보장|약속|확실)/ },
+  { id: "legal_admit",    label: "법적 책임 인정",   regex: /(?:법적\s*책임|불법|형사\s*책임)\s*(?:인정|있습니다)/ },
+  { id: "absolute",       label: "절대 표현",       regex: /절대\s*(?:없습니다|없을\s*것|불가능)/ },
+];
+
+const GUARDRAIL_INSTRUCTION = [
+  "[가드레일 - 절대 금지 표현]",
+  "다음 표현은 답변 본문에 절대 포함하지 마세요:",
+  "- '100% 저희 잘못' 같은 전적인 책임 인정",
+  "- '전액/즉시 환불 약속/보장' 같은 확정적 환불 약속 (대신 '확인 후 안내' 사용)",
+  "- '완치/치료 효과 보장' 같은 의료적 효능 약속",
+  "- '법적 책임 인정' 같은 법적 자인 표현",
+  "- '절대 없습니다/불가능' 같은 절대화 표현",
+].join("\n");
 
 // 자동 추천 톤 결정 (별점/심각도/문의 카테고리 등 컨텍스트 기반)
 function autoPickTone(input: {
@@ -196,6 +234,10 @@ function buildPrompt(input: {
   platform: any;
   tone?: string | null;
   business_category?: string | null;
+  mode?: string | null;
+  voice_samples?: string[] | null;
+  cta?: { label?: string | null; url?: string | null } | null;
+  guardrail_retry?: boolean;
   review?: { rating?: number | null; nickname?: string | null } | null;
   inquiry?: { category?: string | null; slots?: Record<string, string> | null } | null;
   claim?: { severity?: string | null; compensations?: string[] | null } | null;
@@ -343,8 +385,50 @@ function buildPrompt(input: {
     if (lines.length) sections.push(`[서비스업 컨텍스트]\n${lines.join("\n")}`);
   }
 
+  // 응대 모드
+  if (input.mode && MODE_GUIDES[input.mode]) {
+    sections.push(MODE_GUIDES[input.mode]);
+  }
+
+  // 사장님 말투 학습 (Few-shot)
+  const samples = (input.voice_samples || [])
+    .filter((s) => typeof s === "string" && s.trim().length > 0)
+    .slice(0, 5)
+    .map((s) => s.slice(0, 500));
+  if (samples.length) {
+    sections.push(
+      [
+        "[사장님 말투 학습 샘플]",
+        "아래는 사장님이 평소 사용하는 답변 예시입니다. 어휘/어미/길이/이모지 사용 패턴을 모방하되 내용은 입력에 맞게 새로 작성하세요.",
+        ...samples.map((s, i) => `예시 ${i + 1}:\n${s}`),
+      ].join("\n\n"),
+    );
+  }
+
+  // CTA 링크
+  if (input.cta && input.cta.url) {
+    const lbl = (input.cta.label || "자세히 보기").toString().slice(0, 30);
+    const url = String(input.cta.url).slice(0, 200);
+    sections.push(
+      `[CTA 안내]\n답변 마지막에 자연스럽게 다음 안내를 1줄로 포함하세요(공백 없이 정확한 URL 사용): ${lbl} → ${url}`,
+    );
+  }
+
+  // 가드레일
+  sections.push(GUARDRAIL_INSTRUCTION);
+  if (input.guardrail_retry) {
+    sections.push(
+      "[재생성 요청] 직전 답변에 금지 표현이 포함되어 재작성합니다. 위 가드레일을 반드시 지켜 다시 작성하세요.",
+    );
+  }
+
   sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
   return sections.join("\n\n");
+}
+
+// 가드레일 위반 검출
+function detectGuardrailViolations(text: string): string[] {
+  return GUARDRAIL_PATTERNS.filter((p) => p.regex.test(text)).map((p) => p.label);
 }
 
 
@@ -457,10 +541,15 @@ serve(async (req) => {
     const {
       type, text, product, energy_cost, style, platform,
       tone, business_category, review, inquiry, claim, lodging, service,
+      mode, use_voice, cta_id,
     } = requestBody ?? {};
 
-    // 통합된 톤 (구 RESPONSE_STYLES + TONES 통합)
-    const VALID_TONES = new Set(["thanks", "apology", "simple", "principle", "friendly", "firm"]);
+    // 통합된 톤 (시그니처 5종 포함)
+    const VALID_TONES = new Set([
+      "thanks", "apology", "simple", "principle", "friendly", "firm",
+      "sig_kind", "sig_premium", "sig_mz", "sig_pro", "sig_loyalty",
+    ]);
+    const VALID_MODES = new Set(["normal", "aggressive_review"]);
     const VALID_CATEGORIES = new Set([
       "fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital",
       "hotel", "motel", "pension", "poolvilla", "guesthouse", "glamping", "camping", "lodging_other",
@@ -631,6 +720,34 @@ serve(async (req) => {
 
     const cost = Number.isFinite(energy_cost) && energy_cost > 0 && energy_cost <= 5 ? energy_cost : 1;
 
+    // 응대 모드, 말투 학습, CTA 로딩 (paid only)
+    const safeMode = typeof mode === "string" && VALID_MODES.has(mode) ? mode : "normal";
+    let voiceSamples: string[] = [];
+    let ctaLink: { label: string; url: string } | null = null;
+
+    if (userPlan !== "free") {
+      if (use_voice === true) {
+        const { data: vs } = await adminClient
+          .from("user_voice_samples")
+          .select("content")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        voiceSamples = (vs || [])
+          .map((r: any) => String(r.content || "").trim())
+          .filter((s: string) => s.length > 0);
+      }
+      if (typeof cta_id === "string" && cta_id.length > 0) {
+        const { data: ct } = await adminClient
+          .from("cta_links")
+          .select("label, url")
+          .eq("user_id", userId)
+          .eq("id", cta_id)
+          .maybeSingle();
+        if (ct?.url) ctaLink = { label: ct.label, url: ct.url };
+      }
+    }
+
     const cachePayload = JSON.stringify({
       type,
       text: text.trim(),
@@ -643,6 +760,9 @@ serve(async (req) => {
       claim: safeClaim,
       lodging: safeLodging,
       service: safeService,
+      mode: safeMode,
+      voice_count: voiceSamples.length,
+      cta_id: ctaLink ? cta_id : null,
     });
     const cacheDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
     const cacheKey = Array.from(new Uint8Array(cacheDigest))
@@ -663,7 +783,13 @@ serve(async (req) => {
         .update({ expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString() })
         .eq("id", cachedResponse.id);
 
-      return respond({ response: cachedResponse.response, cached: true, reservation_id: null });
+      const cachedViolations = detectGuardrailViolations(cachedResponse.response);
+      return respond({
+        response: cachedResponse.response,
+        cached: true,
+        reservation_id: null,
+        guardrail: { violations: cachedViolations, retried: false, ok: cachedViolations.length === 0 },
+      });
     }
 
     const { data: reservationData } = await userClient.rpc("reserve_generate_request", {
@@ -803,11 +929,8 @@ serve(async (req) => {
       return respond({ error: "AI service is unavailable." }, 500);
     }
 
-    const systemPrompt = buildPrompt({
-      type,
-      text,
-      product,
-      platform,
+    const buildPromptArgs = {
+      type, text, product, platform,
       tone: safeTone,
       business_category: safeBizCat,
       review: safeReview,
@@ -815,52 +938,57 @@ serve(async (req) => {
       claim: safeClaim,
       lodging: safeLodging,
       service: safeService,
-    });
+      mode: safeMode,
+      voice_samples: voiceSamples,
+      cta: ctaLink,
+    };
 
-    let aiResponse: Response;
-    try {
-      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: text },
-          ],
-        }),
-      });
-    } catch (error) {
-      const refundResult = await refundEnergy();
-      console.error("AI gateway network error:", error);
-      if (!refundResult.ok) {
-        return respond({ error: "AI failed and refund verification failed." }, 500);
+    const callAI = async (retry: boolean): Promise<{ ok: true; text: string } | { ok: false; status: number; reason: string }> => {
+      const sysPrompt = buildPrompt({ ...buildPromptArgs, guardrail_retry: retry });
+      let r: Response;
+      try {
+        r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: sysPrompt },
+              { role: "user", content: text },
+            ],
+          }),
+        });
+      } catch (e) {
+        return { ok: false, status: 502, reason: "network" };
       }
-      return respond({ error: "AI request failed and energy was refunded." }, 502);
-    }
+      if (!r.ok) return { ok: false, status: r.status, reason: "ai_error" };
+      const j = await r.json().catch(() => ({}));
+      const t = j?.choices?.[0]?.message?.content;
+      if (!t || typeof t !== "string") return { ok: false, status: 500, reason: "empty" };
+      return { ok: true, text: t };
+    };
 
-    if (!aiResponse.ok) {
+    const first = await callAI(false);
+    if (!first.ok) {
       const refundResult = await refundEnergy();
-      console.error("AI gateway error:", aiResponse.status);
-      if (!refundResult.ok) {
-        return respond({ error: "AI failed and refund verification failed." }, 500);
-      }
+      console.error("AI gateway error:", first.status, first.reason);
+      if (!refundResult.ok) return respond({ error: "AI failed and refund verification failed." }, 500);
       return respond({
-        error: aiResponse.status === 429 ? "AI rate limit exceeded and energy was refunded." : "AI generation failed and energy was refunded.",
-      }, aiResponse.status === 429 ? 429 : 500);
+        error: first.status === 429 ? "AI rate limit exceeded and energy was refunded." : "AI generation failed and energy was refunded.",
+      }, first.status === 429 ? 429 : 500);
     }
 
-    const aiData = await aiResponse.json().catch(() => ({}));
-    const responseText = aiData?.choices?.[0]?.message?.content;
-    if (!responseText || typeof responseText !== "string") {
-      const refundResult = await refundEnergy();
-      if (!refundResult.ok) {
-        return respond({ error: "AI failed and refund verification failed." }, 500);
+    let responseText = first.text;
+    let guardrailViolations = detectGuardrailViolations(responseText);
+    let guardrailRetried = false;
+
+    if (guardrailViolations.length > 0) {
+      guardrailRetried = true;
+      const second = await callAI(true);
+      if (second.ok) {
+        responseText = second.text;
+        guardrailViolations = detectGuardrailViolations(responseText);
       }
-      return respond({ error: "AI returned an empty response and energy was refunded." }, 500);
     }
 
     try {
@@ -875,7 +1003,14 @@ serve(async (req) => {
     }
 
     await completeReservation("success");
-    return respond({ response: responseText });
+    return respond({
+      response: responseText,
+      guardrail: {
+        violations: guardrailViolations,
+        retried: guardrailRetried,
+        ok: guardrailViolations.length === 0,
+      },
+    });
   } catch (error) {
     console.error("generate-response error:", error);
 
