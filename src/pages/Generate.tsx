@@ -909,6 +909,8 @@ export default function Generate() {
           생성 후 자동 복사
         </label>
 
+        <MobilePcOnlyNotice feature="이미지 일괄 처리·확장프로그램" />
+
         <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
