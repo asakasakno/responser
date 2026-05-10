@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Image, Package, ArrowRight, TrendingUp, Zap, Gift, Crown, Calendar, RefreshCw } from 'lucide-react';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
+import MobilePcRecommendBanner from '@/components/MobilePcRecommendBanner';
 
 export default function Dashboard() {
   const { user, plan, energyBalance, maxEnergy, subscription, refreshSubscription } = useAuth();
@@ -31,6 +32,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="p-6 md:p-8 max-w-5xl mx-auto">
+        <MobilePcRecommendBanner />
         <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground mb-1">안녕하세요! 👋</h1>
