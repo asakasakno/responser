@@ -26,7 +26,7 @@ const STEP_UP_EXEMPT_ACTIONS = new Set([
 // 사유 필수 민감 액션
 const REASON_REQUIRED_ACTIONS = new Set([
   "adjust_energy", "change_plan", "toggle_suspend",
-  "mark_refund_issue", "anomaly_resolve",
+  "mark_refund_issue", "anomaly_resolve", "delete_user",
 ]);
 
 Deno.serve(async (req) => {
@@ -717,6 +717,63 @@ Deno.serve(async (req) => {
 
         const { error } = await adminClient.auth.admin.signOut(user_id);
         if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        return jsonResponse({ success: true }, corsHeaders);
+      }
+
+      // ========== DELETE USER (계정 영구 삭제) ==========
+      case "delete_user": {
+        const { user_id, reason } = params as { user_id?: string; reason?: string };
+        if (!user_id) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
+        // 관리자 자기자신 삭제 차단
+        if (user_id === userId) {
+          return jsonResponse({ error: "본인 계정은 삭제할 수 없습니다." }, corsHeaders, 400);
+        }
+        // 다른 관리자 삭제 차단
+        const { data: targetRole } = await adminClient
+          .from("user_roles").select("role").eq("user_id", user_id).eq("role", "admin").maybeSingle();
+        if (targetRole) {
+          return jsonResponse({ error: "관리자 계정은 삭제할 수 없습니다." }, corsHeaders, 400);
+        }
+
+        // 대상 정보 스냅샷 (감사 로그용)
+        const { data: targetProfile } = await adminClient
+          .from("profiles").select("email, name").eq("user_id", user_id).maybeSingle();
+
+        // 사용자 데이터 정리 (FK 없으므로 명시적으로 정리)
+        const tablesToCleanup = [
+          "energy_grants", "energy_transactions", "generations", "products",
+          "user_templates", "user_voice_samples", "cs_faq_entries", "cta_links",
+          "notifications", "ai_response_cache", "reward_claims", "coupon_usages",
+          "usage", "generate_request_reservations", "user_roles",
+        ];
+        for (const t of tablesToCleanup) {
+          await adminClient.from(t).delete().eq("user_id", user_id);
+        }
+        // referrals: referrer_id / referred_user_id 양쪽
+        await adminClient.from("referrals").delete().eq("referrer_id", user_id);
+        await adminClient.from("referrals").delete().eq("referred_user_id", user_id);
+        // subscriptions / profiles 마지막 정리
+        await adminClient.from("subscriptions").delete().eq("user_id", user_id);
+        await adminClient.from("profiles").delete().eq("user_id", user_id);
+
+        const { error: delErr } = await adminClient.auth.admin.deleteUser(user_id);
+        if (delErr) {
+          console.error("[delete_user auth] error", delErr);
+          return jsonResponse({ error: "계정 삭제에 실패했습니다." }, corsHeaders, 500);
+        }
+
+        await adminClient.from("audit_logs").insert({
+          user_id: userId,
+          action: "user_deleted",
+          severity: "critical",
+          details: {
+            target_user_id: user_id,
+            target_email: targetProfile?.email ?? null,
+            target_name: targetProfile?.name ?? null,
+            reason,
+          },
+        });
+
         return jsonResponse({ success: true }, corsHeaders);
       }
 

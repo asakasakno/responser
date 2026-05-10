@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAdminAction } from '@/hooks/useAdminAction';
 import { toast } from '@/hooks/use-toast';
-import { Search, Zap, Minus, Plus, LogOut } from 'lucide-react';
+import { Search, Zap, Minus, Plus, LogOut, Trash2 } from 'lucide-react';
 
 interface AdminUser {
   user_id: string;
@@ -208,6 +208,14 @@ export default function AdminUsers() {
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="강제 로그아웃"
                             onClick={() => adminAction('force_logout', { user_id: u.user_id })}>
                             <LogOut className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-destructive/10" title="계정 삭제"
+                            onClick={() => setReasonDialog({
+                              title: `계정 영구 삭제 — ${u.email}`,
+                              action: 'delete_user',
+                              params: { user_id: u.user_id },
+                            })}>
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>
                         </div>
                       </TableCell>
