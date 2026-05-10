@@ -109,6 +109,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-auto">
           {children}
         </main>
+        <KakaoEmailPrompt />
 
         <nav className="md:hidden flex border-t border-border bg-card">
           {navItems.slice(0, 4).map(item => {
