@@ -92,7 +92,6 @@ export default function IdentityLinksSection() {
     try {
       // Use Supabase linkIdentity to attach google to current user (managed Google in Lovable Cloud)
       const redirectTo = `${window.location.origin}/settings?link=google_pending`;
-      // @ts-expect-error linkIdentity is available in supabase-js v2
       const { data, error } = await supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo } });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
