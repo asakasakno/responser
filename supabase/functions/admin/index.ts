@@ -26,7 +26,7 @@ const STEP_UP_EXEMPT_ACTIONS = new Set([
 // 사유 필수 민감 액션
 const REASON_REQUIRED_ACTIONS = new Set([
   "adjust_energy", "change_plan", "toggle_suspend",
-  "mark_refund_issue", "anomaly_resolve",
+  "mark_refund_issue", "anomaly_resolve", "delete_user",
 ]);
 
 Deno.serve(async (req) => {
