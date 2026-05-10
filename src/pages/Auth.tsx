@@ -35,6 +35,13 @@ export default function Auth() {
     if (user) navigate('/dashboard');
   }, [user, navigate]);
 
+  useEffect(() => {
+    const err = searchParams.get('kakao_error');
+    if (err) {
+      toast({ title: '카카오 로그인 실패', description: err, variant: 'destructive' });
+    }
+  }, [searchParams, toast]);
+
   const togglePlatform = (id: string) => {
     setSelectedPlatforms(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
