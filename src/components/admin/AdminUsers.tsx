@@ -91,15 +91,45 @@ export default function AdminUsers() {
   const runBulk = async (
     userIds: string[],
     buildBody: (uid: string) => { action: string; params: Record<string, any> },
+    meta: { bulk_action: string; reason?: string | null },
   ) => {
+    const bulk_id = (crypto as any).randomUUID ? (crypto as any).randomUUID() : `bulk_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     setBulkProgress({ done: 0, total: userIds.length });
+
+    // start summary log
+    await invoke('bulk_audit', {
+      phase: 'start',
+      bulk_id,
+      bulk_action: meta.bulk_action,
+      target_user_ids: userIds,
+      reason: meta.reason ?? null,
+      total: userIds.length,
+    }, `bulk_audit_start_${bulk_id}`);
+
     let ok = 0; let fail = 0;
     for (let i = 0; i < userIds.length; i++) {
       const { action, params } = buildBody(userIds[i]);
-      const res = await invoke(action, params, `bulk-${action}-${userIds[i]}`);
+      const res = await invoke(
+        action,
+        { ...params, bulk_id, bulk_index: i, bulk_total: userIds.length },
+        `bulk-${action}-${userIds[i]}`,
+      );
       if (res?.success) ok++; else fail++;
       setBulkProgress({ done: i + 1, total: userIds.length });
     }
+
+    // complete summary log
+    await invoke('bulk_audit', {
+      phase: 'complete',
+      bulk_id,
+      bulk_action: meta.bulk_action,
+      target_user_ids: userIds,
+      reason: meta.reason ?? null,
+      success_count: ok,
+      fail_count: fail,
+      total: userIds.length,
+    }, `bulk_audit_complete_${bulk_id}`);
+
     setBulkProgress(null);
     toast({
       title: '일괄 작업 완료',
