@@ -778,6 +778,7 @@ serve(async (req) => {
       mode: safeMode,
       voice_count: voiceSamples.length,
       cta_id: ctaLink ? cta_id : null,
+      faq_count: faqHints.length,
     });
     const cacheDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
     const cacheKey = Array.from(new Uint8Array(cacheDigest))
