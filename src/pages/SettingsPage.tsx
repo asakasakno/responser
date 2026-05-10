@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import IdentityLinksSection from '@/components/settings/IdentityLinksSection';
 
 export default function SettingsPage() {
   const { user, plan, subscription, refreshProfile, refreshSubscription } = useAuth();
