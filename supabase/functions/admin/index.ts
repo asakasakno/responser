@@ -715,8 +715,29 @@ Deno.serve(async (req) => {
         const { user_id } = params;
         if (!user_id) return jsonResponse({ error: "필수 항목이 누락되었습니다." }, corsHeaders, 400);
 
-        const { error } = await adminClient.auth.admin.signOut(user_id);
-        if (error) return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        // GoTrue admin endpoint: invalidates all refresh tokens / sessions for the user.
+        // The supabase-js auth.admin.signOut() expects a JWT (not a user_id), so we call
+        // the REST endpoint directly with the service role key.
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const resp = await fetch(`${supabaseUrl}/auth/v1/admin/users/${user_id}/logout`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceRole}`,
+            "apikey": serviceRole,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ scope: "global" }),
+        });
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("[force_logout] failed", resp.status, txt);
+          return jsonResponse({ error: "처리에 실패했습니다." }, corsHeaders, 500);
+        }
+        await adminClient.from("audit_logs").insert({
+          user_id: userId, action: "force_logout", severity: "warning",
+          details: { target_user_id: user_id },
+        });
         return jsonResponse({ success: true }, corsHeaders);
       }
 
