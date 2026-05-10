@@ -997,7 +997,14 @@ serve(async (req) => {
     }
 
     await completeReservation("success");
-    return respond({ response: responseText });
+    return respond({
+      response: responseText,
+      guardrail: {
+        violations: guardrailViolations,
+        retried: guardrailRetried,
+        ok: guardrailViolations.length === 0,
+      },
+    });
   } catch (error) {
     console.error("generate-response error:", error);
 
