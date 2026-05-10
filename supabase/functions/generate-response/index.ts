@@ -783,7 +783,13 @@ serve(async (req) => {
         .update({ expire_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString() })
         .eq("id", cachedResponse.id);
 
-      return respond({ response: cachedResponse.response, cached: true, reservation_id: null });
+      const cachedViolations = detectGuardrailViolations(cachedResponse.response);
+      return respond({
+        response: cachedResponse.response,
+        cached: true,
+        reservation_id: null,
+        guardrail: { violations: cachedViolations, retried: false, ok: cachedViolations.length === 0 },
+      });
     }
 
     const { data: reservationData } = await userClient.rpc("reserve_generate_request", {
