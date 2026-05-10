@@ -923,11 +923,8 @@ serve(async (req) => {
       return respond({ error: "AI service is unavailable." }, 500);
     }
 
-    const systemPrompt = buildPrompt({
-      type,
-      text,
-      product,
-      platform,
+    const buildPromptArgs = {
+      type, text, product, platform,
       tone: safeTone,
       business_category: safeBizCat,
       review: safeReview,
@@ -935,52 +932,57 @@ serve(async (req) => {
       claim: safeClaim,
       lodging: safeLodging,
       service: safeService,
-    });
+      mode: safeMode,
+      voice_samples: voiceSamples,
+      cta: ctaLink,
+    };
 
-    let aiResponse: Response;
-    try {
-      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: text },
-          ],
-        }),
-      });
-    } catch (error) {
-      const refundResult = await refundEnergy();
-      console.error("AI gateway network error:", error);
-      if (!refundResult.ok) {
-        return respond({ error: "AI failed and refund verification failed." }, 500);
+    const callAI = async (retry: boolean): Promise<{ ok: true; text: string } | { ok: false; status: number; reason: string }> => {
+      const sysPrompt = buildPrompt({ ...buildPromptArgs, guardrail_retry: retry });
+      let r: Response;
+      try {
+        r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: sysPrompt },
+              { role: "user", content: text },
+            ],
+          }),
+        });
+      } catch (e) {
+        return { ok: false, status: 502, reason: "network" };
       }
-      return respond({ error: "AI request failed and energy was refunded." }, 502);
-    }
+      if (!r.ok) return { ok: false, status: r.status, reason: "ai_error" };
+      const j = await r.json().catch(() => ({}));
+      const t = j?.choices?.[0]?.message?.content;
+      if (!t || typeof t !== "string") return { ok: false, status: 500, reason: "empty" };
+      return { ok: true, text: t };
+    };
 
-    if (!aiResponse.ok) {
+    const first = await callAI(false);
+    if (!first.ok) {
       const refundResult = await refundEnergy();
-      console.error("AI gateway error:", aiResponse.status);
-      if (!refundResult.ok) {
-        return respond({ error: "AI failed and refund verification failed." }, 500);
-      }
+      console.error("AI gateway error:", first.status, first.reason);
+      if (!refundResult.ok) return respond({ error: "AI failed and refund verification failed." }, 500);
       return respond({
-        error: aiResponse.status === 429 ? "AI rate limit exceeded and energy was refunded." : "AI generation failed and energy was refunded.",
-      }, aiResponse.status === 429 ? 429 : 500);
+        error: first.status === 429 ? "AI rate limit exceeded and energy was refunded." : "AI generation failed and energy was refunded.",
+      }, first.status === 429 ? 429 : 500);
     }
 
-    const aiData = await aiResponse.json().catch(() => ({}));
-    const responseText = aiData?.choices?.[0]?.message?.content;
-    if (!responseText || typeof responseText !== "string") {
-      const refundResult = await refundEnergy();
-      if (!refundResult.ok) {
-        return respond({ error: "AI failed and refund verification failed." }, 500);
+    let responseText = first.text;
+    let guardrailViolations = detectGuardrailViolations(responseText);
+    let guardrailRetried = false;
+
+    if (guardrailViolations.length > 0) {
+      guardrailRetried = true;
+      const second = await callAI(true);
+      if (second.ok) {
+        responseText = second.text;
+        guardrailViolations = detectGuardrailViolations(responseText);
       }
-      return respond({ error: "AI returned an empty response and energy was refunded." }, 500);
     }
 
     try {
