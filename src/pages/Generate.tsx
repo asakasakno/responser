@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
+import MobilePcRecommendBanner, { MobilePcOnlyNotice } from '@/components/MobilePcRecommendBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -456,6 +457,8 @@ export default function Generate() {
             </div>
           </div>
         )}
+
+        <MobilePcRecommendBanner />
 
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">AI 답변 생성</h1>
