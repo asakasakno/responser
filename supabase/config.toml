@@ -9,3 +9,5 @@ project_id = "qbvlgzmivdycuocvcoxy"
     verify_jwt = false
   [functions.download-extension]
     verify_jwt = false
+  [functions.kakao-auth]
+    verify_jwt = false
