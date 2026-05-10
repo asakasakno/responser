@@ -132,9 +132,24 @@ Deno.serve(async (req) => {
       }
       const tokenJson = await tokenRes.json() as { access_token: string };
 
-      // 2) Fetch Kakao user
+      // 2) Fetch Kakao user. Use POST with explicit property_keys to ensure
+      //    kakao_account.email and related flags are returned reliably.
       const meRes = await fetch('https://kapi.kakao.com/v2/user/me', {
-        headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenJson.access_token}`,
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        body: new URLSearchParams({
+          property_keys: JSON.stringify([
+            'kakao_account.email',
+            'kakao_account.profile',
+            'kakao_account.has_email',
+            'kakao_account.is_email_valid',
+            'kakao_account.is_email_verified',
+            'kakao_account.email_needs_agreement',
+          ]),
+        }),
       });
       if (!meRes.ok) {
         const t = await meRes.text();
@@ -143,13 +158,38 @@ Deno.serve(async (req) => {
       }
       const me = await meRes.json() as {
         id: number;
-        kakao_account?: { email?: string; profile?: { nickname?: string } };
+        kakao_account?: {
+          email?: string;
+          has_email?: boolean;
+          is_email_valid?: boolean;
+          is_email_verified?: boolean;
+          email_needs_agreement?: boolean;
+          profile?: { nickname?: string };
+        };
         properties?: { nickname?: string };
       };
+      console.log('kakao me response', JSON.stringify({
+        id: me.id,
+        kakao_account: me.kakao_account ? {
+          has_email: me.kakao_account.has_email,
+          is_email_valid: me.kakao_account.is_email_valid,
+          is_email_verified: me.kakao_account.is_email_verified,
+          email_needs_agreement: me.kakao_account.email_needs_agreement,
+          email_present: !!me.kakao_account.email,
+        } : null,
+      }));
 
       const kakaoId = String(me.id);
-      const kakaoEmail = me.kakao_account?.email || null;
-      const nickname = me.kakao_account?.profile?.nickname || me.properties?.nickname || '';
+      const acc = me.kakao_account;
+      // Only treat as a real email when user actually agreed and Kakao verified it.
+      const kakaoEmail = (
+        acc?.email &&
+        acc.email_needs_agreement !== true &&
+        acc.has_email !== false &&
+        acc.is_email_valid !== false &&
+        acc.is_email_verified !== false
+      ) ? acc.email.toLowerCase() : null;
+      const nickname = acc?.profile?.nickname || me.properties?.nickname || '';
 
       const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
