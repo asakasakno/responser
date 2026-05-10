@@ -204,6 +204,30 @@ Deno.serve(async (req) => {
 
       if (existingByKakao?.user_id) {
         userId = existingByKakao.user_id;
+        // If we previously stored a placeholder email but Kakao now provides a real one, upgrade it.
+        if (kakaoEmail) {
+          const { data: { user: existingAuth } } = await admin.auth.admin.getUserById(userId);
+          const currentEmail = existingAuth?.email ?? '';
+          if (currentEmail.endsWith('@kakao.responser.local') && currentEmail !== kakaoEmail) {
+            // Make sure the real email isn't already taken by someone else
+            const { data: collide } = await admin
+              .from('profiles')
+              .select('user_id')
+              .eq('email', kakaoEmail)
+              .neq('user_id', userId)
+              .maybeSingle();
+            if (!collide) {
+              const { error: upErr } = await admin.auth.admin.updateUserById(userId, {
+                email: kakaoEmail, email_confirm: true,
+              });
+              if (!upErr) {
+                await admin.from('profiles').update({ email: kakaoEmail }).eq('user_id', userId);
+              } else {
+                console.error('upgrade placeholder email failed', upErr);
+              }
+            }
+          }
+        }
       } else if (kakaoEmail) {
         // Try linking by email if it's already in Auth (existing email signup or google login)
         const { data: existingByEmail } = await admin
