@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
+import MobilePcRecommendBanner, { MobilePcOnlyNotice } from '@/components/MobilePcRecommendBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -457,6 +458,8 @@ export default function Generate() {
           </div>
         )}
 
+        <MobilePcRecommendBanner />
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">AI 답변 생성</h1>
           <EnergyIndicator balance={energyBalance} maxEnergy={maxEnergy} />
@@ -905,6 +908,8 @@ export default function Generate() {
           <input type="checkbox" checked={autoCopy} onChange={e => setAutoCopy(e.target.checked)} />
           생성 후 자동 복사
         </label>
+
+        <MobilePcOnlyNotice feature="이미지 일괄 처리·확장프로그램" />
 
         <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">

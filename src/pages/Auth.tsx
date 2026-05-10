@@ -97,7 +97,13 @@ export default function Auth() {
             .eq('user_id', data.user.id);
         }
 
-        toast({ title: '가입 완료!', description: '이메일 인증 링크를 확인해주세요.' });
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        toast({
+          title: '가입 완료!',
+          description: isMobile
+            ? '신청 후 PC에서 응대도우미.com에 접속하면 더 편하게 사용할 수 있습니다. 이메일 인증 링크를 확인해주세요.'
+            : '이메일 인증 링크를 확인해주세요.',
+        });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
