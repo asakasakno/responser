@@ -17,6 +17,7 @@ const adminNav = [
   { to: '/admin/energy', label: '응답에너지 관리', icon: Zap },
   { to: '/admin/ai-usage', label: 'AI 사용량', icon: BarChart3 },
   { to: '/admin/conversion', label: '전환 분석', icon: TrendingUp },
+  { to: '/admin/beta-applications', label: '베타 신청', icon: Sparkles },
   { to: '/admin/inquiries', label: '문의 관리', icon: Mail },
   { to: '/admin/anomalies', label: '이상 탐지', icon: Siren },
   { to: '/admin/audit', label: '감사 로그', icon: FileText },
