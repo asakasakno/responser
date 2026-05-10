@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useEffect, useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -25,6 +26,8 @@ interface AdminUser {
   total_usage: number;
 }
 
+type BulkActionKind = 'force_logout' | 'suspend' | 'unsuspend' | 'delete_user' | 'change_plan';
+
 export default function AdminUsers() {
   const { invoke, loading } = useAdminAction();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -33,24 +36,32 @@ export default function AdminUsers() {
   const [planFilter, setPlanFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Energy dialog
+  // Selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkPlan, setBulkPlan] = useState<string>('');
+
+  // Energy dialog (single)
   const [energyDialog, setEnergyDialog] = useState<{ user: AdminUser; type: 'earn' | 'spend' } | null>(null);
   const [energyAmount, setEnergyAmount] = useState('');
   const [energyReason, setEnergyReason] = useState('');
 
-  // Generic reason dialog (plan / suspend)
+  // Reason dialog — supports both single (params.user_id) and bulk (userIds[])
   const [reasonDialog, setReasonDialog] = useState<null | {
     title: string;
     action: string;
     params: Record<string, any>;
+    userIds?: string[];          // when set → bulk loop
+    requireReason?: boolean;     // bulk actions without reason (e.g. force_logout) skip reason check
   }>(null);
   const [reasonText, setReasonText] = useState('');
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
     const data = await invoke('list_users');
     if (data) setUsers(data.users || []);
     setLoadingUsers(false);
+    setSelected(new Set());
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -76,12 +87,48 @@ export default function AdminUsers() {
     setEnergyReason('');
   };
 
-  const submitReason = async () => {
-    if (!reasonDialog || reasonText.trim().length < 5) return;
-    await adminAction(reasonDialog.action, { ...reasonDialog.params, reason: reasonText });
-    setReasonDialog(null);
-    setReasonText('');
+  // Run a per-user action across many users sequentially.
+  const runBulk = async (
+    userIds: string[],
+    buildBody: (uid: string) => { action: string; params: Record<string, any> },
+  ) => {
+    setBulkProgress({ done: 0, total: userIds.length });
+    let ok = 0; let fail = 0;
+    for (let i = 0; i < userIds.length; i++) {
+      const { action, params } = buildBody(userIds[i]);
+      const res = await invoke(action, params, `bulk-${action}-${userIds[i]}`);
+      if (res?.success) ok++; else fail++;
+      setBulkProgress({ done: i + 1, total: userIds.length });
+    }
+    setBulkProgress(null);
+    toast({
+      title: '일괄 작업 완료',
+      description: `성공 ${ok}건, 실패 ${fail}건 (총 ${userIds.length}건)`,
+      variant: fail > 0 ? 'destructive' : 'default',
+    });
+    fetchUsers();
   };
+
+  const submitReason = async () => {
+    if (!reasonDialog) return;
+    const needReason = reasonDialog.requireReason !== false;
+    if (needReason && reasonText.trim().length < 5) return;
+
+    if (reasonDialog.userIds && reasonDialog.userIds.length > 0) {
+      const ids = reasonDialog.userIds;
+      const baseParams = { ...reasonDialog.params };
+      if (needReason) baseParams.reason = reasonText;
+      const action = reasonDialog.action;
+      setReasonDialog(null);
+      setReasonText('');
+      await runBulk(ids, (uid) => ({ action, params: { ...baseParams, user_id: uid } }));
+    } else {
+      await adminAction(reasonDialog.action, { ...reasonDialog.params, ...(needReason ? { reason: reasonText } : {}) });
+      setReasonDialog(null);
+      setReasonText('');
+    }
+  };
+
   const filtered = users.filter(u => {
     const q = searchQuery.toLowerCase();
     const matchSearch = !q || u.email.toLowerCase().includes(q) || (u.name && u.name.toLowerCase().includes(q));
@@ -91,6 +138,77 @@ export default function AdminUsers() {
       (statusFilter === 'suspended' && u.suspended);
     return matchSearch && matchPlan && matchStatus;
   });
+
+  const filteredIds = useMemo(() => filtered.map(u => u.user_id), [filtered]);
+  const allChecked = filteredIds.length > 0 && filteredIds.every(id => selected.has(id));
+  const someChecked = filteredIds.some(id => selected.has(id)) && !allChecked;
+
+  const toggleAll = () => {
+    if (allChecked) {
+      const next = new Set(selected);
+      filteredIds.forEach(id => next.delete(id));
+      setSelected(next);
+    } else {
+      const next = new Set(selected);
+      filteredIds.forEach(id => next.add(id));
+      setSelected(next);
+    }
+  };
+  const toggleOne = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
+
+  const selectedIds = useMemo(() => Array.from(selected), [selected]);
+  const selectedUsers = useMemo(
+    () => users.filter(u => selected.has(u.user_id)),
+    [users, selected],
+  );
+
+  const openBulk = (kind: BulkActionKind, plan?: string) => {
+    if (selectedIds.length === 0) {
+      toast({ title: '선택된 사용자가 없습니다.', variant: 'destructive' });
+      return;
+    }
+    if (kind === 'force_logout') {
+      setReasonDialog({
+        title: `일괄 강제 로그아웃 — ${selectedIds.length}명`,
+        action: 'force_logout',
+        params: {},
+        userIds: selectedIds,
+        requireReason: false,
+      });
+      return;
+    }
+    if (kind === 'suspend' || kind === 'unsuspend') {
+      const suspended = kind === 'suspend';
+      setReasonDialog({
+        title: `일괄 ${suspended ? '계정 정지' : '정지 해제'} — ${selectedIds.length}명`,
+        action: 'toggle_suspend',
+        params: { suspended },
+        userIds: selectedIds,
+      });
+      return;
+    }
+    if (kind === 'delete_user') {
+      setReasonDialog({
+        title: `일괄 계정 영구 삭제 — ${selectedIds.length}명 (관리자 계정 자동 제외)`,
+        action: 'delete_user',
+        params: {},
+        userIds: selectedIds,
+      });
+      return;
+    }
+    if (kind === 'change_plan' && plan) {
+      setReasonDialog({
+        title: `일괄 플랜 변경 → ${plan} — ${selectedIds.length}명`,
+        action: 'change_plan',
+        params: { plan },
+        userIds: selectedIds,
+      });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -123,6 +241,32 @@ export default function AdminUsers() {
               </Select>
             </div>
           </div>
+
+          {/* Bulk actions toolbar */}
+          {selectedIds.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+              <span className="text-sm font-medium px-1">{selectedIds.length}명 선택됨</span>
+              <Button size="sm" variant="outline" onClick={() => openBulk('force_logout')}>
+                <LogOut className="w-3.5 h-3.5 mr-1" /> 강제 로그아웃
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => openBulk('suspend')}>일괄 정지</Button>
+              <Button size="sm" variant="outline" onClick={() => openBulk('unsuspend')}>정지 해제</Button>
+              <div className="flex items-center gap-1">
+                <Select value={bulkPlan} onValueChange={(v) => { setBulkPlan(v); openBulk('change_plan', v); setBulkPlan(''); }}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="플랜 변경..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free 로 변경</SelectItem>
+                    <SelectItem value="basic">Basic 로 변경</SelectItem>
+                    <SelectItem value="pro">Pro 로 변경</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button size="sm" variant="destructive" className="ml-auto" onClick={() => openBulk('delete_user')}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> 일괄 삭제
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>선택 해제</Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {loadingUsers ? (
@@ -132,6 +276,13 @@ export default function AdminUsers() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                        onCheckedChange={toggleAll}
+                        aria-label="전체 선택"
+                      />
+                    </TableHead>
                     <TableHead>이메일</TableHead>
                     <TableHead>이름</TableHead>
                     <TableHead>플랜</TableHead>
@@ -144,7 +295,14 @@ export default function AdminUsers() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map(u => (
-                    <TableRow key={u.user_id} className={u.suspended ? 'opacity-50' : ''}>
+                    <TableRow key={u.user_id} className={u.suspended ? 'opacity-50' : ''} data-state={selected.has(u.user_id) ? 'selected' : undefined}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.has(u.user_id)}
+                          onCheckedChange={() => toggleOne(u.user_id)}
+                          aria-label={`${u.email} 선택`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium text-xs">{u.email}</TableCell>
                       <TableCell className="text-sm">{u.name || '-'}</TableCell>
                       <TableCell>
@@ -223,7 +381,7 @@ export default function AdminUsers() {
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         {searchQuery ? '검색 결과가 없습니다.' : '사용자가 없습니다.'}
                       </TableCell>
                     </TableRow>
@@ -256,18 +414,38 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* Reason Dialog (plan change / suspend) */}
-      <Dialog open={!!reasonDialog} onOpenChange={() => { setReasonDialog(null); setReasonText(''); }}>
+      {/* Reason Dialog (single + bulk) */}
+      <Dialog open={!!reasonDialog} onOpenChange={() => { if (!bulkProgress) { setReasonDialog(null); setReasonText(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{reasonDialog?.title}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <Input placeholder="사유 (5자 이상, 필수)" value={reasonText}
-              onChange={e => setReasonText(e.target.value)} />
+            {reasonDialog?.requireReason !== false && (
+              <Input placeholder="사유 (5자 이상, 필수)" value={reasonText}
+                onChange={e => setReasonText(e.target.value)} />
+            )}
+            {reasonDialog?.userIds && reasonDialog.userIds.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                대상 {reasonDialog.userIds.length}명에 대해 순차적으로 실행됩니다. 관리자 계정 등 일부는 서버에서 자동 차단될 수 있습니다.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setReasonDialog(null); setReasonText(''); }}>취소</Button>
-            <Button onClick={submitReason} disabled={reasonText.trim().length < 5}>적용</Button>
+            <Button onClick={submitReason}
+              disabled={reasonDialog?.requireReason !== false && reasonText.trim().length < 5}>
+              적용
+            </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk progress */}
+      <Dialog open={!!bulkProgress}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>일괄 작업 진행 중...</DialogTitle></DialogHeader>
+          <div className="py-4 text-center text-sm">
+            {bulkProgress?.done} / {bulkProgress?.total} 처리됨
+          </div>
         </DialogContent>
       </Dialog>
     </div>
