@@ -6,7 +6,7 @@ import StepUpDialog from './StepUpDialog';
 import { registerStepUpHandler } from '@/hooks/useAdminAction';
 import {
   LayoutDashboard, Users, CreditCard, Zap, BarChart3,
-  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail, Siren, FileText
+  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail, Siren, FileText, Sparkles
 } from 'lucide-react';
 
 const adminNav = [
