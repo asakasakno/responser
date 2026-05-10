@@ -384,7 +384,41 @@ Deno.serve(async (req) => {
         return errorRedirect(siteOrigin, 'no_email_for_login');
       }
 
-      // 6) Generate magic link → redirect browser to it (sets session, then to siteOrigin + redirectAfter)
+      // Sync user_identity_links for kakao (idempotent upsert)
+      try {
+        const { data: existingLink } = await admin
+          .from('user_identity_links')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('provider', 'kakao')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (!existingLink) {
+          await admin.from('user_identity_links').insert({
+            user_id: userId,
+            provider: 'kakao',
+            provider_user_id: kakaoId,
+            provider_email: kakaoEmail,
+            email_verified: !!kakaoEmail,
+            is_active: true,
+          });
+        }
+        if (kakaoEmail) {
+          const { data: emailLink } = await admin
+            .from('user_identity_links')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('provider', 'email')
+            .eq('is_active', true)
+            .maybeSingle();
+          if (!emailLink) {
+            await admin.from('user_identity_links').insert({
+              user_id: userId, provider: 'email', provider_email: kakaoEmail, email_verified: true, is_active: true,
+            });
+          }
+        }
+      } catch (e) { console.error('identity link sync failed', e); }
+
       const target = `${siteOrigin}${redirectAfter}`;
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
