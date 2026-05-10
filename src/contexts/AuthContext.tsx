@@ -191,7 +191,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Clear local state first so UI updates immediately even if the network call fails.
+    setUser(null);
+    setSession(null);
+    setPlan('free');
+    setIsAdmin(false);
+    setEnergyBalance(0);
+    setMaxEnergy(100);
+    setReferralCode('');
+    setCompanyName('');
+    setSubscription(null);
+    try {
+      // 'local' scope avoids server-side errors when refresh token is already invalid
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      console.warn('signOut error (ignored)', e);
+    }
+    // Best-effort clear of any leftover supabase storage tokens
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('sb-') && k.endsWith('-auth-token')) localStorage.removeItem(k);
+      });
+    } catch (_) { /* ignore */ }
   };
 
   return (
