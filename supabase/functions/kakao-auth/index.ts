@@ -21,6 +21,8 @@ const ALLOWED_SITE_HOSTS = [
   'localhost',
 ];
 
+const DEFAULT_SITE_ORIGIN = 'https://xn--vk1booh7ruql6wa.com';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -45,7 +47,7 @@ function pickSiteOrigin(req: Request, hint?: string | null): string {
       }
     } catch (_) { /* ignore */ }
   }
-  return 'https://responser.lovable.app';
+  return DEFAULT_SITE_ORIGIN;
 }
 
 function safeRedirect(url: string): Response {
@@ -94,7 +96,7 @@ Deno.serve(async (req) => {
 
     if (action === 'callback') {
       const stateRaw = url.searchParams.get('state') || '';
-      let siteOrigin = 'https://responser.lovable.app';
+      let siteOrigin = DEFAULT_SITE_ORIGIN;
       let redirectAfter = '/dashboard';
       let referralCode: string | undefined;
       try {
