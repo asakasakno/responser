@@ -385,8 +385,50 @@ function buildPrompt(input: {
     if (lines.length) sections.push(`[서비스업 컨텍스트]\n${lines.join("\n")}`);
   }
 
+  // 응대 모드
+  if (input.mode && MODE_GUIDES[input.mode]) {
+    sections.push(MODE_GUIDES[input.mode]);
+  }
+
+  // 사장님 말투 학습 (Few-shot)
+  const samples = (input.voice_samples || [])
+    .filter((s) => typeof s === "string" && s.trim().length > 0)
+    .slice(0, 5)
+    .map((s) => s.slice(0, 500));
+  if (samples.length) {
+    sections.push(
+      [
+        "[사장님 말투 학습 샘플]",
+        "아래는 사장님이 평소 사용하는 답변 예시입니다. 어휘/어미/길이/이모지 사용 패턴을 모방하되 내용은 입력에 맞게 새로 작성하세요.",
+        ...samples.map((s, i) => `예시 ${i + 1}:\n${s}`),
+      ].join("\n\n"),
+    );
+  }
+
+  // CTA 링크
+  if (input.cta && input.cta.url) {
+    const lbl = (input.cta.label || "자세히 보기").toString().slice(0, 30);
+    const url = String(input.cta.url).slice(0, 200);
+    sections.push(
+      `[CTA 안내]\n답변 마지막에 자연스럽게 다음 안내를 1줄로 포함하세요(공백 없이 정확한 URL 사용): ${lbl} → ${url}`,
+    );
+  }
+
+  // 가드레일
+  sections.push(GUARDRAIL_INSTRUCTION);
+  if (input.guardrail_retry) {
+    sections.push(
+      "[재생성 요청] 직전 답변에 금지 표현이 포함되어 재작성합니다. 위 가드레일을 반드시 지켜 다시 작성하세요.",
+    );
+  }
+
   sections.push("출력은 답변 본문만 반환하세요. 변수 자리표시자({...})는 절대 출력에 남기지 마세요.");
   return sections.join("\n\n");
+}
+
+// 가드레일 위반 검출
+function detectGuardrailViolations(text: string): string[] {
+  return GUARDRAIL_PATTERNS.filter((p) => p.regex.test(text)).map((p) => p.label);
 }
 
 
