@@ -272,6 +272,9 @@ export default function Generate() {
         compensations: serviceComps,
       };
     }
+    if (mode !== 'normal') extra.mode = mode;
+    if (useVoice && plan !== 'free' && voiceCount > 0) extra.use_voice = true;
+    if (selectedCta !== 'none' && plan !== 'free') extra.cta_id = selectedCta;
     return extra;
   };
 
