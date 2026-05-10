@@ -297,6 +297,7 @@ export default function Generate() {
       if (error) throw error;
       if (!data || !data.response) throw new Error(data?.error || '답변을 생성할 수 없습니다.');
       setResult(data.response);
+      setGuardrail(data.guardrail || null);
       setEnergyAnim({ amount: energyCost, type: 'spend' });
       await refreshEnergy();
 
