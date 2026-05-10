@@ -99,13 +99,38 @@ Deno.serve(async (req) => {
       let siteOrigin = DEFAULT_SITE_ORIGIN;
       let redirectAfter = '/dashboard';
       let referralCode: string | undefined;
+      let mode: 'login' | 'link' = 'login';
+      let linkUserId: string | undefined;
       try {
-        const parsed = JSON.parse(atob(stateRaw));
+        let payloadStr: string;
+        let providedSig: string | null = null;
+        if (stateRaw.includes('.')) {
+          const [b64, sig] = stateRaw.split('.');
+          providedSig = sig;
+          const padded = b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4);
+          payloadStr = atob(padded);
+        } else {
+          payloadStr = atob(stateRaw);
+        }
+        const parsed = JSON.parse(payloadStr);
         if (parsed?.o && ALLOWED_SITE_HOSTS.some((h) => new URL(parsed.o).hostname.endsWith(h))) {
           siteOrigin = parsed.o;
         }
         if (typeof parsed?.r === 'string' && parsed.r.startsWith('/')) redirectAfter = parsed.r;
         if (typeof parsed?.ref === 'string' && parsed.ref.length > 0 && parsed.ref.length < 32) referralCode = parsed.ref;
+        if (parsed?.m === 'link' && typeof parsed?.u === 'string' && providedSig) {
+          const key = await crypto.subtle.importKey(
+            'raw', new TextEncoder().encode(KAKAO_CLIENT_SECRET),
+            { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+          );
+          const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadStr));
+          const expected = btoa(String.fromCharCode(...new Uint8Array(sig)))
+            .replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+          if (expected === providedSig && Date.now() - (parsed.t || 0) < 10 * 60 * 1000) {
+            mode = 'link';
+            linkUserId = parsed.u;
+          }
+        }
       } catch (_) { /* ignore */ }
 
       const code = url.searchParams.get('code');
