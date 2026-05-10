@@ -314,6 +314,30 @@ export default function Auth() {
             Google로 계속하기
           </Button>
 
+          <Button
+            type="button"
+            className="w-full mt-2 bg-[#FEE500] text-[#191919] hover:bg-[#FDD800] border-0"
+            disabled={loading}
+            onClick={() => {
+              const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+              const params = new URLSearchParams({
+                action: 'start',
+                redirect: '/dashboard',
+                origin: window.location.origin,
+              });
+              if (referralCode.trim()) params.set('ref', referralCode.trim().toLowerCase());
+              window.location.href = `https://${projectRef}.supabase.co/functions/v1/kakao-auth?${params.toString()}`;
+            }}
+          >
+            <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.79 1.86 5.24 4.66 6.62-.2.7-.74 2.6-.85 3-.13.5.18.5.39.36.16-.11 2.55-1.73 3.59-2.43.72.1 1.46.16 2.21.16 5.52 0 10-3.48 10-7.71S17.52 3 12 3z"/></svg>
+            카카오로 시작하기
+          </Button>
+          {isSignUp && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              이메일 입력 없이 카카오 계정으로 빠르게 시작할 수 있습니다.
+            </p>
+          )}
+
           <p className="text-sm text-center text-muted-foreground mt-6">
             {isSignUp ? '이미 계정이 있으신가요?' : '아직 계정이 없으신가요?'}
             <button
