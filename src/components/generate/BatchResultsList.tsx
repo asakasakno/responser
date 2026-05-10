@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Copy, Lock, Crown, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, Lock, Crown, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { PlanType } from '@/types';
 import { useState } from 'react';
 
