@@ -541,10 +541,15 @@ serve(async (req) => {
     const {
       type, text, product, energy_cost, style, platform,
       tone, business_category, review, inquiry, claim, lodging, service,
+      mode, use_voice, cta_id,
     } = requestBody ?? {};
 
-    // 통합된 톤 (구 RESPONSE_STYLES + TONES 통합)
-    const VALID_TONES = new Set(["thanks", "apology", "simple", "principle", "friendly", "firm"]);
+    // 통합된 톤 (시그니처 5종 포함)
+    const VALID_TONES = new Set([
+      "thanks", "apology", "simple", "principle", "friendly", "firm",
+      "sig_kind", "sig_premium", "sig_mz", "sig_pro", "sig_loyalty",
+    ]);
+    const VALID_MODES = new Set(["normal", "aggressive_review"]);
     const VALID_CATEGORIES = new Set([
       "fashion", "food", "beauty", "electronics", "living", "pet", "baby", "digital",
       "hotel", "motel", "pension", "poolvilla", "guesthouse", "glamping", "camping", "lodging_other",
