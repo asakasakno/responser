@@ -151,7 +151,11 @@ export default function AdminUsers() {
       const action = reasonDialog.action;
       setReasonDialog(null);
       setReasonText('');
-      await runBulk(ids, (uid) => ({ action, params: { ...baseParams, user_id: uid } }));
+      await runBulk(
+        ids,
+        (uid) => ({ action, params: { ...baseParams, user_id: uid } }),
+        { bulk_action: action, reason: needReason ? reasonText : null },
+      );
     } else {
       await adminAction(reasonDialog.action, { ...reasonDialog.params, ...(needReason ? { reason: reasonText } : {}) });
       setReasonDialog(null);
