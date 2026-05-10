@@ -11,3 +11,5 @@ project_id = "qbvlgzmivdycuocvcoxy"
     verify_jwt = false
   [functions.kakao-auth]
     verify_jwt = false
+  [functions.identity-links]
+    verify_jwt = false
