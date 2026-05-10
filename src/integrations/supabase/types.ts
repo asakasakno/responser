@@ -113,6 +113,63 @@ export type Database = {
         }
         Relationships: []
       }
+      beta_applications: {
+        Row: {
+          applied_at: string | null
+          business_name: string | null
+          consent: boolean
+          created_at: string
+          email: string
+          error_message: string | null
+          id: string
+          industry: string | null
+          matched_user_id: string | null
+          needed_features: string[]
+          pain_point: string | null
+          platforms: string[]
+          raw_payload: Json
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          business_name?: string | null
+          consent?: boolean
+          created_at?: string
+          email: string
+          error_message?: string | null
+          id?: string
+          industry?: string | null
+          matched_user_id?: string | null
+          needed_features?: string[]
+          pain_point?: string | null
+          platforms?: string[]
+          raw_payload?: Json
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          business_name?: string | null
+          consent?: boolean
+          created_at?: string
+          email?: string
+          error_message?: string | null
+          id?: string
+          industry?: string | null
+          matched_user_id?: string | null
+          needed_features?: string[]
+          pain_point?: string | null
+          platforms?: string[]
+          raw_payload?: Json
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_inquiries: {
         Row: {
           admin_note: string | null
@@ -836,10 +893,13 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          beta_source: string | null
+          beta_until: string | null
           billing_cycle: string
           created_at: string
           expires_at: string | null
           id: string
+          is_beta: boolean
           payment_enabled: boolean
           plan: Database["public"]["Enums"]["plan_type"]
           started_at: string
@@ -848,10 +908,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          beta_source?: string | null
+          beta_until?: string | null
           billing_cycle?: string
           created_at?: string
           expires_at?: string | null
           id?: string
+          is_beta?: boolean
           payment_enabled?: boolean
           plan?: Database["public"]["Enums"]["plan_type"]
           started_at?: string
@@ -860,10 +923,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          beta_source?: string | null
+          beta_until?: string | null
           billing_cycle?: string
           created_at?: string
           expires_at?: string | null
           id?: string
+          is_beta?: boolean
           payment_enabled?: boolean
           plan?: Database["public"]["Enums"]["plan_type"]
           started_at?: string
