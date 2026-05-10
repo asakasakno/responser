@@ -134,10 +134,17 @@ Deno.serve(async (req) => {
     const _ip = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip");
 
     // [10] 관리자 액션 감사 로그 (진입 기록 — 결과는 각 액션에서 별도 기록)
+    const _bulkId = (params as any).bulk_id ?? null;
+    const _bulkIndex = (params as any).bulk_index ?? null;
+    const _bulkTotal = (params as any).bulk_total ?? null;
     await adminClient.from("audit_logs").insert({
       user_id: userId,
       action: `admin_${action}`,
-      details: { target_user_id: (params as any).user_id ?? null, reason: (params as any).reason ?? null },
+      details: {
+        target_user_id: (params as any).user_id ?? null,
+        reason: (params as any).reason ?? null,
+        ...(_bulkId ? { bulk_id: _bulkId, bulk_index: _bulkIndex, bulk_total: _bulkTotal } : {}),
+      },
       severity: "info",
       ip_address: _ip,
     });
