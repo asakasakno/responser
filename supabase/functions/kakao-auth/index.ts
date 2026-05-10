@@ -99,13 +99,38 @@ Deno.serve(async (req) => {
       let siteOrigin = DEFAULT_SITE_ORIGIN;
       let redirectAfter = '/dashboard';
       let referralCode: string | undefined;
+      let mode: 'login' | 'link' = 'login';
+      let linkUserId: string | undefined;
       try {
-        const parsed = JSON.parse(atob(stateRaw));
+        let payloadStr: string;
+        let providedSig: string | null = null;
+        if (stateRaw.includes('.')) {
+          const [b64, sig] = stateRaw.split('.');
+          providedSig = sig;
+          const padded = b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4);
+          payloadStr = atob(padded);
+        } else {
+          payloadStr = atob(stateRaw);
+        }
+        const parsed = JSON.parse(payloadStr);
         if (parsed?.o && ALLOWED_SITE_HOSTS.some((h) => new URL(parsed.o).hostname.endsWith(h))) {
           siteOrigin = parsed.o;
         }
         if (typeof parsed?.r === 'string' && parsed.r.startsWith('/')) redirectAfter = parsed.r;
         if (typeof parsed?.ref === 'string' && parsed.ref.length > 0 && parsed.ref.length < 32) referralCode = parsed.ref;
+        if (parsed?.m === 'link' && typeof parsed?.u === 'string' && providedSig) {
+          const key = await crypto.subtle.importKey(
+            'raw', new TextEncoder().encode(KAKAO_CLIENT_SECRET),
+            { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+          );
+          const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadStr));
+          const expected = btoa(String.fromCharCode(...new Uint8Array(sig)))
+            .replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+          if (expected === providedSig && Date.now() - (parsed.t || 0) < 10 * 60 * 1000) {
+            mode = 'link';
+            linkUserId = parsed.u;
+          }
+        }
       } catch (_) { /* ignore */ }
 
       const code = url.searchParams.get('code');
@@ -194,6 +219,74 @@ Deno.serve(async (req) => {
       const nickname = acc?.profile?.nickname || me.properties?.nickname || '';
 
       const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+      // ===== LINK MODE: attach kakao to currently signed-in user =====
+      if (mode === 'link' && linkUserId) {
+        // Email must be present, valid, verified, and consented
+        if (!kakaoEmail) {
+          return safeRedirect(`${siteOrigin}/settings?link_error=email_required`);
+        }
+        // Block if this kakao_id already belongs to a different user
+        const { data: existing } = await admin
+          .from('user_identity_links')
+          .select('user_id')
+          .eq('provider', 'kakao')
+          .eq('provider_user_id', kakaoId)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (existing && existing.user_id !== linkUserId) {
+          return safeRedirect(`${siteOrigin}/settings?link_error=already_linked`);
+        }
+        // For admin accounts, the email must match the account's email
+        const { data: linkUser } = await admin.auth.admin.getUserById(linkUserId);
+        const accountEmail = linkUser?.user?.email?.toLowerCase() ?? '';
+        const { data: roleRow } = await admin.from('user_roles')
+          .select('role').eq('user_id', linkUserId).eq('role', 'admin').maybeSingle();
+        const isAdminAccount = !!roleRow;
+        if (isAdminAccount && accountEmail !== kakaoEmail) {
+          await admin.from('audit_logs').insert({
+            user_id: linkUserId,
+            action: 'identity_link_blocked',
+            details: { provider: 'kakao', reason: 'admin_email_mismatch', kakao_email: kakaoEmail },
+            severity: 'warning',
+          });
+          return safeRedirect(`${siteOrigin}/settings?link_error=admin_email_mismatch`);
+        }
+
+        // Deactivate any existing kakao link for this user, then insert new
+        await admin.from('user_identity_links')
+          .update({ is_active: false, unlinked_at: new Date().toISOString() })
+          .eq('user_id', linkUserId).eq('provider', 'kakao').eq('is_active', true);
+
+        const { error: insErr } = await admin.from('user_identity_links').insert({
+          user_id: linkUserId,
+          provider: 'kakao',
+          provider_user_id: kakaoId,
+          provider_email: kakaoEmail,
+          email_verified: true,
+          is_active: true,
+        });
+        if (insErr) {
+          console.error('link insert error', insErr);
+          return safeRedirect(`${siteOrigin}/settings?link_error=insert_failed`);
+        }
+
+        // Mirror provider_user_id into profiles only when not already taken
+        await admin.from('profiles')
+          .update({ provider_user_id: kakaoId })
+          .eq('user_id', linkUserId)
+          .is('provider_user_id', null);
+
+        await admin.from('audit_logs').insert({
+          user_id: linkUserId,
+          action: 'identity_link_added',
+          details: { provider: 'kakao', provider_email: kakaoEmail, is_admin_account: isAdminAccount },
+          severity: isAdminAccount ? 'warning' : 'info',
+        });
+        return safeRedirect(`${siteOrigin}/settings?link=kakao_success`);
+      }
+      // ===== END LINK MODE =====
+
 
       // 3) Find existing profile by kakao_id (provider_user_id)
       let userId: string | null = null;
@@ -291,7 +384,41 @@ Deno.serve(async (req) => {
         return errorRedirect(siteOrigin, 'no_email_for_login');
       }
 
-      // 6) Generate magic link → redirect browser to it (sets session, then to siteOrigin + redirectAfter)
+      // Sync user_identity_links for kakao (idempotent upsert)
+      try {
+        const { data: existingLink } = await admin
+          .from('user_identity_links')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('provider', 'kakao')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (!existingLink) {
+          await admin.from('user_identity_links').insert({
+            user_id: userId,
+            provider: 'kakao',
+            provider_user_id: kakaoId,
+            provider_email: kakaoEmail,
+            email_verified: !!kakaoEmail,
+            is_active: true,
+          });
+        }
+        if (kakaoEmail) {
+          const { data: emailLink } = await admin
+            .from('user_identity_links')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('provider', 'email')
+            .eq('is_active', true)
+            .maybeSingle();
+          if (!emailLink) {
+            await admin.from('user_identity_links').insert({
+              user_id: userId, provider: 'email', provider_email: kakaoEmail, email_verified: true, is_active: true,
+            });
+          }
+        }
+      } catch (e) { console.error('identity link sync failed', e); }
+
       const target = `${siteOrigin}${redirectAfter}`;
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
