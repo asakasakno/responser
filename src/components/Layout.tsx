@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Package, History, Settings, LogOut, CreditCard, LayoutDashboard, Shield, Chrome, Zap, Bookmark, SlidersHorizontal } from 'lucide-react';
+import KakaoEmailPrompt from '@/components/KakaoEmailPrompt';
 
 const navItems = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
