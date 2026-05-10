@@ -957,6 +957,7 @@ serve(async (req) => {
       mode: safeMode,
       voice_samples: voiceSamples,
       cta: ctaLink,
+      faq_hints: faqHints,
     };
 
     const callAI = async (retry: boolean): Promise<{ ok: true; text: string } | { ok: false; status: number; reason: string }> => {
