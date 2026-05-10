@@ -720,6 +720,34 @@ serve(async (req) => {
 
     const cost = Number.isFinite(energy_cost) && energy_cost > 0 && energy_cost <= 5 ? energy_cost : 1;
 
+    // 응대 모드, 말투 학습, CTA 로딩 (paid only)
+    const safeMode = typeof mode === "string" && VALID_MODES.has(mode) ? mode : "normal";
+    let voiceSamples: string[] = [];
+    let ctaLink: { label: string; url: string } | null = null;
+
+    if (userPlan !== "free") {
+      if (use_voice === true) {
+        const { data: vs } = await adminClient
+          .from("user_voice_samples")
+          .select("content")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        voiceSamples = (vs || [])
+          .map((r: any) => String(r.content || "").trim())
+          .filter((s: string) => s.length > 0);
+      }
+      if (typeof cta_id === "string" && cta_id.length > 0) {
+        const { data: ct } = await adminClient
+          .from("cta_links")
+          .select("label, url")
+          .eq("user_id", userId)
+          .eq("id", cta_id)
+          .maybeSingle();
+        if (ct?.url) ctaLink = { label: ct.label, url: ct.url };
+      }
+    }
+
     const cachePayload = JSON.stringify({
       type,
       text: text.trim(),
@@ -732,6 +760,9 @@ serve(async (req) => {
       claim: safeClaim,
       lodging: safeLodging,
       service: safeService,
+      mode: safeMode,
+      voice_count: voiceSamples.length,
+      cta_id: ctaLink ? cta_id : null,
     });
     const cacheDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
     const cacheKey = Array.from(new Uint8Array(cacheDigest))
