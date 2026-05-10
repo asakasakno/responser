@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       authorize.searchParams.set('state', state);
       authorize.searchParams.set('scope', 'account_email profile_nickname');
 
-      return Response.redirect(authorize.toString(), 302);
+      return safeRedirect(authorize.toString());
     }
 
     if (action === 'callback') {
