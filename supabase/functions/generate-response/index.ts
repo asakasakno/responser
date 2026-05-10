@@ -234,6 +234,10 @@ function buildPrompt(input: {
   platform: any;
   tone?: string | null;
   business_category?: string | null;
+  mode?: string | null;
+  voice_samples?: string[] | null;
+  cta?: { label?: string | null; url?: string | null } | null;
+  guardrail_retry?: boolean;
   review?: { rating?: number | null; nickname?: string | null } | null;
   inquiry?: { category?: string | null; slots?: Record<string, string> | null } | null;
   claim?: { severity?: string | null; compensations?: string[] | null } | null;
