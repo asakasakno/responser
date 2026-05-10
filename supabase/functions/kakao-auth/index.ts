@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
         console.error('generateLink error', linkErr);
         return errorRedirect(siteOrigin, 'session_link_failed');
       }
-      return htmlRedirect(linkData.properties.action_link, '카카오 로그인 완료. 이동 중...');
+      return safeRedirect(linkData.properties.action_link);
     }
 
     return new Response('Unknown action', { status: 400, headers: corsHeaders });
