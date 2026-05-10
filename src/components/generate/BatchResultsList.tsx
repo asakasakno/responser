@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Copy, Lock, Crown, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, Lock, Crown, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { PlanType } from '@/types';
 import { useState } from 'react';
 
@@ -48,8 +48,27 @@ export default function BatchResultsList({ results, totalExtracted, plan, onCopy
   const blurredResults = results.filter(r => r.output === '__BLURRED__');
   const hasBlurred = blurredResults.length > 0;
 
+  const planMaxLabel = plan === 'free' ? '5개' : plan === 'basic' ? '10개' : '30개';
+  const nextPlan = plan === 'free' ? 'Basic (10개)' : plan === 'basic' ? 'Pro (30개)' : null;
+
   return (
     <div>
+      {hasBlurred && nextPlan && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium text-foreground">
+              {totalExtracted}개 추출됐지만 현재 플랜 한도({planMaxLabel})로 {realResults.length}개만 처리했어요.
+            </p>
+            <p className="text-muted-foreground mt-0.5">
+              나머지 {blurredResults.length}개를 모두 처리하려면 {nextPlan} 플랜으로 업그레이드해 주세요.
+            </p>
+          </div>
+          <Link to="/pricing">
+            <Button size="sm" variant="outline" className="whitespace-nowrap">업그레이드</Button>
+          </Link>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-foreground">
           일괄 처리 결과 ({realResults.length}/{totalExtracted}개)

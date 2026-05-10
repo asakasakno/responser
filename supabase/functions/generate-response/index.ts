@@ -237,6 +237,7 @@ function buildPrompt(input: {
   mode?: string | null;
   voice_samples?: string[] | null;
   cta?: { label?: string | null; url?: string | null } | null;
+  faq_hints?: { keywords: string[]; answer: string }[] | null;
   guardrail_retry?: boolean;
   review?: { rating?: number | null; nickname?: string | null } | null;
   inquiry?: { category?: string | null; slots?: Record<string, string> | null } | null;
@@ -411,6 +412,18 @@ function buildPrompt(input: {
     const url = String(input.cta.url).slice(0, 200);
     sections.push(
       `[CTA 안내]\n답변 마지막에 자연스럽게 다음 안내를 1줄로 포함하세요(공백 없이 정확한 URL 사용): ${lbl} → ${url}`,
+    );
+  }
+
+  // FAQ 힌트 (사장님이 등록한 정형 답변)
+  const faqs = (input.faq_hints || []).filter(f => f && f.answer);
+  if (faqs.length > 0) {
+    sections.push(
+      [
+        "[FAQ 정형 답변 참고]",
+        "아래는 사장님이 등록한 자주 묻는 문의에 대한 정형 답변입니다. 입력 문의가 이 항목과 관련 있으면 답변에 핵심 정보를 반영하되, 어색하지 않게 자연스럽게 풀어 작성하세요.",
+        ...faqs.map((f, i) => `FAQ ${i + 1} (키워드: ${f.keywords.slice(0, 5).join(", ")}):\n${f.answer}`),
+      ].join("\n\n"),
     );
   }
 
@@ -748,6 +761,21 @@ serve(async (req) => {
       }
     }
 
+    // FAQ 매칭: 입력 텍스트에 등록된 키워드가 포함된 FAQ를 자동 주입 (paid only)
+    let faqHints: { keywords: string[]; answer: string }[] = [];
+    if (userPlan !== "free") {
+      const { data: faqs } = await adminClient
+        .from("cs_faq_entries")
+        .select("keywords, answer")
+        .eq("user_id", userId)
+        .limit(50);
+      const lowered = String(text).toLowerCase();
+      faqHints = (faqs || [])
+        .filter((f: any) => Array.isArray(f.keywords) && f.keywords.some((k: string) => k && lowered.includes(String(k).toLowerCase())))
+        .slice(0, 3)
+        .map((f: any) => ({ keywords: f.keywords, answer: String(f.answer || "").slice(0, 500) }));
+    }
+
     const cachePayload = JSON.stringify({
       type,
       text: text.trim(),
@@ -763,6 +791,7 @@ serve(async (req) => {
       mode: safeMode,
       voice_count: voiceSamples.length,
       cta_id: ctaLink ? cta_id : null,
+      faq_count: faqHints.length,
     });
     const cacheDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
     const cacheKey = Array.from(new Uint8Array(cacheDigest))
@@ -941,6 +970,7 @@ serve(async (req) => {
       mode: safeMode,
       voice_samples: voiceSamples,
       cta: ctaLink,
+      faq_hints: faqHints,
     };
 
     const callAI = async (retry: boolean): Promise<{ ok: true; text: string } | { ok: false; status: number; reason: string }> => {
