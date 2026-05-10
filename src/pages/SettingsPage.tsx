@@ -268,7 +268,10 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Platforms */}
+        {/* Identity Links */}
+        <IdentityLinksSection />
+
+
         <div className="bg-card rounded-xl border border-border p-5 shadow-card mb-4">
           <div className="flex items-center gap-3 mb-4">
             <Store className="w-5 h-5 text-primary" />
