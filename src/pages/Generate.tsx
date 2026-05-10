@@ -594,6 +594,50 @@ export default function Generate() {
           </div>
         </div>
 
+        {/* 운영 옵션: 응대 모드 / 사장님 말투 / CTA */}
+        <div className="mb-4 rounded-xl border border-border p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">운영 옵션</span>
+            {plan === 'free' && <span className="text-[11px] text-muted-foreground">(말투/CTA는 유료 플랜)</span>}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">응대 모드</label>
+              <Select value={mode} onValueChange={(v) => setMode(v as ResponseMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RESPONSE_MODES.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">CTA 링크</label>
+              <Select value={selectedCta} onValueChange={setSelectedCta} disabled={plan === 'free'}>
+                <SelectTrigger><SelectValue placeholder="없음" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">사용 안 함</SelectItem>
+                  {ctaLinks.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {ctaLinks.length === 0 && plan !== 'free' && (
+                <Link to="/response-settings" className="text-[11px] text-primary hover:underline mt-1 inline-block">CTA 등록 →</Link>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">사장님 말투</label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer h-10">
+                <input type="checkbox" checked={useVoice} disabled={plan === 'free' || voiceCount === 0}
+                  onChange={e => setUseVoice(e.target.checked)} />
+                <span className="text-foreground">샘플 적용 ({voiceCount}/5)</span>
+              </label>
+              {voiceCount === 0 && plan !== 'free' && (
+                <Link to="/response-settings" className="text-[11px] text-primary hover:underline">샘플 등록 →</Link>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* 리뷰 전용 */}
         {genType === 'review' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
