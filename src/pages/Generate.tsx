@@ -93,6 +93,14 @@ export default function Generate() {
   const [serviceComps, setServiceComps] = useState<ServiceCompensation[]>([]);
   const [autoCopy, setAutoCopy] = useState<boolean>(() => localStorage.getItem('autoCopy') === '1');
 
+  // 운영 시스템: 응대 모드, 사장님 말투, CTA
+  const [mode, setMode] = useState<ResponseMode>('normal');
+  const [useVoice, setUseVoice] = useState(false);
+  const [voiceCount, setVoiceCount] = useState(0);
+  const [ctaLinks, setCtaLinks] = useState<CtaLink[]>([]);
+  const [selectedCta, setSelectedCta] = useState<string>('none');
+  const [guardrail, setGuardrail] = useState<{ ok: boolean; retried: boolean; violations: string[] } | null>(null);
+
   const energyCost = ENERGY_COSTS[genType] || 1;
   const isLimitReached = energyBalance < energyCost;
 
