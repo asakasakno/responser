@@ -181,13 +181,15 @@ Deno.serve(async (req) => {
 
       const kakaoId = String(me.id);
       const acc = me.kakao_account;
-      // Only treat as a real email when user actually agreed and Kakao verified it.
+      // STRICT: only treat as a real email when Kakao explicitly confirms BOTH
+      // is_email_verified === true AND is_email_valid === true. This prevents
+      // unverified emails from auto-linking to existing accounts (esp. admins).
       const kakaoEmail = (
         acc?.email &&
         acc.email_needs_agreement !== true &&
-        acc.has_email !== false &&
-        acc.is_email_valid !== false &&
-        acc.is_email_verified !== false
+        acc.has_email === true &&
+        acc.is_email_valid === true &&
+        acc.is_email_verified === true
       ) ? acc.email.toLowerCase() : null;
       const nickname = acc?.profile?.nickname || me.properties?.nickname || '';
 
@@ -237,8 +239,22 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (existingByEmail?.user_id) {
+          // SECURITY: never auto-link a Kakao login to an account that holds the
+          // admin role. This prevents privilege escalation via Kakao signup with
+          // an admin's email address. Such linking must be performed manually.
+          const { data: adminRole } = await admin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', existingByEmail.user_id)
+            .eq('role', 'admin')
+            .maybeSingle();
+          if (adminRole) {
+            console.warn('blocked kakao auto-link to admin account', { email: kakaoEmail });
+            return errorRedirect(siteOrigin, 'admin_link_blocked');
+          }
           userId = existingByEmail.user_id;
-          // Link kakao to existing account (only fill if currently null)
+          // Link kakao to existing account (only fill if currently null).
+          // role/admin privileges are NEVER touched here.
           await admin.from('profiles').update({
             provider_user_id: kakaoId,
           }).eq('user_id', userId).is('provider_user_id', null);
