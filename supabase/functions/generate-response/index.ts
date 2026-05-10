@@ -748,6 +748,21 @@ serve(async (req) => {
       }
     }
 
+    // FAQ 매칭: 입력 텍스트에 등록된 키워드가 포함된 FAQ를 자동 주입 (paid only)
+    let faqHints: { keywords: string[]; answer: string }[] = [];
+    if (userPlan !== "free") {
+      const { data: faqs } = await adminClient
+        .from("cs_faq_entries")
+        .select("keywords, answer")
+        .eq("user_id", userId)
+        .limit(50);
+      const lowered = String(text).toLowerCase();
+      faqHints = (faqs || [])
+        .filter((f: any) => Array.isArray(f.keywords) && f.keywords.some((k: string) => k && lowered.includes(String(k).toLowerCase())))
+        .slice(0, 3)
+        .map((f: any) => ({ keywords: f.keywords, answer: String(f.answer || "").slice(0, 500) }));
+    }
+
     const cachePayload = JSON.stringify({
       type,
       text: text.trim(),
