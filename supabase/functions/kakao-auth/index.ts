@@ -49,14 +49,16 @@ function pickSiteOrigin(req: Request, hint?: string | null): string {
 }
 
 function safeRedirect(url: string): Response {
-  // Use 302 redirect with Location header. Avoid Response.redirect because some
-  // gateways/proxies may strip or not honor it the same way as a manual response.
+  // Use a body-less HTTP 302 so HTML/script is never rendered and auth tokens
+  // never appear in the response body. Content-Length guards against gateways
+  // injecting fallback text for empty redirect responses.
   return new Response(null, {
     status: 302,
     headers: {
+      ...corsHeaders,
       'Location': url,
       'Cache-Control': 'no-store',
-      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': '0',
     },
   });
 }
