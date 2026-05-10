@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MobilePcOnlyNotice } from '@/components/MobilePcRecommendBanner';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -150,6 +151,7 @@ export default function ExtensionPage() {
       </header>
 
       <div className="container mx-auto px-4 py-16 max-w-4xl space-y-20">
+        <MobilePcOnlyNotice feature="크롬 확장프로그램" />
         {/* ── Hero ── */}
         <div className="text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
