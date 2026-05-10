@@ -415,6 +415,18 @@ function buildPrompt(input: {
     );
   }
 
+  // FAQ 힌트 (사장님이 등록한 정형 답변)
+  const faqs = (input.faq_hints || []).filter(f => f && f.answer);
+  if (faqs.length > 0) {
+    sections.push(
+      [
+        "[FAQ 정형 답변 참고]",
+        "아래는 사장님이 등록한 자주 묻는 문의에 대한 정형 답변입니다. 입력 문의가 이 항목과 관련 있으면 답변에 핵심 정보를 반영하되, 어색하지 않게 자연스럽게 풀어 작성하세요.",
+        ...faqs.map((f, i) => `FAQ ${i + 1} (키워드: ${f.keywords.slice(0, 5).join(", ")}):\n${f.answer}`),
+      ].join("\n\n"),
+    );
+  }
+
   // 가드레일
   sections.push(GUARDRAIL_INSTRUCTION);
   if (input.guardrail_retry) {
