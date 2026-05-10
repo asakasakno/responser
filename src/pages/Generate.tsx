@@ -925,6 +925,18 @@ export default function Generate() {
 
         <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
 
+        {result && guardrail && (
+          <div className={`mb-3 rounded-lg border p-3 flex items-start gap-2 text-sm ${guardrail.ok ? 'border-green-500/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/10'}`}>
+            {guardrail.ok ? <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5" /> : <ShieldAlert className="w-4 h-4 text-destructive mt-0.5" />}
+            <div className="flex-1">
+              {guardrail.ok ? (
+                <span className="text-foreground">위험 표현 없음 {guardrail.retried && <span className="text-muted-foreground text-xs">(자동 재생성 1회)</span>}</span>
+              ) : (
+                <span className="text-foreground font-medium">⚠️ 검토 필요: {guardrail.violations.join(', ')} 표현이 포함되어 있어요. 직접 확인 후 사용해 주세요.</span>
+              )}
+            </div>
+          </div>
+        )}
         {result && (
           <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
         )}
