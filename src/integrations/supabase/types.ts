@@ -732,6 +732,8 @@ export type Database = {
           name: string | null
           phone: string | null
           platforms: string[]
+          provider: string
+          provider_user_id: string | null
           referral_code: string | null
           suspended: boolean
           updated_at: string
@@ -748,6 +750,8 @@ export type Database = {
           name?: string | null
           phone?: string | null
           platforms?: string[]
+          provider?: string
+          provider_user_id?: string | null
           referral_code?: string | null
           suspended?: boolean
           updated_at?: string
@@ -764,6 +768,8 @@ export type Database = {
           name?: string | null
           phone?: string | null
           platforms?: string[]
+          provider?: string
+          provider_user_id?: string | null
           referral_code?: string | null
           suspended?: boolean
           updated_at?: string
