@@ -40,6 +40,7 @@ const Contact = lazy(() => import("./pages/Contact"));
 const AdminInquiries = lazy(() => import("./pages/AdminInquiries"));
 const AdminAnomaliesPage = lazy(() => import("./pages/AdminAnomalies"));
 const AdminAuditPage = lazy(() => import("./pages/AdminAudit"));
+const AdminBetaApplicationsPage = lazy(() => import("./pages/AdminBetaApplications"));
 import FloatingContact from "./components/FloatingContact";
 
 const queryClient = new QueryClient();
