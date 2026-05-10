@@ -161,6 +161,16 @@ export default function Generate() {
         const bc = (data as any)?.business_category;
         if (bc) setBusinessCategory(bc);
       });
+      supabase.from('user_voice_samples').select('id', { count: 'exact', head: true }).eq('user_id', user.id).then(({ count }) => {
+        setVoiceCount(count || 0);
+      });
+      supabase.from('cta_links').select('id, user_id, kind, label, url, is_default').eq('user_id', user.id).then(({ data }) => {
+        if (data) {
+          setCtaLinks(data as any);
+          const def = (data as any[]).find((d) => d.is_default);
+          if (def) setSelectedCta(def.id);
+        }
+      });
     }
   }, [user]);
 
