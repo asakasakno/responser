@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   ENERGY_COSTS,
   TONES, type Tone,
+  RESPONSE_MODES, type ResponseMode,
   BUSINESS_CATEGORIES, type BusinessCategory,
   BUSINESS_GROUPS, type BusinessGroup,
   INQUIRY_CATEGORIES, type InquiryCategory,
@@ -15,6 +16,7 @@ import {
   SERVICE_ISSUES, type ServiceIssue,
   SERVICE_COMPENSATIONS, type ServiceCompensation,
   CLAIM_RISK_KEYWORDS, LODGING_RISK_KEYWORDS, SERVICE_RISK_KEYWORDS, PLATFORM_CHAR_LIMITS,
+  type CtaLink,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star } from 'lucide-react';
+import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star, ShieldCheck, Sparkles, Link2 } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
