@@ -868,14 +868,8 @@ export default function Generate() {
 
         <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 답변 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
           </Button>
-          <div className="relative">
-            <input type="file" accept="image/*" multiple={plan === 'pro'} onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
-            <Button variant="outline" disabled={isLimitReached || batchLoading}>
-              <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
-            </Button>
-          </div>
           {result && (
             <Button variant="outline" onClick={saveAsTemplate}>
               <Save className="w-4 h-4 mr-2" /> 템플릿 저장
@@ -883,7 +877,20 @@ export default function Generate() {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
+        <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣으면 아래 대기열에 추가됩니다 (최대 {MAX_QUEUE}장).</p>
+
+        <SmoothProgress
+          active={loading}
+          done={!loading && !!result}
+          steps={[
+            '리뷰 내용을 분석하고 있어요...',
+            '답변 문장을 만들고 있어요...',
+            '선택한 톤에 맞게 다듬고 있어요...',
+            '결과를 정리하고 있어요...',
+            '완료되었습니다.',
+          ]}
+          title="답변 생성 중"
+        />
 
         {result && guardrail && (
           <div className={`mb-3 rounded-lg border p-3 flex items-start gap-2 text-sm ${guardrail.ok ? 'border-green-500/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/10'}`}>
@@ -898,7 +905,7 @@ export default function Generate() {
           </div>
         )}
         {result && (
-          <div>
+          <div className="animate-fade-in">
             <GenerateResultCard
               result={result}
               onCopy={() => {
@@ -913,27 +920,17 @@ export default function Generate() {
             />
           </div>
         )}
-        {batchLoading && (
-          <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
-            <div className="flex items-center gap-3 mb-3">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="font-medium text-foreground">이미지 처리 중... {batchProgress}%</span>
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div className="gradient-primary h-2 rounded-full transition-all" style={{ width: `${batchProgress}%` }} />
-            </div>
-          </div>
-        )}
 
-        {batchResults.length > 0 && (
-          <BatchResultsList
-            results={batchResults}
-            totalExtracted={batchTotalExtracted}
-            plan={plan}
-            onCopy={copyToClipboard}
-            onCopyAll={copyAll}
-          />
-        )}
+        <ImageBatchPanel
+          ref={batchRef}
+          context={batchContext}
+          energyBalance={energyBalance}
+          onEnergySpent={(amount) => {
+            setEnergyAnim({ amount, type: 'spend' });
+            refreshEnergy();
+          }}
+          disabled={isLimitReached}
+        />
       </div>
     </Layout>
   );
