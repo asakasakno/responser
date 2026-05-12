@@ -514,7 +514,9 @@ const ImageBatchPanel = forwardRef<ImageBatchPanelHandle, Props>(function ImageB
       )}
     </div>
   );
-}
+});
+
+export default ImageBatchPanel;
 
 function StatusPill({ status }: { status: ItemStatus }) {
   const map: Record<ItemStatus, { label: string; cls: string }> = {
@@ -528,9 +530,4 @@ function StatusPill({ status }: { status: ItemStatus }) {
   };
   const m = map[status];
   return <span className={`font-medium ${m.cls}`}>{m.label}</span>;
-}
-
-// Re-export helper for parent to add files imperatively
-export function useImageBatch() {
-  // placeholder for future ref API; parent uses controlled list pattern via prop
 }
