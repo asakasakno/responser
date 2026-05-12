@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import MobilePcRecommendBanner, { MobilePcOnlyNotice } from '@/components/MobilePcRecommendBanner';
@@ -28,8 +28,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star, ShieldCheck, Sparkles, Link2 } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
-import BatchResultsList from '@/components/generate/BatchResultsList';
 import FeedbackBar from '@/components/generate/FeedbackBar';
+import SmoothProgress from '@/components/generate/SmoothProgress';
+import ImageBatchPanel, { type ImageBatchPanelHandle, type BatchJobContext, MAX_QUEUE } from '@/components/generate/ImageBatchPanel';
 import { maskPII } from '@/lib/masking';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
