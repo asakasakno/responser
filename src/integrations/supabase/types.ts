@@ -633,9 +633,12 @@ export type Database = {
           generated_reply: string
           generation_id: string | null
           id: string
+          image_batch_id: string | null
+          image_index: number | null
           original_review: string | null
           platform: string | null
           rating: number | null
+          source: string
           sub_category: string | null
           tone: string | null
           type: string
@@ -652,9 +655,12 @@ export type Database = {
           generated_reply: string
           generation_id?: string | null
           id?: string
+          image_batch_id?: string | null
+          image_index?: number | null
           original_review?: string | null
           platform?: string | null
           rating?: number | null
+          source?: string
           sub_category?: string | null
           tone?: string | null
           type?: string
@@ -671,9 +677,12 @@ export type Database = {
           generated_reply?: string
           generation_id?: string | null
           id?: string
+          image_batch_id?: string | null
+          image_index?: number | null
           original_review?: string | null
           platform?: string | null
           rating?: number | null
+          source?: string
           sub_category?: string | null
           tone?: string | null
           type?: string
