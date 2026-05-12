@@ -622,6 +622,66 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_logs: {
+        Row: {
+          business_category: string | null
+          copied: boolean
+          created_at: string
+          edited: boolean
+          feedback: string | null
+          final_reply: string | null
+          generated_reply: string
+          generation_id: string | null
+          id: string
+          original_review: string | null
+          platform: string | null
+          rating: number | null
+          sub_category: string | null
+          tone: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_category?: string | null
+          copied?: boolean
+          created_at?: string
+          edited?: boolean
+          feedback?: string | null
+          final_reply?: string | null
+          generated_reply: string
+          generation_id?: string | null
+          id?: string
+          original_review?: string | null
+          platform?: string | null
+          rating?: number | null
+          sub_category?: string | null
+          tone?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_category?: string | null
+          copied?: boolean
+          created_at?: string
+          edited?: boolean
+          feedback?: string | null
+          final_reply?: string | null
+          generated_reply?: string
+          generation_id?: string | null
+          id?: string
+          original_review?: string | null
+          platform?: string | null
+          rating?: number | null
+          sub_category?: string | null
+          tone?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generations: {
         Row: {
           created_at: string

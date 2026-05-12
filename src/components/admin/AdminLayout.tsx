@@ -6,7 +6,7 @@ import StepUpDialog from './StepUpDialog';
 import { registerStepUpHandler } from '@/hooks/useAdminAction';
 import {
   LayoutDashboard, Users, CreditCard, Zap, BarChart3,
-  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail, Siren, FileText, Sparkles
+  TrendingUp, AlertTriangle, Settings, ArrowLeft, LogOut, Shield, Tag, Mail, Siren, FileText, Sparkles, MessageSquareHeart
 } from 'lucide-react';
 
 const adminNav = [
@@ -20,6 +20,7 @@ const adminNav = [
   { to: '/admin/beta-applications', label: '베타 신청', icon: Sparkles },
   { to: '/admin/inquiries', label: '문의 관리', icon: Mail },
   { to: '/admin/anomalies', label: '이상 탐지', icon: Siren },
+  { to: '/admin/feedback', label: '답변 피드백', icon: MessageSquareHeart },
   { to: '/admin/audit', label: '감사 로그', icon: FileText },
   { to: '/admin/alerts', label: '알림', icon: AlertTriangle },
   { to: '/admin/settings', label: '설정', icon: Settings },

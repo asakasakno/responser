@@ -29,6 +29,8 @@ import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star, S
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
+import FeedbackBar from '@/components/generate/FeedbackBar';
+import { maskPII } from '@/lib/masking';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
 import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext, isServiceContext, SERVICE_CATEGORY_IDS, LODGING_CATEGORY_IDS } from '@/lib/platforms';
@@ -58,6 +60,7 @@ export default function Generate() {
   const [customPlatform, setCustomPlatform] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
+  const [logId, setLogId] = useState<string | null>(null);
   
   const [batchResults, setBatchResults] = useState<{ input: string; output: string }[]>([]);
   const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
@@ -287,6 +290,7 @@ export default function Generate() {
     }
     setLoading(true);
     setResult('');
+    setLogId(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-response', {
         body: {
@@ -307,17 +311,40 @@ export default function Generate() {
         supabase.from('profiles').update({ business_category: businessCategory }).eq('user_id', user!.id);
       }
 
-      if (autoCopy) {
-        try { await navigator.clipboard.writeText(data.response); toast({ title: '답변 자동 복사됨' }); } catch {}
-      }
-
-      await supabase.from('generations').insert({
+      const { data: genRow } = await supabase.from('generations').insert({
         user_id: user!.id,
         type: genType,
         input_text: inputText,
         output_text: data.response,
         product_id: selectedProduct !== 'none' ? selectedProduct : null,
-      });
+      }).select('id').maybeSingle();
+
+      // Quality tracking log (PII-masked input)
+      const platformPayload = getPlatformPayload();
+      const productCtx = getProductContext();
+      const { data: logRow } = await supabase.from('generation_logs').insert({
+        user_id: user!.id,
+        generation_id: genRow?.id ?? null,
+        type: genType,
+        platform: platformPayload?.id ?? null,
+        business_category: businessCategory !== 'none' ? businessCategory : null,
+        sub_category: genType === 'inquiry' && inquiryCategory !== 'none' ? inquiryCategory : (productCtx?.category ?? null),
+        tone: tone !== 'none' ? tone : null,
+        rating: genType === 'review' && reviewRating > 0 ? reviewRating : null,
+        original_review: maskPII(inputText).slice(0, 4000),
+        generated_reply: data.response,
+      }).select('id').maybeSingle();
+      setLogId(logRow?.id ?? null);
+
+      if (autoCopy) {
+        try {
+          await navigator.clipboard.writeText(data.response);
+          if (logRow?.id) {
+            supabase.from('generation_logs').update({ copied: true }).eq('id', logRow.id);
+          }
+          toast({ title: '답변 자동 복사됨' });
+        } catch {}
+      }
     } catch (err: any) {
       toast({ title: '생성 실패', description: err.message, variant: 'destructive' });
     } finally {
@@ -943,7 +970,20 @@ export default function Generate() {
           </div>
         )}
         {result && (
-          <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
+          <div>
+            <GenerateResultCard
+              result={result}
+              onCopy={() => {
+                copyToClipboard(result);
+                if (logId) supabase.from('generation_logs').update({ copied: true }).eq('id', logId);
+              }}
+            />
+            <FeedbackBar
+              logId={logId}
+              initialReply={result}
+              onEditedReplyChange={(t) => setResult(t)}
+            />
+          </div>
         )}
         {batchLoading && (
           <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
