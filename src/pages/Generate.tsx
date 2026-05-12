@@ -29,6 +29,8 @@ import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star, S
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
 import BatchResultsList from '@/components/generate/BatchResultsList';
+import FeedbackBar from '@/components/generate/FeedbackBar';
+import { maskPII } from '@/lib/masking';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
 import { ALL_PLATFORMS, getPlatformLabel, getAllowedBusinessCategories, isLodgingContext, isServiceContext, SERVICE_CATEGORY_IDS, LODGING_CATEGORY_IDS } from '@/lib/platforms';
