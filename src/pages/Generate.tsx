@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import MobilePcRecommendBanner, { MobilePcOnlyNotice } from '@/components/MobilePcRecommendBanner';
@@ -28,8 +28,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Image, Loader2, ArrowUp, AlertTriangle, Zap, Save, ShieldAlert, Star, ShieldCheck, Sparkles, Link2 } from 'lucide-react';
 
 import GenerateResultCard from '@/components/generate/GenerateResultCard';
-import BatchResultsList from '@/components/generate/BatchResultsList';
 import FeedbackBar from '@/components/generate/FeedbackBar';
+import SmoothProgress from '@/components/generate/SmoothProgress';
+import ImageBatchPanel, { type ImageBatchPanelHandle, type BatchJobContext, MAX_QUEUE } from '@/components/generate/ImageBatchPanel';
 import { maskPII } from '@/lib/masking';
 import EnergyIndicator from '@/components/generate/EnergyIndicator';
 import EnergyAnimation from '@/components/generate/EnergyAnimation';
@@ -62,10 +63,7 @@ export default function Generate() {
   const [result, setResult] = useState('');
   const [logId, setLogId] = useState<string | null>(null);
   
-  const [batchResults, setBatchResults] = useState<{ input: string; output: string }[]>([]);
-  const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
-  const [batchLoading, setBatchLoading] = useState(false);
-  const [batchProgress, setBatchProgress] = useState(0);
+  const batchRef = useRef<ImageBatchPanelHandle | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const [energyAnim, setEnergyAnim] = useState<{ amount: number; type: 'earn' | 'spend' } | null>(null);
@@ -186,25 +184,28 @@ export default function Generate() {
     refreshEnergy?.();
   }, [user, refreshSubscription, refreshProfile, refreshEnergy]);
 
-  // Clipboard paste support for images
+  // Clipboard paste support — push images into the batch queue.
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      const files: File[] = [];
       for (const item of Array.from(items)) {
         if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) processImageFile(file);
-          return;
+          const f = item.getAsFile();
+          if (f) files.push(f);
         }
       }
+      if (files.length === 0) return;
+      e.preventDefault();
+      batchRef.current?.addFiles(files);
+      toast({ title: `이미지 ${files.length}장 대기열 추가됨`, description: '아래 "이미지 일괄 답변 생성" 버튼을 눌러 처리하세요.' });
     };
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [genType, selectedProduct, isLimitReached, batchLoading, energyBalance]);
+  }, [toast]);
 
-  // Drag & drop handlers
+  // Drag & drop handlers — also enqueue.
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
@@ -212,12 +213,8 @@ export default function Generate() {
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     if (files.length === 0) return;
-    if (files.length > 1 && plan !== 'pro') {
-      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
-      processImageFile(files[0]);
-      return;
-    }
-    processMultipleImages(files);
+    batchRef.current?.addFiles(files);
+    toast({ title: `이미지 ${files.length}장 대기열 추가됨` });
   };
 
   const getProductContext = () => {
@@ -364,101 +361,32 @@ export default function Generate() {
   };
 
 
-  const readFileAsBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const processMultipleImages = async (files: File[]) => {
-    if (isLimitReached) {
-      toast({ title: '에너지 부족', description: '응답에너지가 부족합니다.', variant: 'destructive' });
-      return;
-    }
-    setBatchResults([]);
-    setBatchTotalExtracted(0);
-    setBatchLoading(true);
-
-    try {
-      let allItems: string[] = [];
-      for (const file of files) {
-        const base64 = await readFileAsBase64(file);
-        const { data: extractData, error: extractError } = await supabase.functions.invoke('extract-from-image', {
-          body: { image: base64, type: genType },
-        });
-        if (extractError) throw extractError;
-        allItems = allItems.concat(extractData.items || []);
-      }
-
-      setBatchTotalExtracted(allItems.length);
-
-      const maxByPlan = plan === 'pro' ? 30 : plan === 'basic' ? 10 : 5;
-      const maxByEnergy = Math.floor(energyBalance / energyCost);
-      const processCount = Math.min(allItems.length, maxByPlan, maxByEnergy);
-      const processItems = allItems.slice(0, processCount);
-
-      const allResults: { input: string; output: string }[] = [];
-      const product = getProductContext();
-      for (let i = 0; i < processItems.length; i++) {
-        setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
-        const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, platform: getPlatformPayload(), ...buildExtraPayload() },
-        });
-        if (genError) throw genError;
-        const output = data?.response || data?.error || '생성 실패';
-        allResults.push({ input: processItems[i], output });
-
-        await supabase.from('generations').insert({
-          user_id: user!.id,
-          type: genType,
-          input_text: processItems[i],
-          output_text: output,
-          product_id: selectedProduct !== 'none' ? selectedProduct : null,
-        });
-      }
-
-      const blurredCount = allItems.length - processCount;
-      for (let i = 0; i < blurredCount; i++) {
-        allResults.push({ input: allItems[processCount + i] || '', output: '__BLURRED__' });
-      }
-
-      setBatchResults(allResults);
-      setEnergyAnim({ amount: processCount * energyCost, type: 'spend' });
-      await refreshEnergy();
-    } catch (err: any) {
-      toast({ title: '처리 실패', description: err.message, variant: 'destructive' });
-    } finally {
-      setBatchLoading(false);
-      setBatchProgress(0);
-    }
-  };
-
-  const processImageFile = (file: File) => processMultipleImages([file]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
-    if (files.length === 0) return;
-    if (files.length > 1 && plan !== 'pro') {
-      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
-      processImageFile(files[0]);
-      return;
-    }
-    processMultipleImages(files);
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: '복사됨' });
   };
 
-  const realResults = batchResults.filter(r => r.output !== '__BLURRED__');
-  const copyAll = () => {
-    const allText = realResults.map((r, i) => `[${i + 1}]\n원문: ${r.input}\n답변: ${r.output}`).join('\n\n---\n\n');
-    copyToClipboard(allText);
-  };
+  // Build batch context for ImageBatchPanel (snapshot of all generation params)
+  const batchContext: BatchJobContext | null = useMemo(() => {
+    if (!user) return null;
+    const productCtx = getProductContext();
+    const platformPayload = getPlatformPayload();
+    return {
+      userId: user.id,
+      type: genType,
+      energyCost,
+      productId: selectedProduct !== 'none' ? selectedProduct : null,
+      productCtx,
+      platformPayload,
+      businessCategory: businessCategory !== 'none' ? businessCategory : null,
+      subCategory: genType === 'inquiry' && inquiryCategory !== 'none' ? inquiryCategory : (productCtx?.category ?? null),
+      tone: tone !== 'none' ? tone : null,
+      rating: genType === 'review' && reviewRating > 0 ? reviewRating : null,
+      extraPayload: buildExtraPayload(),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, genType, energyCost, selectedProduct, products, selectedPlatform, customPlatform, businessCategory, inquiryCategory, tone, reviewRating, mode, useVoice, voiceCount, selectedCta, plan, claimSeverity, compensations, lodgingRoom, lodgingVisitDate, lodgingIssues, lodgingRevisit, lodgingComps, serviceVisitDate, serviceReserved, serviceStaff, serviceKind, serviceIssues, serviceRevisit, serviceComps, slots]);
+
 
   return (
     <Layout>
@@ -940,14 +868,8 @@ export default function Generate() {
 
         <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 답변 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
           </Button>
-          <div className="relative">
-            <input type="file" accept="image/*" multiple={plan === 'pro'} onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isLimitReached || batchLoading} />
-            <Button variant="outline" disabled={isLimitReached || batchLoading}>
-              <Image className="w-4 h-4 mr-2" /> 이미지 일괄 처리
-            </Button>
-          </div>
           {result && (
             <Button variant="outline" onClick={saveAsTemplate}>
               <Save className="w-4 h-4 mr-2" /> 템플릿 저장
@@ -955,7 +877,20 @@ export default function Generate() {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기할 수 있습니다.</p>
+        <p className="text-xs text-muted-foreground -mt-4 mb-6">💡 이미지를 드래그 앤 드롭하거나 Ctrl+V로 붙여넣으면 아래 대기열에 추가됩니다 (최대 {MAX_QUEUE}장).</p>
+
+        <SmoothProgress
+          active={loading}
+          done={!loading && !!result}
+          steps={[
+            '리뷰 내용을 분석하고 있어요...',
+            '답변 문장을 만들고 있어요...',
+            '선택한 톤에 맞게 다듬고 있어요...',
+            '결과를 정리하고 있어요...',
+            '완료되었습니다.',
+          ]}
+          title="답변 생성 중"
+        />
 
         {result && guardrail && (
           <div className={`mb-3 rounded-lg border p-3 flex items-start gap-2 text-sm ${guardrail.ok ? 'border-green-500/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/10'}`}>
@@ -970,7 +905,7 @@ export default function Generate() {
           </div>
         )}
         {result && (
-          <div>
+          <div className="animate-fade-in">
             <GenerateResultCard
               result={result}
               onCopy={() => {
@@ -985,27 +920,17 @@ export default function Generate() {
             />
           </div>
         )}
-        {batchLoading && (
-          <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
-            <div className="flex items-center gap-3 mb-3">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="font-medium text-foreground">이미지 처리 중... {batchProgress}%</span>
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div className="gradient-primary h-2 rounded-full transition-all" style={{ width: `${batchProgress}%` }} />
-            </div>
-          </div>
-        )}
 
-        {batchResults.length > 0 && (
-          <BatchResultsList
-            results={batchResults}
-            totalExtracted={batchTotalExtracted}
-            plan={plan}
-            onCopy={copyToClipboard}
-            onCopyAll={copyAll}
-          />
-        )}
+        <ImageBatchPanel
+          ref={batchRef}
+          context={batchContext}
+          energyBalance={energyBalance}
+          onEnergySpent={(amount) => {
+            setEnergyAnim({ amount, type: 'spend' });
+            refreshEnergy();
+          }}
+          disabled={isLimitReached}
+        />
       </div>
     </Layout>
   );
