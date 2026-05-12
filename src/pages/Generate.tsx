@@ -63,10 +63,7 @@ export default function Generate() {
   const [result, setResult] = useState('');
   const [logId, setLogId] = useState<string | null>(null);
   
-  const [batchResults, setBatchResults] = useState<{ input: string; output: string }[]>([]);
-  const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
-  const [batchLoading, setBatchLoading] = useState(false);
-  const [batchProgress, setBatchProgress] = useState(0);
+  const batchRef = useRef<ImageBatchPanelHandle | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const [energyAnim, setEnergyAnim] = useState<{ amount: number; type: 'earn' | 'spend' } | null>(null);
