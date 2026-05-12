@@ -101,6 +101,11 @@ const ImageBatchPanel = forwardRef<ImageBatchPanelHandle, Props>(function ImageB
     });
   }, [toast]);
 
+  useImperativeHandle(ref, () => ({
+    addFiles,
+    count: () => items.length,
+  }), [addFiles, items.length]);
+
   const removeItem = (id: string) => {
     setItems(prev => {
       const target = prev.find(i => i.id === id);
