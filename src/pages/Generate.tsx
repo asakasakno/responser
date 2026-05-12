@@ -60,6 +60,7 @@ export default function Generate() {
   const [customPlatform, setCustomPlatform] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
+  const [logId, setLogId] = useState<string | null>(null);
   
   const [batchResults, setBatchResults] = useState<{ input: string; output: string }[]>([]);
   const [batchTotalExtracted, setBatchTotalExtracted] = useState(0);
