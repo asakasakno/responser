@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, X, Copy, Loader2, AlertTriangle, RefreshCw, Wand2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -50,7 +50,14 @@ interface Props {
   disabled?: boolean;
 }
 
-export default function ImageBatchPanel({ context, energyBalance, onEnergySpent, onAfterRun, disabled }: Props) {
+export interface ImageBatchPanelHandle {
+  addFiles: (files: File[]) => void;
+  count: () => number;
+}
+
+const ImageBatchPanel = forwardRef<ImageBatchPanelHandle, Props>(function ImageBatchPanel(
+  { context, energyBalance, onEnergySpent, onAfterRun, disabled }, ref,
+) {
   const { toast } = useToast();
   const [items, setItems] = useState<QueueItem[]>([]);
   const [running, setRunning] = useState(false);
