@@ -361,101 +361,32 @@ export default function Generate() {
   };
 
 
-  const readFileAsBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const processMultipleImages = async (files: File[]) => {
-    if (isLimitReached) {
-      toast({ title: '에너지 부족', description: '응답에너지가 부족합니다.', variant: 'destructive' });
-      return;
-    }
-    setBatchResults([]);
-    setBatchTotalExtracted(0);
-    setBatchLoading(true);
-
-    try {
-      let allItems: string[] = [];
-      for (const file of files) {
-        const base64 = await readFileAsBase64(file);
-        const { data: extractData, error: extractError } = await supabase.functions.invoke('extract-from-image', {
-          body: { image: base64, type: genType },
-        });
-        if (extractError) throw extractError;
-        allItems = allItems.concat(extractData.items || []);
-      }
-
-      setBatchTotalExtracted(allItems.length);
-
-      const maxByPlan = plan === 'pro' ? 30 : plan === 'basic' ? 10 : 5;
-      const maxByEnergy = Math.floor(energyBalance / energyCost);
-      const processCount = Math.min(allItems.length, maxByPlan, maxByEnergy);
-      const processItems = allItems.slice(0, processCount);
-
-      const allResults: { input: string; output: string }[] = [];
-      const product = getProductContext();
-      for (let i = 0; i < processItems.length; i++) {
-        setBatchProgress(Math.round(((i + 1) / processItems.length) * 100));
-        const { data, error: genError } = await supabase.functions.invoke('generate-response', {
-          body: { type: genType, text: processItems[i], product, energy_cost: energyCost, platform: getPlatformPayload(), ...buildExtraPayload() },
-        });
-        if (genError) throw genError;
-        const output = data?.response || data?.error || '생성 실패';
-        allResults.push({ input: processItems[i], output });
-
-        await supabase.from('generations').insert({
-          user_id: user!.id,
-          type: genType,
-          input_text: processItems[i],
-          output_text: output,
-          product_id: selectedProduct !== 'none' ? selectedProduct : null,
-        });
-      }
-
-      const blurredCount = allItems.length - processCount;
-      for (let i = 0; i < blurredCount; i++) {
-        allResults.push({ input: allItems[processCount + i] || '', output: '__BLURRED__' });
-      }
-
-      setBatchResults(allResults);
-      setEnergyAnim({ amount: processCount * energyCost, type: 'spend' });
-      await refreshEnergy();
-    } catch (err: any) {
-      toast({ title: '처리 실패', description: err.message, variant: 'destructive' });
-    } finally {
-      setBatchLoading(false);
-      setBatchProgress(0);
-    }
-  };
-
-  const processImageFile = (file: File) => processMultipleImages([file]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
-    if (files.length === 0) return;
-    if (files.length > 1 && plan !== 'pro') {
-      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
-      processImageFile(files[0]);
-      return;
-    }
-    processMultipleImages(files);
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: '복사됨' });
   };
 
-  const realResults = batchResults.filter(r => r.output !== '__BLURRED__');
-  const copyAll = () => {
-    const allText = realResults.map((r, i) => `[${i + 1}]\n원문: ${r.input}\n답변: ${r.output}`).join('\n\n---\n\n');
-    copyToClipboard(allText);
-  };
+  // Build batch context for ImageBatchPanel (snapshot of all generation params)
+  const batchContext: BatchJobContext | null = useMemo(() => {
+    if (!user) return null;
+    const productCtx = getProductContext();
+    const platformPayload = getPlatformPayload();
+    return {
+      userId: user.id,
+      type: genType,
+      energyCost,
+      productId: selectedProduct !== 'none' ? selectedProduct : null,
+      productCtx,
+      platformPayload,
+      businessCategory: businessCategory !== 'none' ? businessCategory : null,
+      subCategory: genType === 'inquiry' && inquiryCategory !== 'none' ? inquiryCategory : (productCtx?.category ?? null),
+      tone: tone !== 'none' ? tone : null,
+      rating: genType === 'review' && reviewRating > 0 ? reviewRating : null,
+      extraPayload: buildExtraPayload(),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, genType, energyCost, selectedProduct, products, selectedPlatform, customPlatform, businessCategory, inquiryCategory, tone, reviewRating, mode, useVoice, voiceCount, selectedCta, plan, claimSeverity, compensations, lodgingRoom, lodgingVisitDate, lodgingIssues, lodgingRevisit, lodgingComps, serviceVisitDate, serviceReserved, serviceStaff, serviceKind, serviceIssues, serviceRevisit, serviceComps, slots]);
+
 
   return (
     <Layout>
