@@ -184,25 +184,28 @@ export default function Generate() {
     refreshEnergy?.();
   }, [user, refreshSubscription, refreshProfile, refreshEnergy]);
 
-  // Clipboard paste support for images
+  // Clipboard paste support — push images into the batch queue.
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      const files: File[] = [];
       for (const item of Array.from(items)) {
         if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) processImageFile(file);
-          return;
+          const f = item.getAsFile();
+          if (f) files.push(f);
         }
       }
+      if (files.length === 0) return;
+      e.preventDefault();
+      batchRef.current?.addFiles(files);
+      toast({ title: `이미지 ${files.length}장 대기열 추가됨`, description: '아래 "이미지 일괄 답변 생성" 버튼을 눌러 처리하세요.' });
     };
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [genType, selectedProduct, isLimitReached, batchLoading, energyBalance]);
+  }, [toast]);
 
-  // Drag & drop handlers
+  // Drag & drop handlers — also enqueue.
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
@@ -210,12 +213,8 @@ export default function Generate() {
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     if (files.length === 0) return;
-    if (files.length > 1 && plan !== 'pro') {
-      toast({ title: '프로 전용 기능', description: '여러 이미지 동시 업로드는 Pro 플랜에서만 가능합니다.', variant: 'destructive' });
-      processImageFile(files[0]);
-      return;
-    }
-    processMultipleImages(files);
+    batchRef.current?.addFiles(files);
+    toast({ title: `이미지 ${files.length}장 대기열 추가됨` });
   };
 
   const getProductContext = () => {
