@@ -970,7 +970,20 @@ export default function Generate() {
           </div>
         )}
         {result && (
-          <GenerateResultCard result={result} onCopy={() => copyToClipboard(result)} />
+          <div>
+            <GenerateResultCard
+              result={result}
+              onCopy={() => {
+                copyToClipboard(result);
+                if (logId) supabase.from('generation_logs').update({ copied: true }).eq('id', logId);
+              }}
+            />
+            <FeedbackBar
+              logId={logId}
+              initialReply={result}
+              onEditedReplyChange={(t) => setResult(t)}
+            />
+          </div>
         )}
         {batchLoading && (
           <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-card">
