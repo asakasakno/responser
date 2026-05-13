@@ -241,8 +241,3 @@ review_index는 0부터 시작하는 정수입니다.`,
     return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
   }
 });
-  } catch (e) {
-    console.error("extract-from-image error:", e);
-    return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
-  }
-});
