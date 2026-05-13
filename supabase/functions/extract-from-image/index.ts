@@ -212,7 +212,7 @@ review_index는 0부터 시작하는 정수입니다.`,
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '{"items": []}';
     
-    let parsed;
+    let parsed: any;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { items: [] };
@@ -220,7 +220,27 @@ review_index는 0부터 시작하는 정수입니다.`,
       parsed = { items: [] };
     }
 
-    return jsonRes({ items: parsed.items || [] });
+    // Normalize items into [{ review_index, text }] regardless of model variation
+    const rawItems = Array.isArray(parsed?.items) ? parsed.items : [];
+    const normalized = rawItems
+      .map((it: any, idx: number) => {
+        if (typeof it === "string") return { review_index: idx, text: it.trim() };
+        if (it && typeof it === "object") {
+          const text = typeof it.text === "string" ? it.text.trim() : "";
+          const ri = Number.isFinite(Number(it.review_index)) ? Number(it.review_index) : idx;
+          return { review_index: ri, text };
+        }
+        return { review_index: idx, text: "" };
+      })
+      .filter((it: any) => it.text && it.text.length > 0)
+      .map((it: any, idx: number) => ({ review_index: idx, text: it.text.slice(0, 4000) }));
+
+    return jsonRes({ items: normalized });
+  } catch (e) {
+    console.error("extract-from-image error:", e);
+    return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
+  }
+});
   } catch (e) {
     console.error("extract-from-image error:", e);
     return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);
