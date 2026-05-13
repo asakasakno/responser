@@ -170,14 +170,19 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `당신은 이미지에서 ${typeLabel} 텍스트를 추출하는 전문가입니다.
-이미지에서 개별 ${typeLabel}을 식별하고 각각을 별도의 항목으로 추출해주세요.
+            content: `당신은 이미지에서 ${typeLabel}을 카드 단위로 분리 추출하는 전문가입니다.
 
-반드시 다음 JSON 형식으로만 응답하세요:
-{"items": ["첫 번째 리뷰/문의 내용", "두 번째 리뷰/문의 내용", ...]}
+규칙:
+- 한 이미지에 여러 ${typeLabel}이 있으면 각각을 반드시 별도의 항목으로 분리하세요.
+- 분리 기준: 닉네임/별점/날짜/본문 등 리뷰 카드 단위, 줄바꿈/간격/구분선/레이아웃.
+- 각 항목의 text는 해당 ${typeLabel}의 본문(필요 시 별점·작성자 단서를 자연어로 포함)이어야 합니다.
+- UI 요소(버튼, 메뉴, 광고, 페이지 번호)는 무시하세요.
+- 텍스트가 없으면 빈 배열을 반환하세요.
 
-각 항목은 하나의 완전한 ${typeLabel}이어야 합니다.
-이미지에서 텍스트를 찾을 수 없으면 {"items": []}를 반환하세요.`,
+반드시 다음 JSON 형식으로만 응답하세요(설명 금지):
+{"items":[{"review_index":0,"text":"첫 번째 ${typeLabel} 본문"},{"review_index":1,"text":"두 번째 ${typeLabel} 본문"}]}
+
+review_index는 0부터 시작하는 정수입니다.`,
           },
           {
             role: "user",
@@ -207,7 +212,7 @@ serve(async (req) => {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '{"items": []}';
     
-    let parsed;
+    let parsed: any;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { items: [] };
@@ -215,7 +220,22 @@ serve(async (req) => {
       parsed = { items: [] };
     }
 
-    return jsonRes({ items: parsed.items || [] });
+    // Normalize items into [{ review_index, text }] regardless of model variation
+    const rawItems = Array.isArray(parsed?.items) ? parsed.items : [];
+    const normalized = rawItems
+      .map((it: any, idx: number) => {
+        if (typeof it === "string") return { review_index: idx, text: it.trim() };
+        if (it && typeof it === "object") {
+          const text = typeof it.text === "string" ? it.text.trim() : "";
+          const ri = Number.isFinite(Number(it.review_index)) ? Number(it.review_index) : idx;
+          return { review_index: ri, text };
+        }
+        return { review_index: idx, text: "" };
+      })
+      .filter((it: any) => it.text && it.text.length > 0)
+      .map((it: any, idx: number) => ({ review_index: idx, text: it.text.slice(0, 4000) }));
+
+    return jsonRes({ items: normalized });
   } catch (e) {
     console.error("extract-from-image error:", e);
     return jsonRes({ error: "요청을 처리할 수 없습니다." }, 500);

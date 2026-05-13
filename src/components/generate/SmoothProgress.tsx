@@ -10,16 +10,17 @@ interface Props {
   title?: string;           // e.g. "답변 생성 중"
   subtitle?: string;        // e.g. "4/10 처리 중"
   onRetry?: () => void;
+  externalProgress?: number; // 0-100, optional caller-driven target while active
 }
 
 /**
  * Perceived progress bar:
  *  - 0 → ramps to ~15% in 0.4s
- *  - while active, eases toward 92% (slows down approaching cap)
+ *  - while active, eases toward 92% (or externalProgress if provided)
  *  - on `done`, snaps smoothly to 100%
  *  - hides after a beat when complete
  */
-export default function SmoothProgress({ active, done, failed, steps, title, subtitle, onRetry }: Props) {
+export default function SmoothProgress({ active, done, failed, steps, title, subtitle, onRetry, externalProgress }: Props) {
   const [pct, setPct] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   const rafRef = useRef<number | null>(null);
@@ -34,7 +35,10 @@ export default function SmoothProgress({ active, done, failed, steps, title, sub
       targetRef.current = 0;
       return;
     }
-    targetRef.current = failed ? pct : done ? 100 : 92;
+    const activeTarget = typeof externalProgress === 'number'
+      ? Math.max(5, Math.min(95, externalProgress))
+      : 92;
+    targetRef.current = failed ? pct : done ? 100 : activeTarget;
 
     const tick = (ts: number) => {
       const dt = lastTsRef.current ? (ts - lastTsRef.current) / 1000 : 0.016;
@@ -55,7 +59,7 @@ export default function SmoothProgress({ active, done, failed, steps, title, sub
       lastTsRef.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, done, failed]);
+  }, [active, done, failed, externalProgress]);
 
   // Cycle status text while active
   useEffect(() => {
