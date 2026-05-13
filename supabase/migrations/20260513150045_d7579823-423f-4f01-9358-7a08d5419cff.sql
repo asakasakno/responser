@@ -1,0 +1,1 @@
+ALTER TABLE public.generation_logs ADD COLUMN IF NOT EXISTS review_index integer;

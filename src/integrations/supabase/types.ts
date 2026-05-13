@@ -638,6 +638,7 @@ export type Database = {
           original_review: string | null
           platform: string | null
           rating: number | null
+          review_index: number | null
           source: string
           sub_category: string | null
           tone: string | null
@@ -660,6 +661,7 @@ export type Database = {
           original_review?: string | null
           platform?: string | null
           rating?: number | null
+          review_index?: number | null
           source?: string
           sub_category?: string | null
           tone?: string | null
@@ -682,6 +684,7 @@ export type Database = {
           original_review?: string | null
           platform?: string | null
           rating?: number | null
+          review_index?: number | null
           source?: string
           sub_category?: string | null
           tone?: string | null
