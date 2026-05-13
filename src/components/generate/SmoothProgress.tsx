@@ -59,7 +59,7 @@ export default function SmoothProgress({ active, done, failed, steps, title, sub
       lastTsRef.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, done, failed]);
+  }, [active, done, failed, externalProgress]);
 
   // Cycle status text while active
   useEffect(() => {
