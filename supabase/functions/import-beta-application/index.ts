@@ -216,9 +216,12 @@ Deno.serve(async (req) => {
     const SECRET = Deno.env.get("BETA_IMPORT_SECRET");
     if (!SECRET) return json({ error: "server_misconfigured" }, 500);
 
-    const provided = req.headers.get("x-beta-import-secret")
-      ?? new URL(req.url).searchParams.get("secret");
-    if (provided !== SECRET) return json({ error: "unauthorized" }, 401);
+    // Header-only auth. Query-string fallback removed to prevent secret
+    // exposure in CDN / proxy / edge access logs.
+    const provided = req.headers.get("x-beta-import-secret");
+    if (!provided || provided !== SECRET) {
+      return json({ error: "unauthorized" }, 401);
+    }
 
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "invalid_json" }, 400);
