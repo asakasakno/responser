@@ -311,7 +311,8 @@ export default function Auth() {
                   redirect_uri: window.location.origin + '/dashboard',
                 });
                 if (result.error) {
-                  toast({ title: 'Google 로그인 실패', description: result.error.message, variant: 'destructive' });
+                  if (import.meta.env.DEV) console.error('[google-signin]', result.error);
+                  toast({ title: 'Google 로그인 실패', description: '잠시 후 다시 시도해주세요.', variant: 'destructive' });
                   setLoading(false);
                   return;
                 }
