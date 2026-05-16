@@ -339,7 +339,7 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">기존 방식 vs 응대도우미</h2>
           <p className="text-center text-muted-foreground mb-10 max-w-md mx-auto">
-            반복 복붙 없이, 답변 작성 시간을 확 줄여보세요
+            반복 복붙 없이, 리뷰·문의·클레임 응대 시간을 확 줄여보세요
           </p>
           <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border shadow-card overflow-hidden">
             <div className="grid grid-cols-3 text-center text-sm font-semibold border-b border-border bg-secondary/40">
