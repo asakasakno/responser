@@ -343,7 +343,11 @@ export default function Generate() {
         } catch {}
       }
     } catch (err: any) {
-      toast({ title: '생성 실패', description: err.message, variant: 'destructive' });
+      if (import.meta.env.DEV) console.error('[generate] error', err);
+      const friendly = typeof err?.message === 'string' && /에너지|쿠폰|로그인|권한/.test(err.message)
+        ? err.message
+        : '요청 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      toast({ title: '생성 실패', description: friendly, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -356,8 +360,12 @@ export default function Generate() {
     const { error } = await supabase.from('user_templates').insert({
       user_id: user!.id, title: title.trim().slice(0, 100), type: genType, content: result,
     });
-    if (error) toast({ title: '저장 실패', description: error.message, variant: 'destructive' });
-    else toast({ title: '템플릿으로 저장됨' });
+    if (error) {
+      if (import.meta.env.DEV) console.error('[saveAsTemplate]', error);
+      toast({ title: '저장 실패', description: '템플릿 저장에 실패했습니다. 잠시 후 다시 시도해주세요.', variant: 'destructive' });
+    } else {
+      toast({ title: '템플릿으로 저장됨' });
+    }
   };
 
 
