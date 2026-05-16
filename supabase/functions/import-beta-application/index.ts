@@ -221,19 +221,38 @@ Deno.serve(async (req) => {
     const SECRET = Deno.env.get("BETA_IMPORT_SECRET");
     if (!SECRET) return json({ error: "server_misconfigured" }, 500);
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    // Compute IP hash early so we can log unauthorized attempts without
+    // ever persisting the raw IP, UA, or the provided secret value.
+    const ipEarly = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+    const uaEarly = req.headers.get("user-agent") ?? "";
+    const ipHash = (await sha256Hex(`${ipEarly}|${uaEarly}`)).slice(0, 32);
+
     // Header-only auth. Query-string fallback removed to prevent secret
     // exposure in CDN / proxy / edge access logs.
     const provided = req.headers.get("x-beta-import-secret");
     if (!provided || provided !== SECRET) {
+      // Log the failed attempt WITHOUT the provided secret value.
+      // Only metadata: ip_hash, presence flag, and length bucket.
+      try {
+        await admin.rpc("log_rate_limit_attempt", {
+          _action: "beta_import_unauthorized",
+          _ip_hash: ipHash,
+          _severity: "warning",
+          _extra: {
+            had_header: !!provided,
+            provided_length: provided ? Math.min(provided.length, 256) : 0,
+          },
+        });
+      } catch (_) { /* never block auth response on logging */ }
       return json({ error: "unauthorized" }, 401);
     }
 
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "invalid_json" }, 400);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(supabaseUrl, serviceKey);
 
     // IP-based rate limit (in addition to the secret). 10분 / 5회.
     // Raw IP/UA are never stored — only a SHA-256 hash.
