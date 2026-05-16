@@ -888,7 +888,7 @@ export default function Generate() {
 
         <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 답변 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 응대문구 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 응대문구 생성 (-{energyCost}⚡)</>}
           </Button>
           {result && (
             <Button variant="outline" onClick={saveAsTemplate}>
