@@ -209,6 +209,11 @@ async function processApplication(admin: any, payload: any) {
   return { ok: true, status: "applied", application_id: row?.id, user_id: matchedUserId, beta_until: betaUntil };
 }
 
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -230,6 +235,36 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // IP-based rate limit (in addition to the secret). 10분 / 5회.
+    // Raw IP/UA are never stored — only a SHA-256 hash.
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+    const ua = req.headers.get("user-agent") ?? "";
+    const ipHash = (await sha256Hex(`${ip}|${ua}`)).slice(0, 32);
+
+    const { data: rl } = await admin.rpc("check_ip_rate_limit", {
+      _action: "beta_import_request",
+      _ip_hash: ipHash,
+      _max_per_window: 5,
+      _window_seconds: 600,
+    });
+
+    if (rl && rl.allowed === false) {
+      await admin.rpc("log_rate_limit_attempt", {
+        _action: "beta_import_rate_limited",
+        _ip_hash: ipHash,
+        _severity: "warning",
+        _extra: { count: rl.count, limit: rl.limit },
+      });
+      return json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }, 429);
+    }
+
+    // Log a fresh attempt so future calls count it.
+    await admin.rpc("log_rate_limit_attempt", {
+      _action: "beta_import_request",
+      _ip_hash: ipHash,
+      _severity: "info",
+    });
+
     // Support batch (rows: [...]) or single object
     const rows: any[] = Array.isArray(body?.rows) ? body.rows
       : Array.isArray(body) ? body : [body];
@@ -239,13 +274,14 @@ Deno.serve(async (req) => {
       try {
         results.push(await processApplication(admin, r));
       } catch (e: any) {
-        results.push({ ok: false, status: "failed", reason: e?.message ?? "unknown" });
+        console.error("[import-beta-application] row error", e);
+        results.push({ ok: false, status: "failed", reason: "internal_error" });
       }
     }
 
     return json({ ok: true, count: results.length, results });
   } catch (e: any) {
     console.error("[import-beta-application]", e);
-    return json({ error: e?.message ?? "internal_error" }, 500);
+    return json({ error: "internal_error" }, 500);
   }
 });
