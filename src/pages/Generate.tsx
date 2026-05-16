@@ -871,7 +871,7 @@ export default function Generate() {
           <Textarea
             value={inputText}
             onChange={e => setInputText(e.target.value)}
-            placeholder={genType === 'review' ? '고객 리뷰 내용을 입력하세요...' : genType === 'inquiry' ? '고객 문의 내용을 입력하세요...' : '클레임 내용을 입력하세요...'}
+            placeholder={genType === 'review' ? '고객이 남긴 리뷰·후기 내용을 붙여넣어 주세요...' : genType === 'inquiry' ? '상품·예약·가격 등 고객 문의 내용을 붙여넣어 주세요...' : '교환/반품·배송·불만 등 클레임 내용을 붙여넣어 주세요...'}
             rows={4}
           />
         </div>
