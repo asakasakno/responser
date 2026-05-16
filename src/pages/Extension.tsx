@@ -159,10 +159,10 @@ export default function ExtensionPage() {
             Chrome 확장 프로그램
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-foreground mb-4">
-            어디서든 바로 답변을 생성하세요
+            어디서든 바로 응대문구를 생성하세요
           </h1>
           <p className="text-muted-foreground max-w-lg mx-auto mb-8">
-            스마트스토어, 쿠팡 등 리뷰 페이지에서 바로 AI 답변을 생성할 수 있는 Chrome 확장 프로그램입니다.
+            스마트스토어, 쿠팡, 네이버플레이스 등 리뷰·문의 페이지에서 바로 AI 응대문구를 만들 수 있는 Chrome 확장 프로그램입니다.
           </p>
           <div className="text-xs text-muted-foreground mb-4">
             현재 버전 <span className="font-mono font-semibold text-foreground">v1.1.0</span> · 업데이트 2026-05-06
