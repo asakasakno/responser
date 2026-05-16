@@ -297,7 +297,7 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">이렇게 사용합니다</h2>
           <p className="text-center text-muted-foreground mb-10 max-w-md mx-auto">
-            고객 메시지를 입력하면 AI가 답변 초안을 바로 생성합니다
+            고객이 남긴 리뷰·문의·클레임을 입력하면 AI가 응대문구 초안을 바로 정리합니다
           </p>
           <div className="max-w-3xl mx-auto space-y-6">
             {demoExamples.map((d, i) => (
