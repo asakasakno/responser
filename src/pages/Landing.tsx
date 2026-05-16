@@ -172,17 +172,17 @@ export default function Landing() {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <Sparkles className="w-3.5 h-3.5" />
-              스마트스토어 · 쿠팡 셀러를 위한 AI 답변 생성 도구
+              스마트스토어 · 쿠팡 · 배민 · 네이버플레이스 사장님을 위한 응대문구 도구
             </div>
             <h1 className="text-3xl md:text-5xl font-extrabold leading-tight mb-5 break-keep">
-              판매자를 위한
+              리뷰·문의·클레임 응대문구,
               <br className="md:hidden" />
-              <span className="text-primary"> AI 고객응대 자동화</span>
+              <span className="text-primary"> 이제 바로 정리하세요</span>
             </h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed break-keep">
-              반복적인 리뷰 답변과 고객 문의 응대 시간을
+              AI가 리뷰 답변, 상품문의, 교환/반품, 배송 클레임 등
               <br className="hidden md:block" />
-              줄여주는 AI 고객응대 SaaS입니다.
+              플랫폼별 상황에 맞는 응대문구를 정리해드립니다.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/auth?mode=signup" className="w-full sm:w-auto">
