@@ -447,7 +447,7 @@ export default function Landing() {
       <section className="py-20 gradient-hero">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-4">
-            지금 바로 답변 생성을 시작해보세요
+            무료 베타로 리뷰·문의·클레임 응대문구를 먼저 만들어보세요
           </h2>
           <p className="text-primary-foreground/70 mb-8 max-w-md mx-auto">
             무료 플랜으로 바로 사용할 수 있습니다. 설치 없이 웹에서 시작하세요.
