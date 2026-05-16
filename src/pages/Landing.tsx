@@ -240,19 +240,19 @@ export default function Landing() {
               {
                 icon: Upload,
                 title: "이미지 업로드 → 텍스트 추출",
-                desc: "리뷰 캡처나 문의 화면을 업로드하면 내용을 자동으로 정리합니다.",
+                desc: "리뷰·문의 캡처 화면을 업로드하면 내용을 자동으로 정리합니다.",
                 accent: "bg-primary/10 text-primary",
               },
               {
                 icon: FileText,
-                title: "답변 자동 생성",
-                desc: "리뷰, 문의, 클레임 상황에 맞는 답변을 AI가 자연스럽게 작성합니다.",
+                title: "상황별 응대문구 생성",
+                desc: "리뷰 답변, 상품문의, 교환/반품, 배송 클레임 등 상황에 맞는 응대문구를 정리해드립니다.",
                 accent: "bg-accent/10 text-accent",
               },
               {
                 icon: Copy,
-                title: "여러 개 한 번에 처리",
-                desc: "여러 리뷰와 문의를 한 번에 입력하고 각각의 답변을 빠르게 생성합니다.",
+                title: "여러 건 한 번에 처리",
+                desc: "여러 리뷰·문의를 한 번에 입력하고 각각의 응대문구를 빠르게 생성합니다.",
                 accent: "bg-primary/10 text-primary",
               },
               {
