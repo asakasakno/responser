@@ -490,7 +490,10 @@ export default function Generate() {
               maxLength={30}
             />
           )}
-          <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 답변을 생성합니다.</p>
+          <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 응대문구를 생성합니다.</p>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+            ※ 플랫폼별 정책에 따라 실제 답변 가능 영역은 다를 수 있습니다. 예: 쿠팡은 리뷰 답글보다 상품문의·교환/반품·배송 클레임 응대문구 작성에 활용해 주세요.
+          </p>
         </div>
 
         {products.length > 0 && (
