@@ -190,7 +190,7 @@ export default function Landing() {
                   size="lg"
                   className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 w-full sm:w-auto h-12"
                 >
-                  무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
+                  무료로 응대문구 만들어보기 <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
               <Link to="/pricing" className="w-full sm:w-auto">
@@ -200,10 +200,17 @@ export default function Landing() {
               </Link>
               <a href="#demo" className="w-full sm:w-auto">
                 <Button size="lg" variant="ghost" className="text-base w-full sm:w-auto h-12">
-                  데모 체험하기 <ChevronRight className="w-4 h-4 ml-1" />
+                  데모 보기 <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </a>
             </div>
+
+            {/* 플랫폼별 정책 안내 */}
+            <p className="mt-6 text-xs text-muted-foreground max-w-xl mx-auto leading-relaxed break-keep">
+              ※ 플랫폼마다 리뷰 답변 가능 여부와 고객 응대 방식이 다를 수 있습니다.
+              응대도우미는 각 플랫폼에서 자주 발생하는 리뷰·문의·클레임 상황에 맞춰
+              바로 활용 가능한 응대문구를 정리해드리는 도구입니다.
+            </p>
 
             {/* Quick summary strip */}
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
