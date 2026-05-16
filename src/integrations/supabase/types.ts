@@ -1197,6 +1197,15 @@ export type Database = {
         }
         Returns: Json
       }
+      check_ip_rate_limit: {
+        Args: {
+          _action: string
+          _ip_hash: string
+          _max_per_window?: number
+          _window_seconds?: number
+        }
+        Returns: Json
+      }
       check_plan_rate_limit: { Args: { _action: string }; Returns: Json }
       check_rate_limit: {
         Args: { _action: string; _max_per_second?: number; _user_id: string }
@@ -1286,6 +1295,16 @@ export type Database = {
       increment_usage: { Args: never; Returns: undefined }
       log_audit: {
         Args: { _action: string; _details?: Json; _severity?: string }
+        Returns: undefined
+      }
+      log_rate_limit_attempt: {
+        Args: {
+          _action: string
+          _extra?: Json
+          _ip_hash: string
+          _severity?: string
+          _user_id?: string
+        }
         Returns: undefined
       }
       move_to_dlq: {
