@@ -903,13 +903,13 @@ export default function Generate() {
           active={loading}
           done={!loading && !!result}
           steps={[
-            '리뷰 내용을 분석하고 있어요...',
-            '답변 문장을 만들고 있어요...',
+            '입력한 내용을 분석하고 있어요...',
+            '상황에 맞는 응대문구를 만들고 있어요...',
             '선택한 톤에 맞게 다듬고 있어요...',
             '결과를 정리하고 있어요...',
             '완료되었습니다.',
           ]}
-          title="답변 생성 중"
+          title="응대문구 생성 중"
         />
 
         {result && guardrail && (
