@@ -255,10 +255,7 @@ Deno.serve(async (req) => {
     if (!body) return json({ error: "invalid_json" }, 400);
 
     // IP-based rate limit (in addition to the secret). 10분 / 5회.
-    // Raw IP/UA are never stored — only a SHA-256 hash.
-    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-    const ua = req.headers.get("user-agent") ?? "";
-    const ipHash = (await sha256Hex(`${ip}|${ua}`)).slice(0, 32);
+    // ipHash was already computed above for the unauthorized-attempt log.
 
     const { data: rl } = await admin.rpc("check_ip_rate_limit", {
       _action: "beta_import_request",
