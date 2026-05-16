@@ -172,17 +172,17 @@ export default function Landing() {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <Sparkles className="w-3.5 h-3.5" />
-              스마트스토어 · 쿠팡 셀러를 위한 AI 답변 생성 도구
+              스마트스토어 · 쿠팡 · 배민 · 네이버플레이스 사장님을 위한 응대문구 도구
             </div>
             <h1 className="text-3xl md:text-5xl font-extrabold leading-tight mb-5 break-keep">
-              판매자를 위한
+              리뷰·문의·클레임 응대문구,
               <br className="md:hidden" />
-              <span className="text-primary"> AI 고객응대 자동화</span>
+              <span className="text-primary"> 이제 바로 정리하세요</span>
             </h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed break-keep">
-              반복적인 리뷰 답변과 고객 문의 응대 시간을
+              AI가 리뷰 답변, 상품문의, 교환/반품, 배송 클레임 등
               <br className="hidden md:block" />
-              줄여주는 AI 고객응대 SaaS입니다.
+              플랫폼별 상황에 맞는 응대문구를 정리해드립니다.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/auth?mode=signup" className="w-full sm:w-auto">
@@ -190,7 +190,7 @@ export default function Landing() {
                   size="lg"
                   className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8 w-full sm:w-auto h-12"
                 >
-                  무료로 시작하기 <ArrowRight className="w-4 h-4 ml-1" />
+                  무료로 응대문구 만들어보기 <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
               <Link to="/pricing" className="w-full sm:w-auto">
@@ -200,10 +200,17 @@ export default function Landing() {
               </Link>
               <a href="#demo" className="w-full sm:w-auto">
                 <Button size="lg" variant="ghost" className="text-base w-full sm:w-auto h-12">
-                  데모 체험하기 <ChevronRight className="w-4 h-4 ml-1" />
+                  데모 보기 <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </a>
             </div>
+
+            {/* 플랫폼별 정책 안내 */}
+            <p className="mt-6 text-xs text-muted-foreground max-w-xl mx-auto leading-relaxed break-keep">
+              ※ 플랫폼마다 리뷰 답변 가능 여부와 고객 응대 방식이 다를 수 있습니다.
+              응대도우미는 각 플랫폼에서 자주 발생하는 리뷰·문의·클레임 상황에 맞춰
+              바로 활용 가능한 응대문구를 정리해드리는 도구입니다.
+            </p>
 
             {/* Quick summary strip */}
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -233,19 +240,19 @@ export default function Landing() {
               {
                 icon: Upload,
                 title: "이미지 업로드 → 텍스트 추출",
-                desc: "리뷰 캡처나 문의 화면을 업로드하면 내용을 자동으로 정리합니다.",
+                desc: "리뷰·문의 캡처 화면을 업로드하면 내용을 자동으로 정리합니다.",
                 accent: "bg-primary/10 text-primary",
               },
               {
                 icon: FileText,
-                title: "답변 자동 생성",
-                desc: "리뷰, 문의, 클레임 상황에 맞는 답변을 AI가 자연스럽게 작성합니다.",
+                title: "상황별 응대문구 생성",
+                desc: "리뷰 답변, 상품문의, 교환/반품, 배송 클레임 등 상황에 맞는 응대문구를 정리해드립니다.",
                 accent: "bg-accent/10 text-accent",
               },
               {
                 icon: Copy,
-                title: "여러 개 한 번에 처리",
-                desc: "여러 리뷰와 문의를 한 번에 입력하고 각각의 답변을 빠르게 생성합니다.",
+                title: "여러 건 한 번에 처리",
+                desc: "여러 리뷰·문의를 한 번에 입력하고 각각의 응대문구를 빠르게 생성합니다.",
                 accent: "bg-primary/10 text-primary",
               },
               {
@@ -278,7 +285,7 @@ export default function Landing() {
           <div className="text-center mt-10">
             <Link to="/auth?mode=signup">
               <Button className="gradient-primary text-primary-foreground shadow-primary-glow">
-                지금 답변 생성하기 <ArrowRight className="w-4 h-4 ml-1" />
+                지금 응대문구 만들어보기 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
@@ -290,7 +297,7 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">이렇게 사용합니다</h2>
           <p className="text-center text-muted-foreground mb-10 max-w-md mx-auto">
-            고객 메시지를 입력하면 AI가 답변 초안을 바로 생성합니다
+            고객이 남긴 리뷰·문의·클레임을 입력하면 AI가 응대문구 초안을 바로 정리합니다
           </p>
           <div className="max-w-3xl mx-auto space-y-6">
             {demoExamples.map((d, i) => (
@@ -320,7 +327,7 @@ export default function Landing() {
           <div className="text-center mt-10">
             <Link to="/auth?mode=signup">
               <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
-                데모 체험하기 <ArrowRight className="w-4 h-4 ml-1" />
+                응대문구 만들어보기 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
@@ -332,7 +339,7 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">기존 방식 vs 응대도우미</h2>
           <p className="text-center text-muted-foreground mb-10 max-w-md mx-auto">
-            반복 복붙 없이, 답변 작성 시간을 확 줄여보세요
+            반복 복붙 없이, 리뷰·문의·클레임 응대 시간을 확 줄여보세요
           </p>
           <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border shadow-card overflow-hidden">
             <div className="grid grid-cols-3 text-center text-sm font-semibold border-b border-border bg-secondary/40">
@@ -362,7 +369,7 @@ export default function Landing() {
             {[
               { icon: Users, text: "스마트스토어 셀러" },
               { icon: Users, text: "쿠팡 판매자" },
-              { icon: MessageSquare, text: "리뷰 응대가 많은 자영업자" },
+              { icon: MessageSquare, text: "리뷰·문의 응대가 많은 자영업자" },
               { icon: Clock, text: "문의 답변이 반복되는 운영자" },
             ].map((t, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-5 text-center shadow-card">
@@ -440,7 +447,7 @@ export default function Landing() {
       <section className="py-20 gradient-hero">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-4">
-            지금 바로 답변 생성을 시작해보세요
+            무료 베타로 리뷰·문의·클레임 응대문구를 먼저 만들어보세요
           </h2>
           <p className="text-primary-foreground/70 mb-8 max-w-md mx-auto">
             무료 플랜으로 바로 사용할 수 있습니다. 설치 없이 웹에서 시작하세요.

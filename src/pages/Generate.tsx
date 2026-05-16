@@ -454,13 +454,13 @@ export default function Generate() {
         <Tabs value={genType} onValueChange={v => setGenType(v as GenType)} className="mb-6">
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="review">
-              리뷰 답변 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.review}⚡</span>
+              리뷰 응대 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.review}⚡</span>
             </TabsTrigger>
             <TabsTrigger value="inquiry">
-              문의 답변 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.inquiry}⚡</span>
+              문의 응대 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.inquiry}⚡</span>
             </TabsTrigger>
             <TabsTrigger value="claim">
-              클레임 대응 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.claim}⚡</span>
+              클레임 응대 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.claim}⚡</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -490,7 +490,10 @@ export default function Generate() {
               maxLength={30}
             />
           )}
-          <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 답변을 생성합니다.</p>
+          <p className="text-[11px] text-muted-foreground mt-1.5">선택한 플랫폼의 응대 톤·정책에 맞춰 응대문구를 생성합니다.</p>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+            ※ 플랫폼별 정책에 따라 실제 답변 가능 영역은 다를 수 있습니다. 예: 쿠팡은 리뷰 답글보다 상품문의·교환/반품·배송 클레임 응대문구 작성에 활용해 주세요.
+          </p>
         </div>
 
         {products.length > 0 && (
@@ -871,7 +874,7 @@ export default function Generate() {
           <Textarea
             value={inputText}
             onChange={e => setInputText(e.target.value)}
-            placeholder={genType === 'review' ? '고객 리뷰 내용을 입력하세요...' : genType === 'inquiry' ? '고객 문의 내용을 입력하세요...' : '클레임 내용을 입력하세요...'}
+            placeholder={genType === 'review' ? '고객이 남긴 리뷰·후기 내용을 붙여넣어 주세요...' : genType === 'inquiry' ? '상품·예약·가격 등 고객 문의 내용을 붙여넣어 주세요...' : '교환/반품·배송·불만 등 클레임 내용을 붙여넣어 주세요...'}
             rows={4}
           />
         </div>
@@ -885,7 +888,7 @@ export default function Generate() {
 
         <div className="flex gap-3 mb-6 flex-wrap">
           <Button onClick={handleGenerate} disabled={loading || !inputText.trim() || isLimitReached} className="gradient-primary text-primary-foreground">
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 답변 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 답변 생성 (-{energyCost}⚡)</>}
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> 응대문구 생성 중...</> : <><ArrowUp className="w-4 h-4 mr-2" /> 응대문구 생성 (-{energyCost}⚡)</>}
           </Button>
           {result && (
             <Button variant="outline" onClick={saveAsTemplate}>
@@ -900,13 +903,13 @@ export default function Generate() {
           active={loading}
           done={!loading && !!result}
           steps={[
-            '리뷰 내용을 분석하고 있어요...',
-            '답변 문장을 만들고 있어요...',
+            '입력한 내용을 분석하고 있어요...',
+            '상황에 맞는 응대문구를 만들고 있어요...',
             '선택한 톤에 맞게 다듬고 있어요...',
             '결과를 정리하고 있어요...',
             '완료되었습니다.',
           ]}
-          title="답변 생성 중"
+          title="응대문구 생성 중"
         />
 
         {result && guardrail && (
