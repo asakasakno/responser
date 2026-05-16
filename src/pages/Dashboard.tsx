@@ -119,9 +119,9 @@ export default function Dashboard() {
         <h2 className="text-lg font-semibold text-foreground mb-4">빠른 시작</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {[
-            { to: '/generate?type=review', icon: MessageSquare, title: '리뷰 답변 생성', desc: `고객 리뷰에 대한 전문적인 답변 (-${ENERGY_COSTS.review}⚡)`, color: 'text-primary' },
-            { to: '/generate?type=inquiry', icon: TrendingUp, title: '문의 답변 생성', desc: `상품 문의에 정확한 답변 (-${ENERGY_COSTS.inquiry}⚡)`, color: 'text-accent' },
-            { to: '/generate?type=claim', icon: Image, title: '클레임 대응 생성', desc: `불만/교환/환불 전문 대응 (-${ENERGY_COSTS.claim}⚡)`, color: 'text-destructive' },
+            { to: '/generate?type=review', icon: MessageSquare, title: '리뷰 응대문구 생성', desc: `리뷰·후기에 대한 상황별 응대문구 (-${ENERGY_COSTS.review}⚡)`, color: 'text-primary' },
+            { to: '/generate?type=inquiry', icon: TrendingUp, title: '문의 응대문구 생성', desc: `상품·예약·가격 문의 응대문구 (-${ENERGY_COSTS.inquiry}⚡)`, color: 'text-accent' },
+            { to: '/generate?type=claim', icon: Image, title: '클레임 응대문구 생성', desc: `교환/반품·배송·불만 응대문구 (-${ENERGY_COSTS.claim}⚡)`, color: 'text-destructive' },
           ].map((action, i) => (
             <Link key={i} to={action.to} className="bg-card rounded-xl border border-border p-5 hover:shadow-elevated transition-shadow group">
               <action.icon className={`w-8 h-8 ${action.color} mb-3`} />
