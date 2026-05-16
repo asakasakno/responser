@@ -327,7 +327,7 @@ export default function Landing() {
           <div className="text-center mt-10">
             <Link to="/auth?mode=signup">
               <Button size="lg" className="gradient-primary text-primary-foreground shadow-primary-glow text-base px-8">
-                데모 체험하기 <ArrowRight className="w-4 h-4 ml-1" />
+                응대문구 만들어보기 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
