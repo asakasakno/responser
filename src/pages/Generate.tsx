@@ -353,7 +353,7 @@ export default function Generate() {
         reportError(err, {
           feature: 'generate_response',
           error_code: 'GENERATION_FAILED',
-          input_length: typeof reviewText === 'string' ? reviewText.length : 0,
+          input_length: typeof inputText === 'string' ? inputText.length : 0,
         });
       } catch { /* noop */ }
       toast({ title: '생성 실패', description: friendly, variant: 'destructive' });
