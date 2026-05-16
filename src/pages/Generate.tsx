@@ -454,13 +454,13 @@ export default function Generate() {
         <Tabs value={genType} onValueChange={v => setGenType(v as GenType)} className="mb-6">
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="review">
-              리뷰 답변 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.review}⚡</span>
+              리뷰 응대 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.review}⚡</span>
             </TabsTrigger>
             <TabsTrigger value="inquiry">
-              문의 답변 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.inquiry}⚡</span>
+              문의 응대 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.inquiry}⚡</span>
             </TabsTrigger>
             <TabsTrigger value="claim">
-              클레임 대응 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.claim}⚡</span>
+              클레임 응대 <span className="ml-1.5 text-xs text-muted-foreground">-{ENERGY_COSTS.claim}⚡</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
