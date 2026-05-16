@@ -369,7 +369,7 @@ export default function Landing() {
             {[
               { icon: Users, text: "스마트스토어 셀러" },
               { icon: Users, text: "쿠팡 판매자" },
-              { icon: MessageSquare, text: "리뷰 응대가 많은 자영업자" },
+              { icon: MessageSquare, text: "리뷰·문의 응대가 많은 자영업자" },
               { icon: Clock, text: "문의 답변이 반복되는 운영자" },
             ].map((t, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-5 text-center shadow-card">
