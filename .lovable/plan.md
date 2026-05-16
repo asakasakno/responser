@@ -1,152 +1,63 @@
-# 작업 설계안
+# 보안 점검 결과 및 보완 계획
 
-두 개의 큰 요청을 함께 정리했습니다. 승인 후 **A → B 순서**로 구현합니다. B는 명시적으로 "먼저 설계안만"이라고 하셨고, A도 영향 범위가 커서 함께 합의한 뒤 진행하는 것이 안전합니다.
+요청하신 12개 영역을 현재 코드 기준으로 점검한 결과입니다. 대부분 이미 적용되어 있고, 일부만 보완이 필요합니다. **코드 수정 전에 범위를 확정**하기 위한 계획안입니다.
 
 ---
 
-## A. 이미지 배치 처리: "이미지 단위" → "리뷰 단위" 전환
+## 1. 이미 적용되어 있는 보안 (수정 불필요)
 
-### 핵심 변경 요지
-- 한 이미지에서 OCR이 리뷰 N개를 분리 추출
-- 추출된 모든 리뷰를 모아 **5개 묶음 batch generate**
-- UI/진행률/로그/에너지 차감 모두 **리뷰 수 기준**으로 통일
-
-### 변경 파일
-1. **`supabase/functions/extract-from-image/index.ts`**
-   - 응답을 `{ items: [{ review_index, text }] }` 배열로 변경
-   - 프롬프트를 "이미지 안 모든 리뷰 카드(닉네임/별점/날짜/본문 단위)를 각각 분리" 지시로 교체
-   - 빈 배열 허용, 부분 추출 허용
-   - 기존 단일 텍스트 응답을 사용하는 호출자가 있는지 확인 후 호환 유지(필요 시 `legacyText` 동시 반환)
-
-2. **`supabase/functions/generate-response/index.ts`**
-   - `mode: 'batch'` 분기 추가: `items: [{index, text}]` 입력 → `[{index, reply}]` 배열 반환
-   - 모델에 JSON 배열 강제, 파싱 실패 시 호출자가 single-fallback 하도록 명확한 오류
-   - 톤/플랫폼/제품 컨텍스트는 기존 single 모드와 동일하게 적용
-
-3. **`src/components/generate/ImageBatchPanel.tsx`** (대규모 리팩터)
-   - 자료구조 도입:
-     ```
-     QueueImage { id, file, previewUrl, status, extractedReviews: ExtractedReview[] }
-     ExtractedReview { id, sourceImageId, sourceImageIndex, reviewIndex,
-                       text, reply?, logId?, status, errorMessage? }
-     ```
-   - 처리 파이프라인 3단계 분리:
-     1. OCR (이미지 동시 3개) → `extractedReviews` 채우기
-     2. Batch generate (리뷰 5개 묶음, 동시 2 batch)
-     3. 결과 렌더링/로그 저장
-   - JSON 파싱 실패 batch는 single 모드 fallback 재호출
-   - 실패 리뷰 단위 "재시도" 버튼
-   - 에너지 차감: **성공한 reply 수만큼** RPC 호출 (이미지 수 아님)
-   - generation_logs insert: 리뷰 1개당 1 row, `image_batch_id`/`image_index`/`review_index` 채움, `original_review`는 `maskPII()` 적용
-   - 썸네일 카드 하단 "추출 리뷰 N개" 라벨
-   - 결과 영역: `[이미지 #i - 리뷰 #j]` 헤더 + 원문/답변/복사/수정/👍/👎
-   - 전체 복사: 모든 reply를 `[답변 #N]` 포맷으로 결합
-
-4. **`src/components/generate/SmoothProgress.tsx`** (소폭 확장)
-   - 단계 메시지에 `(2/5장)`, `(3/7개 완료)` 같은 동적 카운터 주입 가능하도록 props 추가
-   - 퍼센트 계산: OCR 30% + 생성 70% 가중, 생성 단계는 리뷰 수 기준
-
-5. **`src/pages/Generate.tsx`**
-   - 상단 요약 줄 추가: "이미지 N장 / 추출 리뷰 M개 / 답변 K/M개"
-   - 에너지 안내: OCR 전 "예상 N⚡", OCR 후 "확정 M⚡"
-
-### 데이터베이스
-- `generation_logs.review_index` 컬럼 추가 (integer, nullable)
-- 기존 `image_batch_id`, `image_index`, `source` 컬럼은 그대로 사용
-
-### 실패 처리 매트릭스
-| 상황 | 처리 |
+| 영역 | 현재 상태 |
 |---|---|
-| 이미지 OCR 실패 | 해당 이미지만 `failed`, 다른 이미지 계속 |
-| 일부 리뷰만 추출 | 추출된 것만 다음 단계로 |
-| Batch JSON 파싱 실패 | 해당 batch만 single fallback |
-| 개별 리뷰 생성 실패 | 그 리뷰만 `failed` + 재시도 버튼 |
+| **하드코딩 시크릿** | src/extension 전체 스캔 결과 service_role/Toss secret/OpenAI key 노출 **없음**. anon key만 클라이언트에 존재 (정상) |
+| **관리자 라우트** | `AdminGuard` → `current_user_has_role('admin')` RPC로 서버 검증. URL만으로 접근 불가 |
+| **관리자 Edge Function** | `supabase/functions/admin/index.ts` 내부에서 `user_roles` 재검증 + `step-up` 인증 + `audit_logs` 기록 |
+| **RLS** | 모든 핵심 테이블(profiles, generation_logs, payments, energy_grants, subscriptions, user_roles 등) RLS 활성, user_id 기반 정책 |
+| **에너지/플랜/역할 직접 조작 차단** | `energy_grants`, `subscriptions`, `user_roles`, `payments`, `coupon_usages`, `reward_claims` 모두 사용자 INSERT/UPDATE/DELETE 차단. RPC만 가능 |
+| **결제 보안** | `purchase-energy`에서 금액/orderId/paymentKey 서버 재검증, `finalize_energy_purchase` RPC로 원자적 처리, idempotency 적용 |
+| **중복 클릭/Rate limit** | `reserve_generate_request` RPC가 per-second/minute/day 제한 + reservation으로 idempotency. `check_plan_rate_limit`도 존재 |
+| **RPC 권한** | 직전 마이그레이션에서 `generate_request` 계열 4개 함수의 anon EXECUTE 회수 완료. `SECURITY DEFINER` + `search_path = public` 고정 |
+| **audit_logs** | 로그인 실패/관리자 접근/결제/이상감지 등 광범위하게 기록 중 |
+| **입력 검증 (서버)** | `contact_inquiries` RLS에 길이 제한 CHECK, RPC들에 amount/length 검증 존재 |
+| **확인 모달** | StepUpDialog로 관리자 위험 액션 재인증 적용 |
+
+## 2. 보완이 필요한 항목 (이번에 수정 제안)
+
+### A. `.env.example` 파일 추가 (현재 없음)
+- 신규 개발자/배포자가 어떤 변수가 필요한지 알 수 있도록 placeholder 파일 생성
+- 실제 값 없이 키 이름만, secret/anon 구분 주석 포함
+
+### B. 프론트 에러 메시지 점검 (가벼운 보강)
+- `error.message` 그대로 toast에 노출하는 케이스가 일부 페이지(Checkout, Generate)에 남아있을 가능성 → 일반화된 한국어 메시지로 교체
+- 단, 사용자 입력 검증성 메시지(예: "쿠폰 코드를 확인해주세요")는 유지
+
+### C. Sentry/에러 모니터링
+- 현재 **미적용**
+- 도입 시 `VITE_SENTRY_DSN` 환경변수 + `beforeSend`에서 Authorization 헤더/이메일/카드정보 필터링 필요
+- → **이건 별도 의사결정 필요** (Sentry 계정/DSN 발급, 유료 플랜). 아래 질문 참고
+
+### D. SECURITY DEFINER 함수 search_path 점검
+- 현재 함수들 대부분 `SET search_path = public` 적용됨. linter의 0029 경고는 모두 "인증 사용자가 호출 가능"인데, 이는 `spend_energy`, `claim_reward` 같이 **설계상 사용자가 호출해야 하는 함수**라 무시 가능 (보안 메모에 사유 기록)
+
+## 3. 수정하지 않는 것 (의도된 설계)
+
+- **0029 linter 경고 16건**: 모두 `spend_energy`, `claim_reward`, `redeem_energy_coupon`, `validate_coupon` 등 인증 사용자가 호출해야 정상 동작하는 RPC. SECURITY DEFINER는 RLS 우회를 위해 필요. → `security_memory`에 사유 기록 후 ignore
+- 클라이언트에 노출된 `VITE_SUPABASE_PUBLISHABLE_KEY`: 의도된 공개 키 (RLS로 보호)
+
+## 4. 이번 작업에서 수행할 변경
+
+1. `.env.example` 생성 (placeholder만, 실제 값 없음)
+2. `Generate.tsx`, `Checkout.tsx`에서 `error.message` 직접 노출 케이스 일반화 (있다면)
+3. `security_memory` 업데이트 — 0029 warning 16건에 대해 "사용자 호출 RPC, 설계상 의도됨" 사유 기록 후 ignore 처리
+4. `npm run build` 검증
+
+## 5. 의사결정이 필요한 항목 (답변 부탁드립니다)
+
+| 항목 | 옵션 |
+|---|---|
+| **Sentry 도입** | (a) 지금 코드만 넣고 DSN은 나중에 입력 / (b) 도입 보류 / (c) Sentry 대신 Supabase 자체 로그만 사용 |
+| **IP 기반 rate limit** | 현재 user_id 기준만. IP 기준은 Edge Function에서 `x-forwarded-for` 헤더로 추가 가능하나 모바일 통신사 IP 공유 이슈 있음. 도입할지 |
+| **에러 메시지 일반화 적용 범위** | (a) 결제 페이지만 / (b) 전체 사용자 페이지 일괄 |
 
 ---
 
-## B. 관리자 알림 / 자동 방어 시스템 — MVP 설계 (코드 미수정)
-
-밤·외근 중에도 critical 이슈가 새지 않게 하는 것이 목표.
-**MVP는 Critical + High만**, 자동방어는 "탐지 + 보류"까지, 자동 환불·자동 지급은 하지 않음.
-
-### MVP 범위 (1차)
-| # | 항목 | 포함 |
-|---|---|---|
-| 1 | `admin_alerts` 테이블 신설 (또는 `admin_anomalies` 확장) | ✅ |
-| 2 | Critical 탐지 룰 5종 | ✅ |
-| 3 | `/admin/alerts` 모바일 친화 콘솔 | ✅ |
-| 4 | 이메일 알림 (Critical만) | ✅ |
-| 5 | 자동 방어: 의심 건 `manual_review` 플래그 + audit_logs | ✅ |
-| 6 | step-up 인증 유지 (기존 정책) | ✅ |
-
-**2차로 미루는 것:** 텔레그램/디스코드 웹훅, AI 요청 자동 rate limit 강제(현재 백엔드에 rate limit 인프라 없음 — 메모리에 따라 보류, 탐지·플래그까지만), High 이하 알림 채널.
-
-### 스키마
-```
-admin_alerts (
-  id uuid pk,
-  kind text not null,            -- 'payment_no_credit', 'duplicate_payment', ...
-  severity text not null,        -- critical|high|medium|low
-  status text not null default 'open', -- open|acknowledged|resolved
-  title text not null,
-  message text,
-  payload jsonb default '{}',
-  user_id uuid,
-  related_payment_id uuid,
-  dedupe_key text unique,        -- 같은 사건 중복 등록 방지
-  acknowledged_at, acknowledged_by,
-  resolved_at, resolved_by,
-  admin_note text,
-  notified_at timestamptz,       -- 외부 알림 발송 시각
-  created_at timestamptz default now()
-)
-```
-RLS: admin만 SELECT/UPDATE. INSERT는 service_role(Edge Function)만.
-
-### Critical 탐지 룰 (MVP)
-1. **결제 성공 후 5분 내 크레딧 미지급**
-   - `payments.status='success'` AND 동일 user/source_ref로 `energy_grants` 또는 `subscriptions.plan` 변경 없음
-   - 탐지: 5분 주기 cron Edge Function (`scan-alerts`)
-2. **중복 결제 의심**: 같은 user에서 60초 내 동일 amount 2건 이상
-3. **크레딧 중복 지급 의심**: 같은 `source_ref`로 `energy_grants` 2건 이상
-4. **generate refund 실패** (`generate_refund_attempts.refunded=false` AND 1회 이상 시도)
-5. **관리자 권한 실패 반복**: `audit_logs` severity=warning AND action like `admin.%` 5분 내 동일 IP 5회+
-
-### 자동 방어 동작 (MVP)
-- 1·2·3번 탐지 시: `payments.refund_status='manual_review'` 또는 `metadata.flag='manual_review'` 표시 + `admin_alerts` 등록 + `audit_logs` 기록
-- 자동 환불·자동 추가 지급은 **하지 않음** (관리자 수동 처리)
-- AI 요청 폭증은 탐지 + 알림만 (rate limit 인프라 없음 — 메모리에 따름). 사용자에게 자동 제한이 필요해지면 별도 의논.
-
-### 알림 채널
-- **이메일**: 기존 Lovable Emails로 발송, 수신자는 `admin_settings.alert_recipients` (신규) 또는 환경변수 `ADMIN_ALERT_EMAIL`
-- 발송 실패 시 `audit_logs` 기록, 30분 후 1회 재시도
-- 텔레그램/디스코드는 2차 (필요 시 webhook URL 시크릿 추가)
-
-### Edge Functions
-- `scan-alerts` (cron, 5분 주기): 위 룰 평가 → `admin_alerts` insert(dedupe_key로 중복 방지) → critical이면 이메일 트리거
-- 기존 `admin/index.ts`에 액션 추가:
-  - `alerts_list(status?, severity?)`
-  - `alerts_acknowledge(id, note?)`
-  - `alerts_resolve(id, note?)`
-  수동 크레딧 지급/차감은 기존 step-up 정책 유지
-
-### 프런트
-- `src/pages/AdminAlerts.tsx` 페이지 (이미 라우트 존재 — 내용만 신규)
-- 필터: severity (Critical/High), status (Open)
-- 카드형 모바일 레이아웃, 관련 payment/user 상세로 점프 버튼
-- 확인/해결 버튼, 관리자 메모
-
-### 보안
-- 모든 변경은 admin Edge Function 경유, service_role 프런트 비노출
-- `has_role(auth.uid(),'admin')` RLS
-- 모든 알림/자동방어/수동조치 → `audit_logs`
-- 임의 SQL 실행 금지 (기존 정책 유지)
-
----
-
-## 진행 순서 제안
-1. **A 먼저 구현** (사용자 영향이 즉시 큰 버그 — "리뷰 2개인데 답변 1개")
-2. A 검증 후 **B 구현**: 스키마 → cron 함수 → 탐지 룰 → admin UI → 이메일
-
-승인해 주시면 A부터 마이그레이션·코드 변경을 시작하겠습니다.
-B는 위 MVP 범위로 좋은지(특히 외부 알림은 이메일만으로 시작, AI 폭증은 탐지만) 함께 확인 부탁드립니다.
+**진행 방식 제안**: 위 "4. 이번 작업에서 수행할 변경"만 먼저 진행하고, 5번 질문 답변 후 추가 작업하는 게 안전합니다. 동의하시면 바로 진행하겠습니다.
