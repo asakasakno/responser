@@ -1,63 +1,151 @@
-# 보안 점검 결과 및 보완 계획
+# 보안 보완 2차 작업 계획
 
-요청하신 12개 영역을 현재 코드 기준으로 점검한 결과입니다. 대부분 이미 적용되어 있고, 일부만 보완이 필요합니다. **코드 수정 전에 범위를 확정**하기 위한 계획안입니다.
-
----
-
-## 1. 이미 적용되어 있는 보안 (수정 불필요)
-
-| 영역 | 현재 상태 |
-|---|---|
-| **하드코딩 시크릿** | src/extension 전체 스캔 결과 service_role/Toss secret/OpenAI key 노출 **없음**. anon key만 클라이언트에 존재 (정상) |
-| **관리자 라우트** | `AdminGuard` → `current_user_has_role('admin')` RPC로 서버 검증. URL만으로 접근 불가 |
-| **관리자 Edge Function** | `supabase/functions/admin/index.ts` 내부에서 `user_roles` 재검증 + `step-up` 인증 + `audit_logs` 기록 |
-| **RLS** | 모든 핵심 테이블(profiles, generation_logs, payments, energy_grants, subscriptions, user_roles 등) RLS 활성, user_id 기반 정책 |
-| **에너지/플랜/역할 직접 조작 차단** | `energy_grants`, `subscriptions`, `user_roles`, `payments`, `coupon_usages`, `reward_claims` 모두 사용자 INSERT/UPDATE/DELETE 차단. RPC만 가능 |
-| **결제 보안** | `purchase-energy`에서 금액/orderId/paymentKey 서버 재검증, `finalize_energy_purchase` RPC로 원자적 처리, idempotency 적용 |
-| **중복 클릭/Rate limit** | `reserve_generate_request` RPC가 per-second/minute/day 제한 + reservation으로 idempotency. `check_plan_rate_limit`도 존재 |
-| **RPC 권한** | 직전 마이그레이션에서 `generate_request` 계열 4개 함수의 anon EXECUTE 회수 완료. `SECURITY DEFINER` + `search_path = public` 고정 |
-| **audit_logs** | 로그인 실패/관리자 접근/결제/이상감지 등 광범위하게 기록 중 |
-| **입력 검증 (서버)** | `contact_inquiries` RLS에 길이 제한 CHECK, RPC들에 amount/length 검증 존재 |
-| **확인 모달** | StepUpDialog로 관리자 위험 액션 재인증 적용 |
-
-## 2. 보완이 필요한 항목 (이번에 수정 제안)
-
-### A. `.env.example` 파일 추가 (현재 없음)
-- 신규 개발자/배포자가 어떤 변수가 필요한지 알 수 있도록 placeholder 파일 생성
-- 실제 값 없이 키 이름만, secret/anon 구분 주석 포함
-
-### B. 프론트 에러 메시지 점검 (가벼운 보강)
-- `error.message` 그대로 toast에 노출하는 케이스가 일부 페이지(Checkout, Generate)에 남아있을 가능성 → 일반화된 한국어 메시지로 교체
-- 단, 사용자 입력 검증성 메시지(예: "쿠폰 코드를 확인해주세요")는 유지
-
-### C. Sentry/에러 모니터링
-- 현재 **미적용**
-- 도입 시 `VITE_SENTRY_DSN` 환경변수 + `beforeSend`에서 Authorization 헤더/이메일/카드정보 필터링 필요
-- → **이건 별도 의사결정 필요** (Sentry 계정/DSN 발급, 유료 플랜). 아래 질문 참고
-
-### D. SECURITY DEFINER 함수 search_path 점검
-- 현재 함수들 대부분 `SET search_path = public` 적용됨. linter의 0029 경고는 모두 "인증 사용자가 호출 가능"인데, 이는 `spend_energy`, `claim_reward` 같이 **설계상 사용자가 호출해야 하는 함수**라 무시 가능 (보안 메모에 사유 기록)
-
-## 3. 수정하지 않는 것 (의도된 설계)
-
-- **0029 linter 경고 16건**: 모두 `spend_energy`, `claim_reward`, `redeem_energy_coupon`, `validate_coupon` 등 인증 사용자가 호출해야 정상 동작하는 RPC. SECURITY DEFINER는 RLS 우회를 위해 필요. → `security_memory`에 사유 기록 후 ignore
-- 클라이언트에 노출된 `VITE_SUPABASE_PUBLISHABLE_KEY`: 의도된 공개 키 (RLS로 보호)
-
-## 4. 이번 작업에서 수행할 변경
-
-1. `.env.example` 생성 (placeholder만, 실제 값 없음)
-2. `Generate.tsx`, `Checkout.tsx`에서 `error.message` 직접 노출 케이스 일반화 (있다면)
-3. `security_memory` 업데이트 — 0029 warning 16건에 대해 "사용자 호출 RPC, 설계상 의도됨" 사유 기록 후 ignore 처리
-4. `npm run build` 검증
-
-## 5. 의사결정이 필요한 항목 (답변 부탁드립니다)
-
-| 항목 | 옵션 |
-|---|---|
-| **Sentry 도입** | (a) 지금 코드만 넣고 DSN은 나중에 입력 / (b) 도입 보류 / (c) Sentry 대신 Supabase 자체 로그만 사용 |
-| **IP 기반 rate limit** | 현재 user_id 기준만. IP 기준은 Edge Function에서 `x-forwarded-for` 헤더로 추가 가능하나 모바일 통신사 IP 공유 이슈 있음. 도입할지 |
-| **에러 메시지 일반화 적용 범위** | (a) 결제 페이지만 / (b) 전체 사용자 페이지 일괄 |
+요청하신 5개 영역을 점검한 결과와 구현 범위입니다. **코드 수정 전에 범위/의사결정을 먼저 확정**하기 위한 계획안입니다.
 
 ---
 
-**진행 방식 제안**: 위 "4. 이번 작업에서 수행할 변경"만 먼저 진행하고, 5번 질문 답변 후 추가 작업하는 게 안전합니다. 동의하시면 바로 진행하겠습니다.
+## 1. 현재 보안 스캐너가 잡은 3건 (이번에 같이 처리)
+
+| 파일 | 문제 | 처리 |
+|---|---|---|
+| `supabase/functions/complete-kakao-email/index.ts` L114 | catch에서 `e.message` 그대로 응답 | 일반 메시지로 교체 + `console.error` |
+| `supabase/functions/identity-links/index.ts` L94/155/212/221 | Supabase 에러 메시지 4곳 그대로 응답 | 일반 메시지 + `console.error` |
+| `supabase/functions/import-beta-application/index.ts` L219-221 | `?secret=` 쿼리스트링으로 시크릿 수신 가능 (로그 노출 위험) | 헤더 전용으로 변경, 쿼리 fallback 제거 |
+
+→ 같이 처리하고, `BETA_IMPORT_SECRET`은 **사용자가 직접 로테이션**해야 함 (안내)
+
+---
+
+## 2. Sentry 도입 — 프론트엔드
+
+### 패키지 / 구조
+- `@sentry/react` 설치
+- `src/lib/sentry.ts` 신규 — `initSentry()` 함수 export
+- `src/main.tsx`에서 init 호출
+- `src/App.tsx`에 ErrorBoundary 1단계만 감싸기 (기존 UI 영향 없게)
+
+### 활성화 조건
+```ts
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) initSentry()
+```
+- 개발환경: 비활성 (console.error 유지)
+- DSN 없음: 비활성 (조용히 skip)
+
+### `beforeSend` 필터 (필수 14종)
+요청하신 항목 전부 + 추가 안전장치:
+1. `event.request.headers` 에서 `authorization`, `cookie`, `x-supabase-*`, `apikey` 제거
+2. `event.request.cookies` 통째로 삭제
+3. `event.user` 에서 `email`, `ip_address` 제거 (id만 유지, 그것도 hash)
+4. URL/breadcrumb에서 `access_token`, `refresh_token`, `paymentKey`, `orderId`, `code=`, `state=` query 마스킹
+5. `event.extra` / `event.contexts` / `breadcrumbs.data` 재귀 순회하며 키 이름이 다음에 매칭되면 `[REDACTED]`:
+   - `password`, `token`, `secret`, `apikey`, `api_key`, `service_role`, `authorization`
+   - `payment_key`, `paymentkey`, `card_number`, `cvc`
+   - `email`, `phone`, `address`, `birth`
+   - `review_text`, `inquiry_text`, `original_text`, `content`, `message`, `body`
+6. 값이 32자 이상 base64/hex 패턴이면 마스킹
+7. `event.message` / `exception.value`에서 이메일/JWT 정규식으로 마스킹
+
+### 에러 캡처 헬퍼
+`src/lib/errorReporter.ts` — 앱 코드에서 직접 호출:
+```ts
+reportError(err, { feature: 'generate_response', input_length: 384, user_plan: 'free', error_code: 'GENERATION_FAILED' })
+```
+- 원문(리뷰/문의) 절대 전달 금지 — 길이/카테고리만
+- DSN 없으면 dev에서 console.error로 fallback
+
+### 적용 지점 (최소)
+- `Generate.tsx` catch (기존 일반 메시지 유지, Sentry 호출만 추가)
+- `Checkout.tsx` 결제 실패 catch
+- `Auth.tsx` 로그인 실패 (단, "비밀번호가 틀렸습니다" 같은 정상 실패는 skip)
+- ErrorBoundary가 잡는 React 런타임 에러
+
+---
+
+## 3. Sentry — Edge Function 측
+
+**현재 Supabase Edge Function용 Sentry SDK는 Deno에서 안정 동작 보장이 약함.**
+대신:
+- 모든 Edge Function의 fatal catch에서 **`console.error` + `audit_logs` insert** 패턴 유지 (이미 대부분 적용됨)
+- 누락된 곳만 보강:
+  - `complete-kakao-email`: console.error 이미 있음 → 응답만 일반화
+  - `identity-links`: console.error 보강
+  - `generate-response`, `purchase-energy`, `toss-confirm`, `validate-coupon`, `claim-reward`, `admin`, `import-beta-application`, `download-extension` — 이미 audit_logs/console.error 패턴 있음. 응답 메시지만 점검
+
+> **Edge Function에 Sentry SDK를 정식 도입하지 않는 이유**: Deno 환경에서의 안정성 + cold start 비용 + 이미 audit_logs로 추적 가능. 추후 필요 시 별도 작업으로.
+
+---
+
+## 4. IP 기반 rate limit — 현황 및 최소 추가 구현
+
+### 이미 보호되는 항목 (추가 작업 불필요)
+| 엔드포인트 | 현재 보호 |
+|---|---|
+| 로그인 시도 | Supabase Auth가 IP+이메일 기준 자체 rate limit + 6회 실패 시 잠금 |
+| AI 생성 | `reserve_generate_request` (user_id 기준 second/min/day) + reservation idempotency |
+| 결제 승인 | `finalize_energy_purchase` idempotency (order_id 기준), Toss 자체 중복 방지 |
+| 쿠폰 검증 | `validate_coupon` RPC, 사용 시 `coupon_usages` unique 제약 |
+| 관리자 API | `has_role` 검증 + step-up + audit_logs 광범위 기록 |
+| 확장 다운로드 | 짧은 시간 다운로드 자체는 부담 없음, storage 자체 제한 |
+
+### 추가 구현 (최소)
+신규 RPC `public.check_ip_rate_limit(_action text, _ip_hash text, _max_per_window int, _window_seconds int)` 만들어서:
+- `audit_logs`에 `details->>'ip_hash'` 기반으로 카운트
+- 결과 jsonb 반환
+
+적용 대상 2곳만:
+1. **`import-beta-application`** — IP+UA 해시 기준 10분당 5회
+2. **`contact-inquiry`가 따로 없으면** Contact 페이지가 직접 `contact_inquiries` insert → user_id 기준 RLS는 있지만 IP 기록 없음. 트리거 또는 RPC로 IP hash 기록 후 10분당 5회 제한 추가
+
+> **익명 호출 가능한 함수만 IP rate limit이 의미 있음.** 인증된 사용자는 user_id로 이미 충분.
+
+**IP 처리 규칙:**
+- `x-forwarded-for` 첫 값 + UA를 SHA-256 hash → `ip_hash` 컬럼으로만 저장 (원본 IP 저장 금지)
+- 모바일 NAT 고려해서 window 넉넉히 (10분/5회 = 일반 사용자 영향 거의 없음)
+- 초과 시 HTTP 429 + `{ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }`
+
+---
+
+## 5. Abuse 로그 점검 결과
+
+| 항목 | 현재 기록 | 보완 |
+|---|---|---|
+| 짧은 시간 생성 반복 | `reserve_generate_request` 자동 차단 + audit_logs | 충분 |
+| 권한 없는 admin 접근 | `AdminGuard` + admin Edge Function 모두 audit_logs | 충분 |
+| 쿠폰 반복 시도 | `validate_coupon` audit 있음 | 충분 |
+| 결제 승인 반복 | order_id idempotency + audit | 충분 |
+| 베타 신청 반복 | 미기록 | **이번 추가** |
+| 실패 로그인 | Supabase Auth 측 자동 | 충분 |
+| 정지 사용자 호출 | RLS로 차단되지만 audit 미흡 | 보강 (admin 함수만) |
+| 비정상 긴 입력 | RLS CHECK + RPC 검증 일부 | 보강 (contact, generate) |
+
+저장 시 마스킹 규칙 (`src/lib/masking.ts` 기존 활용):
+- IP → SHA-256 hash 8자
+- 입력 원문 → 길이만 (`{ input_length: 384 }`)
+- 결제 키 → 앞 4 + 뒤 4
+
+---
+
+## 6. 의사결정 필요 — 답변 부탁드립니다
+
+| # | 항목 | 옵션 |
+|---|---|---|
+| Q1 | **Sentry DSN** | (a) 지금 코드만 추가하고 DSN은 나중에 본인이 `VITE_SENTRY_DSN` 입력 / (b) 지금 같이 DSN 받아서 setup |
+| Q2 | **Sentry 패키지** | `@sentry/react` (권장, ~50KB gzip) — 추가해도 되는지 |
+| Q3 | **Edge Function Sentry** | (a) 도입 안 함 (audit_logs 유지, 권장) / (b) 그래도 도입 시도 |
+| Q4 | **BETA_IMPORT_SECRET 로테이션** | 쿼리 파라미터 fallback 제거 후, 시크릿도 같이 새로 발급할지 (별도 화면에서 사용자가 직접) |
+| Q5 | **Contact form IP rate limit** | Contact.tsx 현재 어떻게 동작하는지 먼저 확인 후 진행 — 진행 OK? |
+
+---
+
+## 7. 작업 순서 (승인 후)
+
+1. 스캐너 3건 즉시 수정 (kakao-email, identity-links, beta-import 쿼리 fallback 제거)
+2. `@sentry/react` 설치 + `src/lib/sentry.ts` + `src/lib/errorReporter.ts`
+3. `main.tsx`/`App.tsx`에 ErrorBoundary
+4. `Generate.tsx`/`Checkout.tsx`/`Auth.tsx`에 `reportError` 호출
+5. 마이그레이션 — `check_ip_rate_limit` RPC + `audit_logs.details` 인덱스 (ip_hash JSONB GIN)
+6. `import-beta-application`에 IP rate limit 적용
+7. (Q5 OK 시) Contact 흐름에 IP rate limit
+8. `.env.example`에 `VITE_SENTRY_DSN` 추가
+9. `npm run build` 검증
+10. 결과 보고

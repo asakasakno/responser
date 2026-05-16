@@ -91,7 +91,10 @@ Deno.serve(async (req) => {
         .select("provider, provider_email, email_verified, linked_at, is_active")
         .eq("user_id", userId)
         .eq("is_active", true);
-      if (error) return json({ error: error.message }, cors, 500);
+      if (error) {
+        console.error("identity-links list error", error);
+        return json({ error: "처리에 실패했습니다." }, cors, 500);
+      }
       return json({ links: data ?? [] }, cors);
     }
 
@@ -152,7 +155,10 @@ Deno.serve(async (req) => {
         .from("user_identity_links")
         .update({ is_active: false, unlinked_at: new Date().toISOString() })
         .eq("id", target.id);
-      if (upErr) return json({ error: upErr.message }, cors, 500);
+      if (upErr) {
+        console.error("identity-links unlink error", upErr);
+        return json({ error: "처리에 실패했습니다." }, cors, 500);
+      }
 
       // Mirror provider field on profiles if removing the canonical provider
       if (provider === "kakao") {
@@ -209,7 +215,10 @@ Deno.serve(async (req) => {
         email_verified: gVerified,
         is_active: true,
       });
-      if (insErr) return json({ error: insErr.message }, cors, 500);
+      if (insErr) {
+        console.error("identity-links sync_google insert error", insErr);
+        return json({ error: "처리에 실패했습니다." }, cors, 500);
+      }
 
       await logAudit("identity_link_added", { provider: "google", provider_email: gEmail }, isAdminUser ? "warning" : "info");
       return json({ ok: true }, cors);
@@ -218,6 +227,6 @@ Deno.serve(async (req) => {
     return json({ error: "알 수 없는 action" }, cors, 400);
   } catch (e: any) {
     console.error("identity-links error", e);
-    return json({ error: e?.message ?? "server_error" }, buildCorsHeaders(origin), 500);
+    return json({ error: "처리에 실패했습니다." }, buildCorsHeaders(origin), 500);
   }
 });

@@ -43,8 +43,24 @@ const AdminAuditPage = lazy(() => import("./pages/AdminAudit"));
 const AdminBetaApplicationsPage = lazy(() => import("./pages/AdminBetaApplications"));
 const AdminGenerationFeedbackPage = lazy(() => import("./pages/AdminGenerationFeedback"));
 import FloatingContact from "./components/FloatingContact";
+import { Sentry } from "./lib/sentry";
 
 const queryClient = new QueryClient();
+
+const ErrorFallback = () => (
+  <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-center px-4">
+    <h1 className="text-xl font-semibold">일시적인 오류가 발생했습니다</h1>
+    <p className="text-sm text-muted-foreground">
+      잠시 후 다시 시도해주세요. 문제가 계속되면 문의해주세요.
+    </p>
+    <button
+      onClick={() => window.location.reload()}
+      className="mt-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+    >
+      새로고침
+    </button>
+  </div>
+);
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center text-muted-foreground">로딩 중...</div>
@@ -58,6 +74,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => (
+  <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -109,6 +126,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </Sentry.ErrorBoundary>
 );
 
 export default App;

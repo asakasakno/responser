@@ -347,6 +347,15 @@ export default function Generate() {
       const friendly = typeof err?.message === 'string' && /에너지|쿠폰|로그인|권한/.test(err.message)
         ? err.message
         : '요청 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      // Best-effort monitoring — no review text, no PII.
+      try {
+        const { reportError } = await import('@/lib/errorReporter');
+        reportError(err, {
+          feature: 'generate_response',
+          error_code: 'GENERATION_FAILED',
+          input_length: typeof inputText === 'string' ? inputText.length : 0,
+        });
+      } catch { /* noop */ }
       toast({ title: '생성 실패', description: friendly, variant: 'destructive' });
     } finally {
       setLoading(false);

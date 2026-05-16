@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     console.error('complete-kakao-email fatal', e);
-    return new Response(JSON.stringify({ error: e?.message ?? 'unknown' }), {
+    return new Response(JSON.stringify({ error: '처리에 실패했습니다.' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

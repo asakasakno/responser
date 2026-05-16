@@ -64,7 +64,11 @@ export default function Contact() {
     setSubmitting(false);
 
     if (error) {
-      toast({ title: '전송 실패', description: error.message, variant: 'destructive' });
+      if (import.meta.env.DEV) console.error('[contact-submit]', error);
+      const msg = /rate_limited|too many/i.test(error.message ?? '')
+        ? '같은 이메일로 너무 많은 문의를 보냈습니다. 잠시 후 다시 시도해주세요.'
+        : '전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      toast({ title: '전송 실패', description: msg, variant: 'destructive' });
       return;
     }
     toast({ title: '문의가 접수되었습니다', description: '빠른 시일 내에 답변드리겠습니다.' });
