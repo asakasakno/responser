@@ -43,11 +43,12 @@ export default function FloatingContact() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="카카오톡 문의"
-      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg hover:opacity-90 transition-opacity text-sm font-semibold"
+      className="fixed right-4 bottom-20 md:bottom-4 z-40 flex items-center gap-2 px-3 py-2 md:px-4 md:py-3 rounded-full shadow-lg hover:opacity-90 transition-opacity text-xs md:text-sm font-semibold"
       style={{ backgroundColor: '#FEE500', color: '#181600' }}
     >
-      <MessageCircle className="w-5 h-5" />
-      카카오톡 문의
+      <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+      <span className="hidden md:inline">카카오톡 문의</span>
+      <span className="md:hidden">문의</span>
     </a>
   );
 }
