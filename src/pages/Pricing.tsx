@@ -452,6 +452,12 @@ export default function Pricing() {
         </DialogContent>
       </Dialog>
 
+      <div className="container mx-auto px-4 pb-6">
+        <p className="text-[11px] leading-relaxed text-muted-foreground break-keep text-center">
+          상호: 응대도우미 | 대표자: 배지훈 | 사업자등록번호: 285-15-02485 | 전화번호: 0502-1946-0111
+        </p>
+      </div>
+
       <SiteFooter />
     </div>
   );

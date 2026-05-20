@@ -152,6 +152,12 @@ export default function Checkout() {
             <li className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3 h-3 text-primary" /> 결제 후 언제든 해지 가능 · <Link to="/refund" className="underline">환불정책</Link></li>
           </ul>
         </Card>
+
+        <p className="mt-6 text-[11px] leading-relaxed text-muted-foreground break-keep text-center">
+          상호: 응대도우미 | 대표자: 배지훈 | 사업자등록번호: 285-15-02485 | 전화번호: 0502-1946-0111
+          <br />
+          사업장 소재지: 부산광역시 사하구 승학로3번길 47, 101동 2105호 (하단동, 사하 삼정그린코아 더시티)
+        </p>
       </main>
 
       <SiteFooter />
